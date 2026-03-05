@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Westfield Buzz — Which Design?</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --navy: #1B2B4B;
+      --navy-deep: #0F1D33;
+      --gold: #C5975B;
+      --gold-light: #D4AD78;
+      --cream: #FFF8F0;
+      --white: #FFFFFF;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: var(--navy-deep);
+      color: var(--white);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      padding: 3rem 2rem 1rem;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 2rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--gold);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Playfair Display', serif;
+      font-weight: 800;
+      font-size: 22px;
+      color: var(--navy-deep);
+    }
+
+    .logo-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .logo-text span {
+      color: var(--gold);
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 em {
+      font-style: italic;
+      color: var(--gold);
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      color: rgba(255, 255, 255, 0.5);
+      font-weight: 300;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* Concepts grid */
+    .concepts {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      max-width: 1200px;
+      margin: 2.5rem auto;
+      padding: 0 2rem;
+    }
+
+    .concept-card {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 2px solid rgba(255, 255, 255, 0.06);
+      background: var(--navy);
+      transition: all 0.35s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+
+    .concept-card:hover {
+      border-color: var(--gold);
+      transform: translateY(-6px);
+      box-shadow: 0 16px 48px rgba(197, 151, 91, 0.15);
+    }
+
+    .concept-preview {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9 / 14;
+      overflow: hidden;
+      background: #0a1225;
+    }
+
+    .concept-preview iframe {
+      width: 200%;
+      height: 200%;
+      border: none;
+      transform: scale(0.5);
+      transform-origin: top left;
+      pointer-events: none;
+    }
+
+    .concept-info {
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .concept-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 0.4rem;
+    }
+
+    .concept-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+    }
+
+    .concept-desc {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.45);
+      font-weight: 300;
+      line-height: 1.5;
+    }
+
+    .concept-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--gold);
+      opacity: 0;
+      transform: translateX(-8px);
+      transition: all 0.3s;
+    }
+
+    .concept-card:hover .concept-cta {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Footer note */
+    .footer-note {
+      text-align: center;
+      padding: 2rem 2rem 3rem;
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 0.9rem;
+      font-weight: 300;
+      line-height: 1.7;
+    }
+
+    .footer-note strong {
+      color: rgba(255, 255, 255, 0.6);
+      font-weight: 500;
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .concepts {
+        grid-template-columns: 1fr;
+        max-width: 500px;
+      }
+
+      .concept-preview {
+        aspect-ratio: 9 / 10;
+      }
+    }
+
+    /* Animation */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header { animation: fadeUp 0.6s ease-out; }
+
+    .concept-card {
+      animation: fadeUp 0.6s ease-out both;
+    }
+
+    .concept-card:nth-child(1) { animation-delay: 0.15s; }
+    .concept-card:nth-child(2) { animation-delay: 0.25s; }
+    .concept-card:nth-child(3) { animation-delay: 0.35s; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">W</div>
+      <div class="logo-text">Westfield <span>Buzz</span></div>
+    </div>
+    <h1>Which <em>Design?</em></h1>
+    <p class="subtitle">Three directions for Westfield's community directory. Click any concept to view it full-screen.</p>
+  </div>
+
+  <div class="concepts">
+    <!-- V1: Premium -->
+    <a class="concept-card" href="v1-premium.html" target="_blank">
+      <div class="concept-preview">
+        <iframe src="v1-premium.html" loading="lazy" tabindex="-1" title="Concept 1 preview"></iframe>
+      </div>
+      <div class="concept-info">
+        <div class="concept-label">Concept 1</div>
+        <div class="concept-name">Premium Navy</div>
+        <div class="concept-desc">Navy + gold, contained hero illustration, rich card layout</div>
+        <div class="concept-cta">View full-screen &rarr;</div>
+      </div>
+    </a>
+
+    <!-- V2: Editorial -->
+    <a class="concept-card" href="v2-editorial.html" target="_blank">
+      <div class="concept-preview">
+        <iframe src="v2-editorial.html" loading="lazy" tabindex="-1" title="Concept 2 preview"></iframe>
+      </div>
+      <div class="concept-info">
+        <div class="concept-label">Concept 2</div>
+        <div class="concept-name">Light Editorial</div>
+        <div class="concept-desc">Clean editorial feel, split hero layout, newspaper-inspired grid</div>
+        <div class="concept-cta">View full-screen &rarr;</div>
+      </div>
+    </a>
+
+    <!-- V3: Twilight -->
+    <a class="concept-card" href="v3-twilight.html" target="_blank">
+      <div class="concept-preview">
+        <iframe src="v3-twilight.html" loading="lazy" tabindex="-1" title="Concept 3 preview"></iframe>
+      </div>
+      <div class="concept-info">
+        <div class="concept-label">Concept 3</div>
+        <div class="concept-name">Twilight Dark</div>
+        <div class="concept-desc">Dark mode, glowing amber accents, twilight diorama hero</div>
+        <div class="concept-cta">View full-screen &rarr;</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer-note">
+    <strong>Text me which one you like best.</strong><br>
+    Or suggest a mix — we can combine elements from different concepts.
+  </div>
+
+</body>
+</html>
