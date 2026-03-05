@@ -74,9 +74,53 @@ config/admin → { allowlist: string[] }
 
 ## Execution Plan — Multi-Agent Build
 
-### How This Works
+### How This Works — Multi-Agent Orchestration
 
-I (Claude) orchestrate the build as a series of work blocks. Each block uses parallel subagents where possible. You approve each block before I execute. Tests run after each block.
+I (Claude Opus) act as **orchestrator**. For each block, I spawn specialized subagents that work in parallel on independent tasks. I verify their output, run tests, and only move to the next block when everything passes.
+
+```
+┌─────────────────────────────────────────────────┐
+│  ORCHESTRATOR (Claude Opus — main session)      │
+│  - Reads plan, decides what to build next       │
+│  - Spawns subagents for parallel work           │
+│  - Reviews output, runs tests, resolves issues  │
+│  - Commits + deploys after each block           │
+└──────────┬──────────┬──────────┬────────────────┘
+           │          │          │
+     ┌─────▼──┐ ┌─────▼──┐ ┌────▼───┐
+     │Agent A │ │Agent B │ │Agent C │
+     │(UI)    │ │(Data)  │ │(Tests) │
+     └────────┘ └────────┘ └────────┘
+```
+
+**Agent types used:**
+- **Build agents** — write components, pages, utilities (run in worktrees for isolation)
+- **Review agents** — code quality, pattern consistency, security audit
+- **Test agents** — write and run tests after each block
+- **Research agents** — look up Next.js/Firebase docs, check patterns
+- **Scrape agent** — Facebook group data extraction (Block 7)
+
+**Per-block flow:**
+1. Orchestrator plans the block's tasks
+2. Independent tasks → parallel subagents (e.g., UI component + data layer simultaneously)
+3. Dependent tasks → sequential (e.g., component must exist before test)
+4. Orchestrator merges agent output, resolves conflicts
+5. Run `npm run build` + `npm test`
+6. Commit, deploy to Vercel preview
+7. Report to you with summary + preview URL
+
+**Parallelism map:**
+
+| Block | Parallel agents | Sequential |
+|-------|----------------|------------|
+| 1 Scaffold | Firebase setup ∥ Layout/Nav/Footer | Init first, then parallel |
+| 2 Auth | Auth context ∥ Login page ∥ Admin utility | Middleware depends on context |
+| 3 Directory | Seed script ∥ Directory page ∥ Detail page | Search depends on directory |
+| 4 Recs | Recommend button ∥ Avatars component | Firestore logic first |
+| 5 Suggest | Form UI ∥ Admin page | Both depend on Firestore schema |
+| 6 Events | Events page ∥ Admin events ∥ Landing widget | Independent UIs |
+| 7 Scrape | Runs in parallel with Blocks 4-6 | Scrape → clean → review |
+| 8 Polish | SEO ∥ Responsive ∥ Loading states | All independent |
 
 ---
 
@@ -101,13 +145,11 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 **Goal**: Next.js project with Tailwind, Firebase SDK, basic layout, deployed to Vercel
 
-**Tasks** (sequential — foundation):
-1. Init Next.js 15 app with App Router + Tailwind (bundled)
-2. Firebase client SDK setup (`lib/firebase.ts`)
-3. Root layout with nav + footer (design TBD — will use V1 aesthetic as placeholder, swap later)
-4. Landing page skeleton (hero, category grid, events preview)
-5. Firestore security rules + seed script structure
-6. Deploy to Vercel, verify `westfieldbuzz.com` works
+**Agent plan**:
+1. *Orchestrator*: Init Next.js 15 + Tailwind (must be first)
+2. *Agent A (parallel)*: Firebase client SDK setup (`lib/firebase.ts`) + Firestore rules
+3. *Agent B (parallel)*: Root layout with nav + footer + landing page skeleton
+4. *Orchestrator*: Merge, build, deploy to Vercel
 
 **Tests**:
 - `npm run build` passes
@@ -121,13 +163,12 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 **Goal**: Facebook + Google login, gated access, admin allowlist
 
-**Tasks** (parallel where possible):
-1. Auth context provider (`lib/auth.tsx`) — login state, user object, loading
-2. Login page (`/login`) — Facebook + Google buttons
-3. Auth middleware — redirect unauthenticated users to `/login`
-4. User profile creation on first login (write to `users/` + `public_profiles/`)
-5. Admin check utility — read `config/admin` allowlist from Firestore
-6. Account page (`/account`) — display name, photo, logout
+**Agent plan**:
+1. *Agent A (parallel)*: Auth context provider (`lib/auth.tsx`) + admin check utility
+2. *Agent B (parallel)*: Login page UI (`/login`) — Facebook + Google buttons
+3. *Agent C (parallel)*: Account page (`/account`) — display name, photo, logout
+4. *Orchestrator*: Wire auth middleware (depends on Agent A), user profile creation on first login
+5. *Review agent*: Security audit on auth flow
 
 **Tests**:
 - Login flow works with Facebook OAuth (manual test with your account)
@@ -142,13 +183,12 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 **Goal**: Browse, search, and filter service providers
 
-**Tasks** (parallel agents for UI + data):
-1. Firestore seed script — load 20-30 businesses from JSON file
-2. Directory page (`/directory`) — grid of service cards
-3. Category filter — URL param `?category=electrician`
-4. Search bar with Fuse.js — fuzzy match across name, category
-5. Service detail page (`/directory/[id]`) — SSR for SEO
-6. Category browsing grid on landing page (links to filtered directory)
+**Agent plan**:
+1. *Agent A (parallel)*: Seed script + sample JSON data file (20-30 businesses)
+2. *Agent B (parallel)*: ServiceCard component + Directory page (`/directory`) with category filter
+3. *Agent C (parallel)*: Service detail page (`/directory/[id]`) — SSR
+4. *Orchestrator*: Wire Fuse.js search, CategoryGrid on landing page (depends on B)
+5. *Test agent*: Write tests for search, filtering, SSR rendering
 
 **Tests**:
 - Seed script populates Firestore with test data
@@ -164,13 +204,11 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 **Goal**: Users can recommend services, counts display, recommender avatars show
 
-**Tasks**:
-1. Recommend button on service cards + detail page
-2. Firestore write: create `recommendations/{userId}` subcollection doc
-3. Increment `recommendations` count + update `recentRecommenders` array
-4. Un-recommend (toggle) — remove doc, decrement count
-5. Recommender avatars on service cards (fetch from `public_profiles`)
-6. User's recommendations list on `/account`
+**Agent plan**:
+1. *Agent A (parallel)*: RecommendButton component + Firestore write/toggle logic
+2. *Agent B (parallel)*: Recommender avatars component (fetch from `public_profiles`)
+3. *Orchestrator*: Wire into ServiceCard + detail page, add recs list to `/account`
+4. *Test agent*: Write tests for recommend/un-recommend, count integrity
 
 **Tests**:
 - Recommend button adds recommendation to Firestore
@@ -185,12 +223,10 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 **Goal**: Community members can submit new businesses for admin approval
 
-**Tasks**:
-1. Suggest form (`/suggest`) — business name, category, phone, notes
-2. Write to `suggested_services/` on submit
-3. Admin page (`/admin/suggestions`) — list pending, approve/reject
-4. On approve: copy to `services/` collection
-5. Success/confirmation UI after submission
+**Agent plan**:
+1. *Agent A (parallel)*: Suggest form (`/suggest`) + Firestore write
+2. *Agent B (parallel)*: Admin suggestions page (`/admin/suggestions`) — list, approve, reject
+3. *Orchestrator*: Wire approve action (copy to `services/`), success UI
 
 **Tests**:
 - Form submission creates doc in `suggested_services/`
@@ -205,12 +241,11 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 **Goal**: Events listing with filtering, admin entry, landing page widget
 
-**Tasks**:
-1. Events page (`/events`) — upcoming events with date/category filter
-2. Event cards — date badge, title, location, category tag
-3. Admin event entry (`/admin/events`) — create/edit/delete
-4. Landing page events widget — next 3 upcoming events
-5. Newsletter parser utility (once you provide a sample)
+**Agent plan**:
+1. *Agent A (parallel)*: EventCard component + Events page (`/events`) with filters
+2. *Agent B (parallel)*: Admin events page (`/admin/events`) — CRUD
+3. *Agent C (parallel)*: Landing page events widget — next 3 upcoming
+4. *Orchestrator*: Newsletter parser utility (if sample provided)
 
 **Tests**:
 - Events page renders upcoming events
@@ -270,27 +305,114 @@ I (Claude) orchestrate the build as a series of work blocks. Each block uses par
 
 ---
 
-## Verification Plan
+## Autonomous Verification Plan
 
-### After Each Block
-1. `npm run build` — must pass
-2. `npm test` — all tests pass
-3. Manual smoke test of new features
-4. Deploy to Vercel preview, verify on real URL
-5. Check Firestore for correct data writes
+Every block goes through this pipeline **before I involve you**:
 
-### Before Launch
-1. Full E2E walkthrough: land → login → browse → search → recommend → suggest → events
-2. Mobile walkthrough on real phone
-3. Test with 2-3 real users (friends/family)
-4. Verify Facebook OAuth works for non-developer users (requires App Review)
-5. Check `westfieldbuzz.com` loads correctly with SSL
-6. Firestore security rules audit — verify no unauthorized access
+### Automated (runs after every block, no human needed)
 
-### Post-Launch Monitoring
-- Vercel analytics for traffic
-- Firebase console for auth + Firestore usage
-- Check for errors in Vercel logs
+```
+┌─────────────┐    ┌──────────────┐    ┌───────────────┐    ┌──────────────┐
+│ Build Check  │───▶│ Unit Tests   │───▶│ Lint + Types  │───▶│ Review Agent │
+│ npm run build│    │ npm test     │    │ tsc --noEmit  │    │ Code quality │
+└─────────────┘    └──────────────┘    └───────────────┘    └──────────────┘
+       │                  │                    │                     │
+       ▼                  ▼                    ▼                     ▼
+   FAIL → fix         FAIL → fix          FAIL → fix          Issues → fix
+   and retry          and retry            and retry            and retry
+                                                                    │
+                                                                    ▼
+                                                        ┌──────────────────┐
+                                                        │ Deploy to Vercel │
+                                                        │ preview branch   │
+                                                        └──────────────────┘
+```
+
+**Step 1: Build** — `npm run build` must pass. If it fails, fix and retry (up to 3 attempts).
+
+**Step 2: Tests** — `npm test` must pass. Test agent writes tests for each block's features. Tests cover:
+- Component rendering (React Testing Library)
+- Firestore read/write logic (mocked)
+- Search results accuracy
+- Auth state transitions
+- Admin access control
+
+**Step 3: Type check** — `tsc --noEmit` must pass. No type errors allowed.
+
+**Step 4: Code review agent** — Automated review checking:
+- No hardcoded secrets or API keys
+- No `console.log` in production code
+- Components follow established patterns
+- Firestore security rules match data access patterns
+- No unused imports or dead code
+
+**Step 5: Deploy** — Push to preview branch, deploy to Vercel, verify URL loads.
+
+### After All Blocks Complete (still autonomous)
+
+**Integration verification** — I run a full walkthrough simulating a user:
+1. Visit landing page → verify hero, categories, events render
+2. Click category → verify filtered directory loads
+3. Search "plumber" → verify results appear
+4. Click service → verify detail page with SSR
+5. Login → verify auth flow
+6. Recommend a service → verify count updates
+7. Submit a suggestion → verify it appears in admin
+8. Visit events → verify listing with filters
+9. Check mobile viewport → verify responsive layout
+10. Check `view-source` → verify SSR content + meta tags
+
+**Security audit agent** — Runs after Block 2 and Block 8:
+- Firestore rules: no unauthorized read/write paths
+- No API keys exposed in client bundle
+- Auth redirects work (can't access gated pages without login)
+- Admin pages inaccessible to non-admin users
+
+### What I Hand Off to You
+
+After autonomous verification passes, I give you:
+1. Preview URL on Vercel
+2. Summary of what was built + what changed
+3. Any issues I couldn't resolve autonomously
+4. Screenshot comparisons (if design agent is available)
+
+**You only need to:**
+- Test Facebook OAuth with your real account (I can't do this)
+- Eyeball the design against your preferred concept
+- Approve the Vercel production deploy
+
+---
+
+## What I Need From You (Blocking Items)
+
+### Before I Can Start
+
+| Item | Why | How |
+|------|-----|-----|
+| Firebase project created | Can't write auth or data code without it | console.firebase.google.com → new project |
+| Firebase web app config | Needed for `lib/firebase.ts` | Project Settings → Web App → copy config |
+| Facebook Developer App | Can't build login without it | developers.facebook.com → Create App |
+| Facebook App ID + Secret | Firebase Auth needs these | App Settings → Basic |
+| `.env.local` file | All secrets go here | I'll give you the template, you fill in values |
+| Design choice (V1 or V2) | Determines all UI work | Pick one, or tell me to start with V1 placeholder |
+
+### During Build (Non-Blocking, But Helpful)
+
+| Item | When Needed | Why |
+|------|-------------|-----|
+| Sample weekly newsletter | Block 6 (Events) | To build the events parser |
+| Your email for admin allowlist | Block 2 (Auth) | So you're the first admin |
+| Facebook group names/URLs | Block 7 (Scrape) | Which groups to scrape |
+| Seed business list (if you have one) | Block 3 (Directory) | Jump-starts the directory |
+
+### After Build (Your Testing)
+
+| Item | Why |
+|------|-----|
+| Test Facebook login with your account | I can't authenticate as you |
+| Review design on your phone | Real device testing |
+| Share preview URL with 2-3 friends | Early feedback |
+| Submit Facebook App Review | Required before non-devs can log in |
 
 ---
 
