@@ -13,16 +13,12 @@ export default function Nav() {
       className="fixed top-0 left-0 right-0 z-50 flex h-[60px] items-center justify-between border-b border-black/8 px-12 max-md:px-6"
       style={{ background: "var(--paper)", borderTop: "3px solid var(--accent)" }}
     >
-      <Link href="/" className="flex items-baseline gap-1 no-underline">
-        <span
-          className="text-2xl"
-          style={{ fontFamily: "var(--font-display)", color: "var(--ink)" }}
-        >
-          Westfield Buzz
-        </span>
-        <span className="text-3xl leading-none" style={{ color: "var(--accent)" }}>
-          .
-        </span>
+      <Link href="/" className="flex items-center no-underline">
+        <img
+          src="/logo-v3-stacked-hero.svg"
+          alt="Westfield Buzz"
+          className="h-[48px] w-auto"
+        />
       </Link>
 
       {/* Desktop links */}

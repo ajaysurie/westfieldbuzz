@@ -1,0 +1,3490 @@
+[
+  {
+    "name": "Hipp Roofing",
+    "category": "Roofer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 9,
+    "recommendedBy": [
+      "Steven Morgenthal",
+      "Maria Schlemmer Ackerman",
+      "Claire Patankar",
+      "Sharon Stockwell",
+      "Robert Steiner",
+      "Denise Focker",
+      "Barbara Monaghan Ehrhardt",
+      "Erin Ben-Hayon",
+      "Chris Collins"
+    ]
+  },
+  {
+    "name": "Brighton Air Corp",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.brightonaircorp.com",
+    "recommendations": 7,
+    "recommendedBy": [
+      "Daniel Ghanime",
+      "Laurie Dee",
+      "David Perna",
+      "Alessandra Bernarducci Jacobs",
+      "Joyce Friedman",
+      "Anastasia Orlando-Harrison",
+      "Anne Marie"
+    ]
+  },
+  {
+    "name": "Kings Cleaners",
+    "category": "House Cleaner",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 6,
+    "recommendedBy": [
+      "Jack Ferrante",
+      "Julia Melton",
+      "David Rotter",
+      "Jacqueline Anne Marie",
+      "Sharon O'Farrell",
+      "Jordan Lateiner"
+    ]
+  },
+  {
+    "name": "Feast Catering",
+    "category": "Caterer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 5,
+    "recommendedBy": [
+      "Barbara Doyle Frantz",
+      "Carmen Imgrund",
+      "Stephanie Bigmore",
+      "Bill Bonsall",
+      "Sean Dougherty"
+    ]
+  },
+  {
+    "name": "Five Star",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 5,
+    "recommendedBy": [
+      "Lizabeth Schiebel Duffy",
+      "Christine Foley",
+      "Ernie Jim Giannakis",
+      "Laurie Kirstein",
+      "Jean Sarle"
+    ]
+  },
+  {
+    "name": "Property Pros",
+    "category": "Landscaper",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 5,
+    "recommendedBy": [
+      "Rick Genovese",
+      "Robert Moran",
+      "Alicia Grippi Virag",
+      "Helene Fink Coustan",
+      "Robyn Schaffer"
+    ]
+  },
+  {
+    "name": "Westfield Pediatric Dental Group",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 5,
+    "recommendedBy": [
+      "Jennifer Gilman",
+      "Alissa Schneider",
+      "Rachel Winard",
+      "Nadienne Young",
+      "Cecilia Gomes"
+    ]
+  },
+  {
+    "name": "Mary Flanagan",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 4,
+    "recommendedBy": [
+      "Nadienne Young",
+      "Dara Silverglate",
+      "Diane Mulder Kachoogian",
+      "MK Lamp"
+    ]
+  },
+  {
+    "name": "Paul Banks",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 4,
+    "recommendedBy": [
+      "Trish Murray Dulinski",
+      "Liz Chacko",
+      "Megan Ray Malanga",
+      "Toni Peloso Finnegan"
+    ]
+  },
+  {
+    "name": "A-1 Tree Service",
+    "category": "Tree Service",
+    "phone": "908-228-2684",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Claire Hammond",
+      "Diana Kohlenberger Shoback",
+      "Stacey Murphy Ukrainskyj"
+    ]
+  },
+  {
+    "name": "Deegan Roofing, Siding & Gutter Company",
+    "category": "Roofer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Zia Milan",
+      "Zuzel Mendoza",
+      "Stacey Gonsiewski Bonavitacola"
+    ]
+  },
+  {
+    "name": "Dr. Tim McCabe",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Joe Korfmacher",
+      "Nadienne Young",
+      "Kara Phelan O'Keefe"
+    ]
+  },
+  {
+    "name": "High Class Electricians",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Philip Furia",
+      "Evan Siegel",
+      "Staci Wasco"
+    ]
+  },
+  {
+    "name": "Iler Tree Services",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Tricia Wentzel Ballingall",
+      "Igor Perel",
+      "Adele Reaves"
+    ]
+  },
+  {
+    "name": "Joyce Wegbreit",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Robert Praizner",
+      "Dan Hennes",
+      "Mike David"
+    ]
+  },
+  {
+    "name": "Moskal Tile Contractors LLC",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "John Moskal",
+      "Matt Salvato",
+      "Michael Novello"
+    ]
+  },
+  {
+    "name": "Ocean Orthodontics & Pediatrics",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Donna Carlucci Ardente",
+      "Dana Bevacqua",
+      "Jess DaSilva"
+    ]
+  },
+  {
+    "name": "Pediatric Associates of Westfield",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Steve Fagioli",
+      "Ankit Shah",
+      "James Willix"
+    ]
+  },
+  {
+    "name": "Roots Home Inspection",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Patty O'Connor",
+      "Andria Geotakes Kiel",
+      "Dan Hennes"
+    ]
+  },
+  {
+    "name": "Showroom Hand Car Wash",
+    "category": "Auto Mechanic",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Igor Curly",
+      "Alfred Priscoe",
+      "Randy McKelvey"
+    ]
+  },
+  {
+    "name": "Stafford and Sons Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 3,
+    "recommendedBy": [
+      "Kerry Grabowiecki",
+      "Jean Thompson",
+      "Lisa Reuter Dilts"
+    ]
+  },
+  {
+    "name": "Academy Dental Care",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Kristin Imbimbo",
+      "Dea Lenihan"
+    ]
+  },
+  {
+    "name": "Anthony's Affordable Tree Care, LLC",
+    "category": "Tree Service",
+    "phone": "998-414-4509",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Anthony Santos",
+      "Jack Calandra"
+    ]
+  },
+  {
+    "name": "At Home Carpet & Flooring",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://athomefloors.com/",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Carrie Liguori",
+      "Tracy Carter"
+    ]
+  },
+  {
+    "name": "B&W Window Cleaning, LLC",
+    "category": "Gutter Service",
+    "phone": "908-464-1259",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Kasia Elizabeth",
+      "Julie Stroud"
+    ]
+  },
+  {
+    "name": "Big G Movers",
+    "category": "Mover",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://biggmoversinc.com",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Trish Carey Fitzpatrick",
+      "Caryn Donah"
+    ]
+  },
+  {
+    "name": "Bill Root",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Patty O'Connor",
+      "Andria Geotakes Kiel"
+    ]
+  },
+  {
+    "name": "Bowco",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Patti Lytle Riley",
+      "Melissa Rhino Winant"
+    ]
+  },
+  {
+    "name": "Bruce Trano & Sons",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "David Rotter",
+      "Diana Savage Hegarty"
+    ]
+  },
+  {
+    "name": "Dental Family Jr",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Tim Bauer",
+      "Deirdre Theresa"
+    ]
+  },
+  {
+    "name": "Dr. Aimee",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Donna Carlucci Ardente",
+      "Dana Bevacqua"
+    ]
+  },
+  {
+    "name": "Dr. David B Levine",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Chris Catalano",
+      "Mitch Shusteris"
+    ]
+  },
+  {
+    "name": "Dr. DiMurro",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Steve Fagioli",
+      "Robert Toth"
+    ]
+  },
+  {
+    "name": "Dr. Robert Martino",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Karen Carey Masciale",
+      "Liz O'Connor Pearson"
+    ]
+  },
+  {
+    "name": "Dr. Shefali Patel",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Heather Hoey Finn",
+      "Gina Totino"
+    ]
+  },
+  {
+    "name": "Dr. Shukla",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Amy Russo",
+      "Sanjay Shukla"
+    ]
+  },
+  {
+    "name": "Dr. Walk",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Jennifer Gilman",
+      "Cecilia Gomes"
+    ]
+  },
+  {
+    "name": "Good Tidings",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Nick Di",
+      "Dan Silber"
+    ]
+  },
+  {
+    "name": "Grand Slam Painting",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Shannon Wagner Della Fortuna",
+      "Samantha Mae"
+    ]
+  },
+  {
+    "name": "Hansel's Carpets",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Roger Luria",
+      "Debbie Abrams Kaplan"
+    ]
+  },
+  {
+    "name": "Hospital for Special Surgery",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Joshua Martin",
+      "Joe Sanfratello"
+    ]
+  },
+  {
+    "name": "Hunter Electric",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "April Quartell Erck",
+      "Diane Bartholomew"
+    ]
+  },
+  {
+    "name": "J.M. Foerst",
+    "category": "Attorney",
+    "phone": "(973) 258-9200",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Pat Dinsmore Plante",
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "JAM Maintenance LLC",
+    "category": "Roofer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "John Mercier",
+      "Anthony Falletta"
+    ]
+  },
+  {
+    "name": "Lady Bug Pest Control",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Donna Kalainikas Felber",
+      "Barbara Murphy"
+    ]
+  },
+  {
+    "name": "Law Office of Michael D. Drivas, LLC",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Christine Montebianco Drivas",
+      "Natalie Licini"
+    ]
+  },
+  {
+    "name": "Len's Tree Service",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Jennifer Barda Silva",
+      "Maria Pavese Marquet"
+    ]
+  },
+  {
+    "name": "M&M Roofing",
+    "category": "Roofer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Martha Bergh",
+      "John Basuino"
+    ]
+  },
+  {
+    "name": "M&M Roofing Corporation",
+    "category": "Roofer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Donna Kalainikas Felber",
+      "MaryAlice Feinstein"
+    ]
+  },
+  {
+    "name": "Mark Drozic",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Philip Furia",
+      "Richard Cheng"
+    ]
+  },
+  {
+    "name": "Meyer & Depew",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Philip Furia",
+      "Nick Di"
+    ]
+  },
+  {
+    "name": "Precision Tree",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Liz Mulholland",
+      "Meridith Klausner Bridge"
+    ]
+  },
+  {
+    "name": "Rainbow Gutter Cleaning",
+    "category": "Gutter Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.rainbowguttercleaning.com/",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Bonnie Stewart",
+      "Carol Vigstedt Barnes"
+    ]
+  },
+  {
+    "name": "Rich's Plumbing",
+    "category": "Plumber",
+    "phone": "800-368-8204",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Sheri Piccolella Diaz",
+      "Alex Lyubarsky"
+    ]
+  },
+  {
+    "name": "Summit Medical Group",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Ankit Shah",
+      "Phillip Thomas Lam"
+    ]
+  },
+  {
+    "name": "TNT Pest Control",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Greg Barker",
+      "Ivonne Peguero Nadal"
+    ]
+  },
+  {
+    "name": "Towne Car Wash & Detail Center",
+    "category": "Auto Mechanic",
+    "phone": "908-233-4050",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Jordan Lateiner",
+      "Jesse Conti"
+    ]
+  },
+  {
+    "name": "Watchung Pediatrics",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "watchungpediatrics.com",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Kunal Doshi",
+      "Jeff Eng"
+    ]
+  },
+  {
+    "name": "Westfield Collision",
+    "category": "Auto Mechanic",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Kev Crums",
+      "Igor Curly"
+    ]
+  },
+  {
+    "name": "Westfield Smiles",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 2,
+    "recommendedBy": [
+      "Rebecca Keogh",
+      "Stephanie L. Rubenstein"
+    ]
+  },
+  {
+    "name": "A & J Pereira Electrical Contracting",
+    "category": "Electrician",
+    "phone": "908.328.4190",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alyssa Zuckerman Pereira"
+    ]
+  },
+  {
+    "name": "A Condo",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.acondollccompany.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Ed Roberts"
+    ]
+  },
+  {
+    "name": "A&W",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Christianne Buffa"
+    ]
+  },
+  {
+    "name": "AAA Able Plumbing",
+    "category": "Plumber",
+    "phone": "973-275-1400",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "AJR Home Renovations",
+    "category": "Contractor",
+    "phone": "908-251-5830",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Cristina Marques"
+    ]
+  },
+  {
+    "name": "ARC",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Suzanne Staszak-Silva"
+    ]
+  },
+  {
+    "name": "Above the Grade Tutoring",
+    "category": "Tutor",
+    "phone": "908-889-6396",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Gail Birnbaum Switsky"
+    ]
+  },
+  {
+    "name": "Ace Handyman Services of Westfield",
+    "category": "Handyman",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alyce Fischer"
+    ]
+  },
+  {
+    "name": "Affordable Floors",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Barry Jeckell"
+    ]
+  },
+  {
+    "name": "Agron Jashari",
+    "category": "Photographer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Burim Nimon Rexhaj"
+    ]
+  },
+  {
+    "name": "Alan Peck Carpet",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "John Charles"
+    ]
+  },
+  {
+    "name": "All City Electric",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "allcityelectricsecurity.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jason Simon"
+    ]
+  },
+  {
+    "name": "Americas Landscapes Home Improvement Contractors LLC",
+    "category": "Landscaper",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Rese Ade"
+    ]
+  },
+  {
+    "name": "Anthony Cavallo",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kerry Patricia"
+    ]
+  },
+  {
+    "name": "Arnold\u2019s",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jack Ferrante"
+    ]
+  },
+  {
+    "name": "Aupaircare",
+    "category": "Nanny",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Noraiz Khan"
+    ]
+  },
+  {
+    "name": "B and D Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Michael Eisenberg"
+    ]
+  },
+  {
+    "name": "B&F Landscaping",
+    "category": "Landscaper",
+    "phone": "908-499-7090",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Donna Kalainikas Felber"
+    ]
+  },
+  {
+    "name": "BK Private Dining & Catering LLC",
+    "category": "Caterer",
+    "phone": "908.347.1759",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Yao Huang"
+    ]
+  },
+  {
+    "name": "Be My Guest PCS",
+    "category": "Caterer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.bemyguestpcs.com/",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kristen Carrero"
+    ]
+  },
+  {
+    "name": "Ben Ginter",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dan Hennes"
+    ]
+  },
+  {
+    "name": "Benner's Auto Body",
+    "category": "Auto Mechanic",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Mike Levin"
+    ]
+  },
+  {
+    "name": "Benninger and Sons",
+    "category": "Handyman",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Daria MacDonald"
+    ]
+  },
+  {
+    "name": "Benninger's and Sons",
+    "category": "Gutter Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Sanela Pecenkovic"
+    ]
+  },
+  {
+    "name": "Beyond The Leaf Tree and Shrub Experts LLC",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Shelia Boggs"
+    ]
+  },
+  {
+    "name": "Blindworks",
+    "category": "Interior Designer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alison Power"
+    ]
+  },
+  {
+    "name": "Blue Air One",
+    "category": "HVAC",
+    "phone": "908-275-3953",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dan Hennes"
+    ]
+  },
+  {
+    "name": "Bob Friscia",
+    "category": "Handyman",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Fiorella Menjivar"
+    ]
+  },
+  {
+    "name": "Body Work by Fischer",
+    "category": "Auto Mechanic",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Andrew Useloff"
+    ]
+  },
+  {
+    "name": "Bruno Baldani General Contracting",
+    "category": "Contractor",
+    "phone": "908-232-2430",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nancy Baldani"
+    ]
+  },
+  {
+    "name": "Bryan Engel",
+    "category": "Accountant",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Christina Liebrich"
+    ]
+  },
+  {
+    "name": "Bryan Saracino",
+    "category": "Painter",
+    "phone": "973-379-5093",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Buttermore & Foltz",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "CVG Remodeling, LLC",
+    "category": "Contractor",
+    "phone": "973-508-8069",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Angelica Viquez"
+    ]
+  },
+  {
+    "name": "Caffrey Tree & Landscape",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lynn Harris"
+    ]
+  },
+  {
+    "name": "Carpets by Jeffrey",
+    "category": "Flooring",
+    "phone": "(973) 277-1586",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Christakos Financial",
+    "category": "Accountant",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Kendler"
+    ]
+  },
+  {
+    "name": "Claudio Overhead Doors",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jordan Lateiner"
+    ]
+  },
+  {
+    "name": "Cleaning America",
+    "category": "House Cleaner",
+    "phone": "201-673-8088",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Craig Feibusch, MD",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.summithealth.com/doctors/provider/1215356068",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Frank D. Isoldi"
+    ]
+  },
+  {
+    "name": "Cranford Guitar",
+    "category": "Music Teacher",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Wayne Zuhl"
+    ]
+  },
+  {
+    "name": "Cranford Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Liz Mulholland"
+    ]
+  },
+  {
+    "name": "Cranford Smiles",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "David Sexton"
+    ]
+  },
+  {
+    "name": "D&C Lawn Care",
+    "category": "Landscaper",
+    "phone": "908-361-6235",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dante Clausen"
+    ]
+  },
+  {
+    "name": "DEM Solutions",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lee Cohn"
+    ]
+  },
+  {
+    "name": "Daniel Crowley IV",
+    "category": "Other",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Eric Couper"
+    ]
+  },
+  {
+    "name": "Danny's Doors",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Eric Couper"
+    ]
+  },
+  {
+    "name": "Darin Pinto",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Theresa Previte-Mandrillo"
+    ]
+  },
+  {
+    "name": "David Foltz",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "David Levine Pediatrics",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "findadoctor.atlantichealth.org/provider/David+B+Levine/642118",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Mitch Shusteris"
+    ]
+  },
+  {
+    "name": "Dentalcare Associates",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.njdentalcare.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Scalera Jr"
+    ]
+  },
+  {
+    "name": "Dentologem",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Janette Hausler"
+    ]
+  },
+  {
+    "name": "Dinizo",
+    "category": "Pool Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Heather Gouldey Worthey"
+    ]
+  },
+  {
+    "name": "Dr. Amy Waxman",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kristie Paolazzi Barba"
+    ]
+  },
+  {
+    "name": "Dr. Angela Wimmer",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dee Emm"
+    ]
+  },
+  {
+    "name": "Dr. Angelo Palermo",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "summitmedicalgroup.com/doctors/angelo-palermo-md",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Phillip Thomas Lam"
+    ]
+  },
+  {
+    "name": "Dr. Anika Ackerman",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nadienne Young"
+    ]
+  },
+  {
+    "name": "Dr. Arida",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Denise Miller Sherwood"
+    ]
+  },
+  {
+    "name": "Dr. Barnum",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lada Bidiak"
+    ]
+  },
+  {
+    "name": "Dr. Beth Herko",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Maura Triarsi Paviolitis"
+    ]
+  },
+  {
+    "name": "Dr. Catherine Cunningham",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Stephanie Bigmore"
+    ]
+  },
+  {
+    "name": "Dr. Cerdena",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jo\u00e3o Paulo Gon\u00e7alves"
+    ]
+  },
+  {
+    "name": "Dr. Chang",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Rachel Winard"
+    ]
+  },
+  {
+    "name": "Dr. Chantal Scott-Alpizar",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Adam Stirpe"
+    ]
+  },
+  {
+    "name": "Dr. DeMasi",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Bill Sickles"
+    ]
+  },
+  {
+    "name": "Dr. Forman",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Toth"
+    ]
+  },
+  {
+    "name": "Dr. Gwertzman",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Chris Catalano"
+    ]
+  },
+  {
+    "name": "Dr. Holly",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Stephanie L. Rubenstein"
+    ]
+  },
+  {
+    "name": "Dr. Huebich",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Grazyna Okla"
+    ]
+  },
+  {
+    "name": "Dr. Hugh Snyder",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lea Fleming"
+    ]
+  },
+  {
+    "name": "Dr. Liberto",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Marc Ringel"
+    ]
+  },
+  {
+    "name": "Dr. Lorenzo Martinetti",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Stacy Braswell Wang"
+    ]
+  },
+  {
+    "name": "Dr. Lukenda",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Matthew Kelly"
+    ]
+  },
+  {
+    "name": "Dr. M",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Janette Hausler"
+    ]
+  },
+  {
+    "name": "Dr. Matthew Giangrante",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "vanguardmedgroup.com/our-team/matthew-giangrante/",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Paul Witte"
+    ]
+  },
+  {
+    "name": "Dr. Nadia",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Elizabeth Broccoli"
+    ]
+  },
+  {
+    "name": "Dr. Nicole Panza",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Toth"
+    ]
+  },
+  {
+    "name": "Dr. Presti",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "James Willix"
+    ]
+  },
+  {
+    "name": "Dr. Robert Lukenda",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jeff Eng"
+    ]
+  },
+  {
+    "name": "Dr. Rosalie Matos",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://drmatosgrowingsmiles.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alexandra Castainca-Costa"
+    ]
+  },
+  {
+    "name": "Dr. SanJuan",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kunal Doshi"
+    ]
+  },
+  {
+    "name": "Dr. Schweiger",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Karen Oxman Hivry"
+    ]
+  },
+  {
+    "name": "Dr. Scott",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kunal Doshi"
+    ]
+  },
+  {
+    "name": "Dr. Sheth",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Richard Eisenberg"
+    ]
+  },
+  {
+    "name": "Dr. Weinman",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lisa Marie"
+    ]
+  },
+  {
+    "name": "Drain Jetters R Us LLC",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Rese Ade"
+    ]
+  },
+  {
+    "name": "Dylan Patrick Construction LLC",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Menka S Panjwani"
+    ]
+  },
+  {
+    "name": "E & C Construction",
+    "category": "Contractor",
+    "phone": "908-578-6949",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Joyce Friedman"
+    ]
+  },
+  {
+    "name": "East Coast Landscaping & Property Management",
+    "category": "Landscaper",
+    "phone": "908-220-8516",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Paul Adrian"
+    ]
+  },
+  {
+    "name": "Elizabeth Foltz",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "Endless Services, LLC",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Samantha Fahrer Levine"
+    ]
+  },
+  {
+    "name": "FLP Associates LLC",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.flpassociates.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Richard Pizzuta"
+    ]
+  },
+  {
+    "name": "Fabian Perez Sanches",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Vania Tipacti"
+    ]
+  },
+  {
+    "name": "G. Fried Carpeting",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Karin Murphy Engel"
+    ]
+  },
+  {
+    "name": "GGL Contracting",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nicole Moran Griffin"
+    ]
+  },
+  {
+    "name": "Galossi Glass Design",
+    "category": "Contractor",
+    "phone": "908-232-2111",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Giovanni Diane Mormile"
+    ]
+  },
+  {
+    "name": "Gateway Home Improvement LLC",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kathryn Blaze"
+    ]
+  },
+  {
+    "name": "George Touloumis",
+    "category": "HVAC",
+    "phone": "908-296-2099",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "David Plummer"
+    ]
+  },
+  {
+    "name": "Gerry Shamy",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Patty O'Connor"
+    ]
+  },
+  {
+    "name": "Gil Levine",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Giron",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Sue DeFabio"
+    ]
+  },
+  {
+    "name": "Gretchen Ohlig",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lara Crifo Rinaldi"
+    ]
+  },
+  {
+    "name": "Guitar Mike",
+    "category": "Music Teacher",
+    "phone": "908-599-8462",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Gurney Electric",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Sharon Stockwell"
+    ]
+  },
+  {
+    "name": "H&R Block",
+    "category": "Accountant",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Tom ONeil"
+    ]
+  },
+  {
+    "name": "Hannon Flooring",
+    "category": "Flooring",
+    "phone": "(908) 686-6333",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "Harwood Floors Unlimited",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Pat Watral"
+    ]
+  },
+  {
+    "name": "Hildie Lazar",
+    "category": "Interior Designer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.lazararchitecture.com/",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Michael Esposito"
+    ]
+  },
+  {
+    "name": "Hoff Brothers",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lisa Lagstein"
+    ]
+  },
+  {
+    "name": "Hoffman Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dan Hennes"
+    ]
+  },
+  {
+    "name": "Homematters Contracting",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Brielle Hrubic"
+    ]
+  },
+  {
+    "name": "Horan and Aronowitz",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.Harlaw.net",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Miriam Milgrim Aronowitz"
+    ]
+  },
+  {
+    "name": "Integrative Dental",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Emily Sauter"
+    ]
+  },
+  {
+    "name": "J&E Auto Body",
+    "category": "Auto Mechanic",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Chris Des"
+    ]
+  },
+  {
+    "name": "J&S Landscaping",
+    "category": "Landscaper",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Tim Bauer"
+    ]
+  },
+  {
+    "name": "JDS HVAC Service",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "jdsheat.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Trish Murray Dulinski"
+    ]
+  },
+  {
+    "name": "Jack Esteves",
+    "category": "Electrician",
+    "phone": "908-265-7637",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "Jackson Hewitt",
+    "category": "Accountant",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Tom ONeil"
+    ]
+  },
+  {
+    "name": "Jaeger Lumber",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Richard Pizzuta"
+    ]
+  },
+  {
+    "name": "Jhonnys",
+    "category": "Tree Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Tara Ann"
+    ]
+  },
+  {
+    "name": "Jim Hall Heating & Air Conditioning Corp.",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.jimhallhvac.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Stuart Altman"
+    ]
+  },
+  {
+    "name": "Joe Gachko",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Patty O'Connor"
+    ]
+  },
+  {
+    "name": "Joe Judge",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Patty O'Connor"
+    ]
+  },
+  {
+    "name": "Joely Triantafyllou",
+    "category": "Realtor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "John Triantafyllou"
+    ]
+  },
+  {
+    "name": "Joey Caruso",
+    "category": "Music Teacher",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.joeycarusoguitar.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Theresa Lovallo Mitchell"
+    ]
+  },
+  {
+    "name": "John Carlos Borja Productions",
+    "category": "Photographer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://johncarlosborjaproductions.zenfolio.com/",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dan Black"
+    ]
+  },
+  {
+    "name": "John Gasper",
+    "category": "Other",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Richard Pizzuta"
+    ]
+  },
+  {
+    "name": "John Manzo",
+    "category": "Caterer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Elva-Marie Hilbert"
+    ]
+  },
+  {
+    "name": "John Moskal",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Michael Novello"
+    ]
+  },
+  {
+    "name": "Joseph Pink & Company Plumbing * Heating * Air Conditioning LLC",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "jpinkllc.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jennifer Kelmartin"
+    ]
+  },
+  {
+    "name": "Judge Home Inspection",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Patty O'Connor"
+    ]
+  },
+  {
+    "name": "Jun Deegan Contracting & Masonry",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Zia Milan"
+    ]
+  },
+  {
+    "name": "Just Shovel My Snow",
+    "category": "Snow Removal",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.JustShovelMySnow.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Brian Ulrich"
+    ]
+  },
+  {
+    "name": "Keltom Gutters",
+    "category": "Gutter Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Gloria Vigliarolo Russo"
+    ]
+  },
+  {
+    "name": "Ken Guida",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lisa Guida"
+    ]
+  },
+  {
+    "name": "Kerri Braman Walsh",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "kerriwalshfauxfinishing",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nadienne Young"
+    ]
+  },
+  {
+    "name": "Keys Home Inspection",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "John Paul"
+    ]
+  },
+  {
+    "name": "Kleeber",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Julie Baumann"
+    ]
+  },
+  {
+    "name": "LINOS HVAC",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Rese Ade"
+    ]
+  },
+  {
+    "name": "Ladybug Carpentry Department",
+    "category": "Handyman",
+    "phone": "908-317-8576",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alicia Buckridee Ramdath"
+    ]
+  },
+  {
+    "name": "Laura Zimmerman",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lori McGill Swanson"
+    ]
+  },
+  {
+    "name": "Lawn Barbers",
+    "category": "Landscaper",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Bella Estheticis"
+    ]
+  },
+  {
+    "name": "Lenny's Plumbing",
+    "category": "Plumber",
+    "phone": "732-574-0480",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nicole Zambell"
+    ]
+  },
+  {
+    "name": "Leo Masonry",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.leogeneralmasonry.com/",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Chris Zanelli"
+    ]
+  },
+  {
+    "name": "Levine DeSantis",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Lou Casagrande",
+    "category": "Tutor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.casagrandetutoringacademy.net/",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Bea Arthur"
+    ]
+  },
+  {
+    "name": "Lou's Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Pamela Mendelson"
+    ]
+  },
+  {
+    "name": "Lukenda Dental",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Greg Barker"
+    ]
+  },
+  {
+    "name": "Luvyourfloors",
+    "category": "Flooring",
+    "phone": "",
+    "email": "Luvyourfloors@yahoo.com",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Denise Miller Sherwood"
+    ]
+  },
+  {
+    "name": "MC Home Improvements",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Eric Couper"
+    ]
+  },
+  {
+    "name": "Margaret Caprio Blanco",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Andria Geotakes Kiel"
+    ]
+  },
+  {
+    "name": "Mark Bosch",
+    "category": "Music Teacher",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "John Cerra"
+    ]
+  },
+  {
+    "name": "Martha Bailey",
+    "category": "Tutor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lara Crifo Rinaldi"
+    ]
+  },
+  {
+    "name": "Masterson",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Terry Quinn"
+    ]
+  },
+  {
+    "name": "Matt Wasserman",
+    "category": "Handyman",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kim Kovacs Sanchez"
+    ]
+  },
+  {
+    "name": "Mazzilli Mason Contractors",
+    "category": "Contractor",
+    "phone": "908-233-6287",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "John Charles"
+    ]
+  },
+  {
+    "name": "Mr. Kitchen and Bath",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Zavaro"
+    ]
+  },
+  {
+    "name": "NJ Elite Pools",
+    "category": "Pool Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Brian DiVito"
+    ]
+  },
+  {
+    "name": "NJ Home Analysis",
+    "category": "Contractor",
+    "phone": "(908) 205-2857",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Pat Dinsmore Plante"
+    ]
+  },
+  {
+    "name": "New Providence Dentistry",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Maura Triarsi Paviolitis"
+    ]
+  },
+  {
+    "name": "New Providence Family Practice",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Stacy Braswell Wang"
+    ]
+  },
+  {
+    "name": "Nicholas A. Marino",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Shannon Wagner Della Fortuna"
+    ]
+  },
+  {
+    "name": "Northeast Collision",
+    "category": "Auto Mechanic",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Daniel Endick"
+    ]
+  },
+  {
+    "name": "Orlandos Painting & Powerwashing",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Orlando Camilo"
+    ]
+  },
+  {
+    "name": "Painting Etc.",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Julie Baumann"
+    ]
+  },
+  {
+    "name": "Paul Facchinei",
+    "category": "Music Teacher",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://www.pfguitarlessons.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alex Bennett"
+    ]
+  },
+  {
+    "name": "Peeping Tom's",
+    "category": "Gutter Service",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nikki Thurber Tardibuono"
+    ]
+  },
+  {
+    "name": "Perfect Painting",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Gail Matteo Rizkalla"
+    ]
+  },
+  {
+    "name": "Peter Richter & Son Home Improvement LLC",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Scott Turchin"
+    ]
+  },
+  {
+    "name": "Pool Tables Plus",
+    "category": "Mover",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kevin Curtis"
+    ]
+  },
+  {
+    "name": "Precious Pearls",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Elizabeth Broccoli"
+    ]
+  },
+  {
+    "name": "Princeton Hardwood Floors",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Shannon Wagner Della Fortuna"
+    ]
+  },
+  {
+    "name": "Quality Pro Services LLC",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Michael Rippel"
+    ]
+  },
+  {
+    "name": "RMC Studios",
+    "category": "Music Teacher",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kevin Duffy"
+    ]
+  },
+  {
+    "name": "RMR Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Nancy Polito Arvizzigno"
+    ]
+  },
+  {
+    "name": "Ray Walker",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Barry Jeckell"
+    ]
+  },
+  {
+    "name": "Regional Plumbing and Heating",
+    "category": "Plumber",
+    "phone": "908-768-2400",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Judy Anzalone"
+    ]
+  },
+  {
+    "name": "Rich Berardi, DO",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Terry Quinn"
+    ]
+  },
+  {
+    "name": "Rich Kruse",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Ana Cuervo"
+    ]
+  },
+  {
+    "name": "Rich Lyman",
+    "category": "Contractor",
+    "phone": "908-418-3940",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kerry Patricia"
+    ]
+  },
+  {
+    "name": "Robert Panza",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Ankit Shah"
+    ]
+  },
+  {
+    "name": "Ron Pecina",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Frank D. Isoldi"
+    ]
+  },
+  {
+    "name": "Rose Construction",
+    "category": "Contractor",
+    "phone": "(908) 789-8802",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kevin Kennedy"
+    ]
+  },
+  {
+    "name": "Russo Plumbing",
+    "category": "Plumber",
+    "phone": "973-530-0911",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dawn Williams Nardone"
+    ]
+  },
+  {
+    "name": "Sal Pafumi",
+    "category": "Landscaper",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jack Ferrante"
+    ]
+  },
+  {
+    "name": "Sean Wolff",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Trish Murray Dulinski"
+    ]
+  },
+  {
+    "name": "Spector Foerst",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Debby Burslem"
+    ]
+  },
+  {
+    "name": "Statewide Restoration",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Diana Savage Hegarty"
+    ]
+  },
+  {
+    "name": "Steven Manginelli Electrical Contracting Inc",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alan Murphy"
+    ]
+  },
+  {
+    "name": "Super Pools LLC",
+    "category": "Pool Service",
+    "phone": "908-347-8736",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Stephen Kroll"
+    ]
+  },
+  {
+    "name": "Susan Angelicola",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Toni Verga Deis"
+    ]
+  },
+  {
+    "name": "Susan Sulovski-Devanney",
+    "category": "Interior Designer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Louis Petro"
+    ]
+  },
+  {
+    "name": "Teen Assist",
+    "category": "Mover",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Scott Jaffee"
+    ]
+  },
+  {
+    "name": "Temp Control Air Conditioning & Heating",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Brad Chipper Gates"
+    ]
+  },
+  {
+    "name": "The Carpet Girl",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Elizabeth Vander Schaaf"
+    ]
+  },
+  {
+    "name": "The Dental Family",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Richard Eisenberg"
+    ]
+  },
+  {
+    "name": "The Dental Family: Brett and Irene Druger, DMD",
+    "category": "Dentist",
+    "phone": "908-232-9300",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Brian Foote"
+    ]
+  },
+  {
+    "name": "The Uno Group",
+    "category": "Contractor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Eileen Mooney Cambria"
+    ]
+  },
+  {
+    "name": "The Xterminator Pest Control",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Jamie Lauren"
+    ]
+  },
+  {
+    "name": "Tia's",
+    "category": "Caterer",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Andrew Kofsky"
+    ]
+  },
+  {
+    "name": "Tim O\u2019Brien Painting and Powerwashing",
+    "category": "Painter",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Christine Alamorian"
+    ]
+  },
+  {
+    "name": "Tom Kilgannon",
+    "category": "Contractor",
+    "phone": "(908) 205-2857",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Pat Dinsmore Plante"
+    ]
+  },
+  {
+    "name": "Tower Electrical",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "towerlightpower.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Dina Greenberg Glasofer"
+    ]
+  },
+  {
+    "name": "Trano",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Roseann Pagano Pizzi"
+    ]
+  },
+  {
+    "name": "Tri Starr Electric LLC",
+    "category": "Electrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "tristarrelectricnj.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Delano Pinnock"
+    ]
+  },
+  {
+    "name": "Tru Plumbing",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "https://truplumbingnj.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Anthony Capozzolo"
+    ]
+  },
+  {
+    "name": "Trumpore",
+    "category": "Plumber",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Anuj Shah"
+    ]
+  },
+  {
+    "name": "Two Wrenches",
+    "category": "Handyman",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Lisa Mangels"
+    ]
+  },
+  {
+    "name": "Union Dental",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Karen Oxman Hivry"
+    ]
+  },
+  {
+    "name": "Valencia School of Music",
+    "category": "Music Teacher",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Gloria Praitano Morello"
+    ]
+  },
+  {
+    "name": "Vanguard Medical Group",
+    "category": "Doctor",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "vanguardmedgroup.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Paul Witte"
+    ]
+  },
+  {
+    "name": "Vanguard Service NJ",
+    "category": "HVAC",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "vanguardservicenj.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Caryn Donah"
+    ]
+  },
+  {
+    "name": "Vector Movers",
+    "category": "Mover",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Kelsey Ryan"
+    ]
+  },
+  {
+    "name": "Viking Pest Control",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Alessandra Bernarducci Jacobs"
+    ]
+  },
+  {
+    "name": "Vincent Brodo",
+    "category": "Snow Removal",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Burim Nimon Rexhaj"
+    ]
+  },
+  {
+    "name": "West Carpet",
+    "category": "Flooring",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Karen Oxman Hivry"
+    ]
+  },
+  {
+    "name": "Western Pest Control",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Steiner"
+    ]
+  },
+  {
+    "name": "Westfield Dental Associates",
+    "category": "Dentist",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Adam Stirpe"
+    ]
+  },
+  {
+    "name": "Westfield Pediatrics",
+    "category": "Pediatrician",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Adam Fine"
+    ]
+  },
+  {
+    "name": "Westfield Pest",
+    "category": "Exterminator",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Sharon Fox"
+    ]
+  },
+  {
+    "name": "Wolfe Ossa Law",
+    "category": "Attorney",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Robert Krumm"
+    ]
+  },
+  {
+    "name": "Zmentalist",
+    "category": "Other",
+    "phone": "",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "www.Zmentalist.com",
+    "recommendations": 1,
+    "recommendedBy": [
+      "Mark Zacharia"
+    ]
+  }
+]

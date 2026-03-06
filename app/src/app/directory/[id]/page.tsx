@@ -5,9 +5,9 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getServiceById, type Service } from "@/lib/firestore";
 import RecommendButton from "@/components/RecommendButton";
-import RecommenderAvatars from "@/components/RecommenderAvatars";
+import AuthGate from "@/components/AuthGate";
 
-export default function ServiceDetailPage() {
+function ServiceDetailContent() {
   const params = useParams();
   const id = params.id as string;
 
@@ -153,13 +153,37 @@ export default function ServiceDetailPage() {
         </div>
       </div>
 
-      {/* Recommend + Avatars */}
-      <div className="mt-8 flex items-center gap-6">
+      {/* Recommended by */}
+      {service.recentRecommenders?.length > 0 && (
+        <div className="mt-8 rounded-[10px] border border-black/6 bg-paper-pure p-8">
+          <div className="mb-4 text-[0.72rem] font-bold uppercase tracking-[0.15em] text-ink-muted">
+            Recommended by
+          </div>
+          <div className="flex flex-wrap gap-3">
+            {service.recentRecommenders.map((rec, i) => {
+              const name = typeof rec === "string" ? rec : "A neighbor";
+              return (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded-full border border-black/6 px-3 py-1.5"
+                >
+                  <div
+                    className="flex h-6 w-6 items-center justify-center rounded-full text-[0.55rem] font-semibold text-white"
+                    style={{ background: "var(--accent)" }}
+                  >
+                    {name[0]}
+                  </div>
+                  <span className="text-[0.82rem] text-ink">{name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Recommend action */}
+      <div className="mt-6 flex items-center gap-6">
         <RecommendButton serviceId={id} initialCount={service.recommendations} />
-        <RecommenderAvatars
-          recentRecommenders={service.recentRecommenders || []}
-          totalCount={service.recommendations}
-        />
       </div>
 
       <div className="mt-8">
@@ -172,5 +196,13 @@ export default function ServiceDetailPage() {
         </Link>
       </div>
     </div>
+  );
+}
+
+export default function ServiceDetailPage() {
+  return (
+    <AuthGate>
+      <ServiceDetailContent />
+    </AuthGate>
   );
 }

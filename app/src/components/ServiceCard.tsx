@@ -31,6 +31,18 @@ export default function ServiceCard({ service }: { service: Service }) {
           </span>
         )}
       </div>
+
+      {service.recentRecommenders?.length > 0 && (
+        <p className="mt-2 text-[0.78rem] text-ink-muted">
+          Recommended by{" "}
+          {service.recentRecommenders
+            .slice(0, 3)
+            .map((r) => (typeof r === "string" ? r.split(" ")[0] : "a neighbor"))
+            .join(", ")}
+          {service.recentRecommenders.length > 3 &&
+            ` + ${service.recentRecommenders.length - 3} more`}
+        </p>
+      )}
     </Link>
   );
 }

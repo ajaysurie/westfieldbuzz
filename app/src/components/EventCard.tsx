@@ -1,5 +1,6 @@
 import type { Event } from "@/lib/firestore";
 import type { Timestamp } from "firebase/firestore";
+import { EVENT_CATEGORY_COLORS as CATEGORY_COLORS } from "@/lib/event-categories";
 
 function formatDate(timestamp: Timestamp | null): string {
   if (!timestamp) return "";
@@ -64,8 +65,11 @@ export default function EventCard({ event, dark = false }: EventCardProps) {
         </div>
         {event.category && (
           <span
-            className="rounded-full px-2.5 py-0.5 text-[0.7rem] font-semibold text-ink-muted"
-            style={{ background: "var(--paper-dark)" }}
+            className="rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold"
+            style={{
+              background: CATEGORY_COLORS[event.category]?.bg || "#f1f5f9",
+              color: CATEGORY_COLORS[event.category]?.text || "#475569",
+            }}
           >
             {event.category}
           </span>

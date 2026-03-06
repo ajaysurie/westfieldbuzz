@@ -10,7 +10,7 @@
 
 import { initializeApp, cert, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import businesses from "../src/data/seed-businesses.json";
+import businesses from "../src/data/scraped-businesses.json";
 
 const isProd = process.argv.includes("--prod");
 const dbName = isProd ? "westfieldbuzz-prod" : "westfieldbuzz-dev";
@@ -38,7 +38,7 @@ async function seed() {
       address: biz.address,
       website: biz.website,
       recommendations: biz.recommendations,
-      recentRecommenders: [],
+      recentRecommenders: (biz as any).recommendedBy || [],
       lastRecommended: null,
       seeded: true,
       createdAt: FieldValue.serverTimestamp(),

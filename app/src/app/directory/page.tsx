@@ -8,6 +8,7 @@ import { searchServices } from "@/lib/search";
 import ServiceCard from "@/components/ServiceCard";
 import SearchBar from "@/components/SearchBar";
 import CategoryGrid from "@/components/CategoryGrid";
+import AuthGate from "@/components/AuthGate";
 
 function DirectoryContent() {
   const searchParams = useSearchParams();
@@ -95,14 +96,16 @@ function DirectoryContent() {
 
 export default function DirectoryPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="mx-auto max-w-[1100px] px-12 py-12 text-center text-ink-muted">
-          Loading directory...
-        </div>
-      }
-    >
-      <DirectoryContent />
-    </Suspense>
+    <AuthGate>
+      <Suspense
+        fallback={
+          <div className="mx-auto max-w-[1100px] px-12 py-12 text-center text-ink-muted">
+            Loading directory...
+          </div>
+        }
+      >
+        <DirectoryContent />
+      </Suspense>
+    </AuthGate>
   );
 }

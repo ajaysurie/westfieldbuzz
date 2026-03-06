@@ -4,34 +4,46 @@ import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-interface Recommender {
-  uid: string;
-  displayName: string;
-  photoURL: string;
+interface RecommenderAvatarsProps {
+  recentRecommenders: (string | { uid: string })[];
+  totalCount: number;
 }
 
-interface RecommenderAvatarsProps {
-  recentRecommenders: { uid: string }[];
-  totalCount: number;
+interface ResolvedProfile {
+  key: string;
+  displayName: string;
+  photoURL?: string;
 }
 
 export default function RecommenderAvatars({
   recentRecommenders,
   totalCount,
 }: RecommenderAvatarsProps) {
-  const [profiles, setProfiles] = useState<Recommender[]>([]);
+  const [profiles, setProfiles] = useState<ResolvedProfile[]>([]);
 
   useEffect(() => {
     async function loadProfiles() {
-      const loaded: Recommender[] = [];
+      const loaded: ResolvedProfile[] = [];
+
       for (const rec of recentRecommenders.slice(0, 5)) {
-        try {
-          const snap = await getDoc(doc(db, "public_profiles", rec.uid));
-          if (snap.exists()) {
-            loaded.push({ uid: rec.uid, ...snap.data() } as Recommender);
+        if (typeof rec === "string") {
+          // Seeded data: plain name string
+          loaded.push({ key: rec, displayName: rec });
+        } else {
+          // Real user recommendation: look up profile
+          try {
+            const snap = await getDoc(doc(db, "public_profiles", rec.uid));
+            if (snap.exists()) {
+              const data = snap.data();
+              loaded.push({
+                key: rec.uid,
+                displayName: data.displayName || "User",
+                photoURL: data.photoURL,
+              });
+            }
+          } catch {
+            // skip
           }
-        } catch {
-          // skip
         }
       }
       setProfiles(loaded);
@@ -47,10 +59,10 @@ export default function RecommenderAvatars({
   const remaining = totalCount - profiles.length;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <div className="flex -space-x-2">
         {profiles.map((p) => (
-          <div key={p.uid} className="relative" title={p.displayName}>
+          <div key={p.key} className="relative" title={p.displayName}>
             {p.photoURL ? (
               <img
                 src={p.photoURL}
@@ -68,11 +80,14 @@ export default function RecommenderAvatars({
           </div>
         ))}
       </div>
-      {remaining > 0 && (
-        <span className="text-[0.75rem] text-ink-muted">
-          +{remaining} more
-        </span>
-      )}
+      <span className="text-[0.82rem] text-ink-light">
+        {profiles.length > 0 && (
+          <>
+            {profiles.map((p) => p.displayName.split(" ")[0]).join(", ")}
+            {remaining > 0 && ` + ${remaining} more`}
+          </>
+        )}
+      </span>
     </div>
   );
 }

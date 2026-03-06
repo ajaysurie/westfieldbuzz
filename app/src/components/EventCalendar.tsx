@@ -7,15 +7,23 @@ interface EventCalendarProps {
   events: Event[];
   onSelectDate: (date: string) => void;
   selectedDate: string | null;
+  viewMonth: number;
+  viewYear: number;
+  onMonthChange: (month: number, year: number) => void;
 }
 
-export default function EventCalendar({ events, onSelectDate, selectedDate }: EventCalendarProps) {
+export default function EventCalendar({
+  events,
+  onSelectDate,
+  selectedDate,
+  viewMonth,
+  viewYear,
+  onMonthChange,
+}: EventCalendarProps) {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
 
   const eventDates = useMemo(() => {
     const dates = new Set<string>();
@@ -26,8 +34,24 @@ export default function EventCalendar({ events, onSelectDate, selectedDate }: Ev
     return dates;
   }, [events]);
 
-  const monthName = new Date(year, month).toLocaleString("en-US", { month: "long", year: "numeric" });
+  const monthName = new Date(viewYear, viewMonth).toLocaleString("en-US", { month: "long", year: "numeric" });
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function goBack() {
+    if (viewMonth === 0) {
+      onMonthChange(11, viewYear - 1);
+    } else {
+      onMonthChange(viewMonth - 1, viewYear);
+    }
+  }
+
+  function goForward() {
+    if (viewMonth === 11) {
+      onMonthChange(0, viewYear + 1);
+    } else {
+      onMonthChange(viewMonth + 1, viewYear);
+    }
+  }
 
   const cells = [];
   for (let i = 0; i < firstDay; i++) {
@@ -35,10 +59,10 @@ export default function EventCalendar({ events, onSelectDate, selectedDate }: Ev
   }
 
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateKey = `${year}-${month}-${day}`;
+    const dateKey = `${viewYear}-${viewMonth}-${day}`;
     const hasEvent = eventDates.has(dateKey);
     const isSelected = selectedDate === dateKey;
-    const isToday = day === now.getDate();
+    const isToday = day === now.getDate() && viewMonth === now.getMonth() && viewYear === now.getFullYear();
 
     cells.push(
       <button
@@ -65,12 +89,26 @@ export default function EventCalendar({ events, onSelectDate, selectedDate }: Ev
 
   return (
     <div className="rounded-[10px] border border-black/6 bg-paper-pure p-6">
-      <h3
-        className="mb-4 text-center text-[1.1rem]"
-        style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
-      >
-        {monthName}
-      </h3>
+      <div className="mb-4 flex items-center justify-between">
+        <button
+          onClick={goBack}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-paper-dark hover:text-ink"
+        >
+          &larr;
+        </button>
+        <h3
+          className="text-[1.1rem]"
+          style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
+        >
+          {monthName}
+        </h3>
+        <button
+          onClick={goForward}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-paper-dark hover:text-ink"
+        >
+          &rarr;
+        </button>
+      </div>
       <div className="grid grid-cols-7 gap-1">
         {dayNames.map((d) => (
           <div key={d} className="pb-2 text-center text-[0.7rem] font-semibold uppercase tracking-wider text-ink-muted">

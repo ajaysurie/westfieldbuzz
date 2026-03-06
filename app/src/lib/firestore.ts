@@ -28,7 +28,7 @@ export interface Service {
   address: string;
   website: string;
   recommendations: number;
-  recentRecommenders: { uid: string; timestamp: Timestamp }[];
+  recentRecommenders: (string | { uid: string; timestamp: Timestamp })[];
   lastRecommended: Timestamp | null;
   seeded?: boolean;
   createdAt: Timestamp;
