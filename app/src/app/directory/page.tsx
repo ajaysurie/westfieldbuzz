@@ -13,10 +13,11 @@ import AuthGate from "@/components/AuthGate";
 function DirectoryContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category") || "";
+  const queryParam = searchParams.get("q") || "";
 
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(queryParam);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Instrument_Serif, DM_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
@@ -85,6 +86,7 @@ export default function RootLayout({
           <main className="pt-[60px]">{children}</main>
           <Footer />
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

@@ -59,6 +59,33 @@ export interface SuggestedService {
   suggestedAt: Timestamp;
 }
 
+// ===== Stats =====
+
+export async function getCommunityStats(): Promise<{
+  providers: number;
+  recommendations: number;
+  recommenders: number;
+}> {
+  const snap = await getDocs(collection(db, "services"));
+  let totalRecs = 0;
+  const recommenderNames = new Set<string>();
+
+  for (const d of snap.docs) {
+    const data = d.data();
+    totalRecs += data.recommendations || 0;
+    const recs = data.recentRecommenders || data.recommendedBy || [];
+    for (const r of recs) {
+      if (typeof r === "string") recommenderNames.add(r);
+    }
+  }
+
+  return {
+    providers: snap.size,
+    recommendations: totalRecs,
+    recommenders: recommenderNames.size,
+  };
+}
+
 // ===== Services =====
 
 export async function getServices(category?: string): Promise<Service[]> {

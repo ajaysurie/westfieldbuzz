@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function LoginPage() {
@@ -36,6 +37,12 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-6">
       <div className="w-full max-w-[400px] text-center">
+        <Link
+          href="/"
+          className="mb-8 inline-flex items-center gap-1.5 text-[0.85rem] text-ink-muted no-underline transition-colors hover:text-accent"
+        >
+          <span>&larr;</span> Back to home
+        </Link>
         <h1
           className="mb-3"
           style={{

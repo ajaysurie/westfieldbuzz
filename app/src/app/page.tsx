@@ -1,16 +1,22 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { getCommunityStats, getEvents, type Event } from "@/lib/firestore";
+import EventCard from "@/components/EventCard";
 
 const CATEGORIES = [
-  { icon: "\u26A1", name: "Electrician", count: 12 },
-  { icon: "\uD83D\uDEBF", name: "Plumber", count: 8 },
-  { icon: "\u2744\uFE0F", name: "HVAC", count: 6 },
-  { icon: "\uD83C\uDF3F", name: "Landscaper", count: 15 },
-  { icon: "\uD83C\uDFE0", name: "House Cleaner", count: 10 },
-  { icon: "\uD83D\uDD28", name: "Handyman", count: 9 },
-  { icon: "\uD83C\uDFA8", name: "Painter", count: 7 },
-  { icon: "\uD83D\uDCDA", name: "Tutor", count: 11 },
-  { icon: "\uD83C\uDFD7\uFE0F", name: "Contractor", count: 5 },
-  { icon: "\uD83D\uDE97", name: "Auto Mechanic", count: 4 },
+  { icon: "\u26A1", name: "Electrician" },
+  { icon: "\uD83D\uDEBF", name: "Plumber" },
+  { icon: "\u2744\uFE0F", name: "HVAC" },
+  { icon: "\uD83C\uDF3F", name: "Landscaper" },
+  { icon: "\uD83C\uDFE0", name: "House Cleaner" },
+  { icon: "\uD83D\uDD28", name: "Handyman" },
+  { icon: "\uD83C\uDFA8", name: "Painter" },
+  { icon: "\uD83D\uDCDA", name: "Tutor" },
+  { icon: "\uD83C\uDFD7\uFE0F", name: "Contractor" },
+  { icon: "\uD83D\uDE97", name: "Auto Mechanic" },
 ];
 
 const CATEGORY_PILLS = [
@@ -26,43 +32,32 @@ const CATEGORY_PILLS = [
   "Auto Mechanic",
 ];
 
-const EVENTS = [
-  {
-    date: "Saturday, March 15",
-    name: "Westfield Farmers Market",
-    location: "South Ave Train Station \u00B7 9am\u20132pm",
-  },
-  {
-    date: "Saturday, March 22",
-    name: "Downtown Jazz Night",
-    location: "Elm Street \u00B7 7pm\u201310pm",
-  },
-  {
-    date: "Saturday, April 12",
-    name: "Spring Street Fair",
-    location: "Downtown Westfield \u00B7 All Day",
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    text: "\u201CFound an incredible electrician through Westfield Buzz. Three neighbors had recommended him \u2014 that\u2019s all I needed to hear.\u201D",
-    author: "Sarah M.",
-    area: "Brightwood",
-  },
-  {
-    text: "\u201CSo much better than Yelp. These are actual people I know recommending businesses they\u2019ve actually used.\u201D",
-    author: "James K.",
-    area: "Wychwood",
-  },
-  {
-    text: "\u201CI run a small landscaping business and the leads from Buzz are the best I\u2019ve ever gotten. People call already trusting you.\u201D",
-    author: "Mike R.",
-    area: "Service Provider",
-  },
-];
-
 export default function Home() {
+  const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [stats, setStats] = useState({ providers: 0, recommendations: 0, recommenders: 0 });
+  const [events, setEvents] = useState<Event[]>([]);
+
+  useEffect(() => {
+    getCommunityStats().then(setStats);
+    getEvents().then((evts) => {
+      // Show next 3 upcoming events
+      const now = new Date();
+      const upcoming = evts.filter((e) => {
+        const d = e.date?.toDate ? e.date.toDate() : new Date(e.date as unknown as string);
+        return d >= now;
+      });
+      setEvents(upcoming.slice(0, 3));
+    });
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/directory?q=${encodeURIComponent(searchQuery.trim())}`);
+    }
+  };
+
   return (
     <>
       {/* HERO */}
@@ -96,17 +91,19 @@ export default function Home() {
               A community-curated directory of Westfield&apos;s most trusted service
               providers. Real recommendations from the people who live here.
             </p>
-            <div className="relative max-w-[440px]">
+            <form onSubmit={handleSearch} className="relative max-w-[440px]">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[0.95rem] text-ink-muted">
                 &#x1F50D;
               </span>
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search electricians, plumbers, tutors..."
                 className="w-full rounded-lg border border-black/12 bg-paper-pure px-5 py-3.5 pl-11 text-[0.95rem] text-ink outline-none transition-colors placeholder:text-ink-muted focus:border-accent"
                 style={{ fontFamily: "var(--font-body)" }}
               />
-            </div>
+            </form>
           </div>
           <div className="overflow-hidden rounded-xl border border-black/6 shadow-lg max-md:order-first">
             <img
@@ -228,16 +225,13 @@ export default function Home() {
                 <span className="mb-1 block text-[0.88rem] font-semibold">
                   {cat.name}
                 </span>
-                <span className="text-[0.72rem] text-ink-muted">
-                  {cat.count} providers
-                </span>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* TRUST / TESTIMONIALS */}
+      {/* COMMUNITY STATS */}
       <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6">
         <div
           className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
@@ -257,57 +251,27 @@ export default function Home() {
         >
           Real people. Real recommendations.
         </h2>
-        <div className="grid grid-cols-[280px_1fr] items-start gap-12 max-md:grid-cols-1">
-          {/* Stats */}
-          <div className="sticky top-[100px] max-md:static">
-            {[
-              { num: "240+", label: "Community Members" },
-              { num: "85", label: "Verified Providers" },
-              { num: "520+", label: "Recommendations" },
-            ].map((stat, i) => (
+        <div className="grid grid-cols-3 gap-8 max-md:grid-cols-1">
+          {[
+            { num: stats.recommenders, label: "Community Members" },
+            { num: stats.providers, label: "Local Providers" },
+            { num: stats.recommendations, label: "Recommendations" },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-[10px] border border-black/6 bg-paper-pure p-8 text-center"
+            >
               <div
-                key={stat.label}
-                className={`mb-8 pb-8 ${i < 2 ? "border-b border-black/6" : ""}`}
+                className="mb-2 text-[3.5rem] leading-none"
+                style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
               >
-                <div
-                  className="mb-1 text-[3rem] leading-none"
-                  style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
-                >
-                  {stat.num}
-                </div>
-                <div className="text-[0.82rem] font-medium text-ink-muted">
-                  {stat.label}
-                </div>
+                {stat.num > 0 ? stat.num : "\u2014"}
               </div>
-            ))}
-          </div>
-
-          {/* Testimonials */}
-          <div className="flex flex-col gap-6">
-            {TESTIMONIALS.map((t) => (
-              <div
-                key={t.author}
-                className="rounded-[10px] border border-black/6 bg-paper-pure p-8"
-              >
-                <p
-                  className="mb-4 text-[1.15rem] italic leading-relaxed"
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 400,
-                    color: "var(--ink)",
-                  }}
-                >
-                  {t.text}
-                </p>
-                <div className="text-[0.82rem] font-semibold text-ink-light">
-                  {t.author}{" "}
-                  <span className="font-normal text-ink-muted">
-                    &middot; {t.area}
-                  </span>
-                </div>
+              <div className="text-[0.88rem] font-medium text-ink-muted">
+                {stat.label}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -320,46 +284,35 @@ export default function Home() {
           >
             What&apos;s Happening
           </div>
-          <h2
-            className="mb-12"
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)",
-              fontWeight: 400,
-              color: "var(--paper)",
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Upcoming in Westfield
-          </h2>
-          <div className="grid grid-cols-3 gap-6 max-md:grid-cols-1">
-            {EVENTS.map((evt) => (
-              <div
-                key={evt.name}
-                className="cursor-pointer rounded-[10px] border border-white/8 p-6 transition-all hover:border-white/15 hover:bg-white/3"
-              >
-                <div
-                  className="mb-2 text-[0.85rem]"
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    color: "var(--accent-light)",
-                  }}
-                >
-                  {evt.date}
-                </div>
-                <div
-                  className="mb-1 text-[1.2rem]"
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    color: "var(--paper)",
-                  }}
-                >
-                  {evt.name}
-                </div>
-                <div className="text-[0.82rem] text-white/40">{evt.location}</div>
-              </div>
-            ))}
+          <div className="mb-12 flex items-end justify-between">
+            <h2
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)",
+                fontWeight: 400,
+                color: "var(--paper)",
+                letterSpacing: "-0.01em",
+              }}
+            >
+              Upcoming in Westfield
+            </h2>
+            <Link
+              href="/events"
+              className="text-[0.85rem] font-medium no-underline transition-colors hover:underline"
+              style={{ color: "var(--accent-light)" }}
+            >
+              View all &rarr;
+            </Link>
           </div>
+          {events.length > 0 ? (
+            <div className="grid grid-cols-3 gap-6 max-md:grid-cols-1">
+              {events.map((evt) => (
+                <EventCard key={evt.id} event={evt} dark />
+              ))}
+            </div>
+          ) : (
+            <p className="text-white/40 text-[0.9rem]">Loading events...</p>
+          )}
         </div>
       </section>
 
