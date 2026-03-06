@@ -12,7 +12,11 @@
 import * as fs from "fs";
 import * as path from "path";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyAPFOc_dubSpfFnfUhU6PG1fxQv0Wmjvn4";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+if (!GEMINI_API_KEY) {
+  console.error("GEMINI_API_KEY environment variable is required");
+  process.exit(1);
+}
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 interface RawPost {
