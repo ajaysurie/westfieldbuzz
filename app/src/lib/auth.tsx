@@ -19,6 +19,7 @@ import { auth, db, facebookProvider } from "./firebase";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  loggingIn: boolean;
   loginWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -26,6 +27,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  loggingIn: false,
   loginWithFacebook: async () => {},
   logout: async () => {},
 });
@@ -33,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loggingIn, setLoggingIn] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -40,28 +43,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
 
       if (firebaseUser) {
-        // Create/update user docs on login
-        const userRef = doc(db, "users", firebaseUser.uid);
-        const userSnap = await getDoc(userRef);
+        try {
+          const userRef = doc(db, "users", firebaseUser.uid);
+          const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists()) {
-          // First-time user
-          await setDoc(userRef, {
+          if (!userSnap.exists()) {
+            await setDoc(userRef, {
+              displayName: firebaseUser.displayName || "",
+              photoURL: firebaseUser.photoURL || "",
+              email: firebaseUser.email || "",
+              joinedDate: serverTimestamp(),
+              lastActive: serverTimestamp(),
+            });
+          } else {
+            await setDoc(userRef, { lastActive: serverTimestamp() }, { merge: true });
+          }
+
+          await setDoc(doc(db, "public_profiles", firebaseUser.uid), {
             displayName: firebaseUser.displayName || "",
             photoURL: firebaseUser.photoURL || "",
-            email: firebaseUser.email || "",
-            joinedDate: serverTimestamp(),
-            lastActive: serverTimestamp(),
           });
-        } else {
-          await setDoc(userRef, { lastActive: serverTimestamp() }, { merge: true });
+        } catch (err) {
+          console.error("[AUTH] Failed to sync user profile:", err);
         }
-
-        // Public profile (always update)
-        await setDoc(doc(db, "public_profiles", firebaseUser.uid), {
-          displayName: firebaseUser.displayName || "",
-          photoURL: firebaseUser.photoURL || "",
-        });
       }
     });
 
@@ -69,7 +73,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithFacebook = async () => {
-    await signInWithPopup(auth, facebookProvider);
+    setLoggingIn(true);
+    try {
+      await signInWithPopup(auth, facebookProvider);
+    } finally {
+      setLoggingIn(false);
+    }
   };
 
   const logout = async () => {
@@ -77,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithFacebook, logout }}>
+    <AuthContext.Provider value={{ user, loading, loggingIn, loginWithFacebook, logout }}>
       {children}
     </AuthContext.Provider>
   );

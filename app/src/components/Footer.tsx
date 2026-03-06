@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="text-[0.8rem]" style={{ color: "var(--ink-muted)" }}>
         Westfield Buzz &middot; Curated by neighbors, for neighbors
       </div>
-      <ul className="flex list-none gap-8">
+      <ul className="flex list-none gap-8 max-md:gap-4">
         <li>
           <Link
             href="/directory"

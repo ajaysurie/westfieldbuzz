@@ -15,12 +15,24 @@ Community-curated directory of Westfield, NJ's most trusted local businesses and
 ## Vercel Deployment
 
 - **Scope**: `ajay-suries-projects` (personal account — NOT opareto)
-- **Project name**: `app`
-- **Root directory**: `app/`
-- **Framework**: Next.js (auto-detected)
+- **Project name**: `westfieldbuzz`
+- **Project ID**: `prj_IqC1U3VO8L3GH5n8daFuf6qui7lr`
+- **Team ID**: `team_wtDZo4ecAFDxKLdALPMCGZT2`
+- **Root directory**: `app` (set via Vercel API/dashboard — NOT in vercel.json)
+- **Output directory**: leave empty (Next.js default `.next`)
+- **Framework**: `nextjs`
 - **Domain**: `westfieldbuzz.com` / `www.westfieldbuzz.com`
 
-### Environment Variables (set in Vercel dashboard)
+### CRITICAL: Vercel project settings
+
+- Root directory MUST be `app` (the Next.js app lives in `app/`, not repo root)
+- Output directory MUST be null/empty (not `public` — that makes Vercel serve static files only)
+- Build command: `npm run build` (set via API to prevent regression)
+- NEVER deploy with `--scope opareto` — this is a personal project
+- NEVER add a `vercel.json` to the repo root — it overrides project settings and previously broke the deploy by setting `buildCommand: ""` and `outputDirectory: "public"`
+- Git pushes to main auto-deploy. CLI deploys must run from repo root (not `app/`)
+
+### Environment Variables (set via `vercel env add` or dashboard)
 
 ```
 NEXT_PUBLIC_FIREBASE_API_KEY
@@ -30,6 +42,7 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 NEXT_PUBLIC_FIREBASE_APP_ID
 NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
+NEXT_PUBLIC_FACEBOOK_APP_ID
 NEXT_PUBLIC_FIRESTORE_DB=westfieldbuzz-dev    (Preview)
 NEXT_PUBLIC_FIRESTORE_DB=westfieldbuzz-prod   (Production)
 ```
@@ -37,8 +50,11 @@ NEXT_PUBLIC_FIRESTORE_DB=westfieldbuzz-prod   (Production)
 ### Deploy Commands
 
 ```bash
-# From app/ directory
-vercel --prod --scope ajay-suries-projects
+# Git push (preferred — auto-deploys with correct settings)
+git push origin main
+
+# CLI deploy (must run from REPO ROOT, not app/)
+cd /path/to/westfieldbuzz && vercel --prod --scope ajay-suries-projects
 ```
 
 ## Key Directories

@@ -50,7 +50,7 @@ export default function InterestedButton({ eventId, initialCount }: InterestedBu
     <button
       onClick={handleToggle}
       disabled={loading}
-      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-[0.82rem] font-semibold transition-all ${
+      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 max-md:px-5 max-md:py-3 text-[0.82rem] font-semibold transition-all ${
         interested
           ? "border border-accent bg-accent/10 text-accent"
           : "border border-black/12 bg-paper-pure text-ink-light hover:border-accent hover:text-accent"

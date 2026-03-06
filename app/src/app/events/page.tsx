@@ -82,7 +82,7 @@ export default function EventsPage() {
         <div className="flex gap-2">
           <button
             onClick={() => { setView("list"); setSelectedDate(null); }}
-            className={`rounded-full border px-4 py-1.5 text-[0.8rem] font-medium transition-all ${
+            className={`rounded-full border px-4 py-1.5 max-md:py-2 text-[0.8rem] font-medium transition-all ${
               view === "list"
                 ? "border-accent bg-accent/10 text-accent"
                 : "border-black/10 text-ink-light hover:border-accent"
@@ -92,7 +92,7 @@ export default function EventsPage() {
           </button>
           <button
             onClick={() => setView("calendar")}
-            className={`rounded-full border px-4 py-1.5 text-[0.8rem] font-medium transition-all ${
+            className={`rounded-full border px-4 py-1.5 max-md:py-2 text-[0.8rem] font-medium transition-all ${
               view === "calendar"
                 ? "border-accent bg-accent/10 text-accent"
                 : "border-black/10 text-ink-light hover:border-accent"
@@ -108,7 +108,7 @@ export default function EventsPage() {
         <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setActiveCategory(null)}
-            className={`rounded-full border px-3.5 py-1.5 text-[0.78rem] font-medium transition-all ${
+            className={`rounded-full border px-3.5 py-1.5 max-md:py-2 text-[0.78rem] font-medium transition-all ${
               !activeCategory
                 ? "border-accent bg-accent/10 text-accent"
                 : "border-black/10 text-ink-light hover:border-accent"
@@ -123,7 +123,7 @@ export default function EventsPage() {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(isActive ? null : cat)}
-                className="rounded-full border px-3.5 py-1.5 text-[0.78rem] font-medium transition-all"
+                className="rounded-full border px-3.5 py-1.5 max-md:py-2 text-[0.78rem] font-medium transition-all"
                 style={
                   isActive && colors
                     ? { background: colors.bg, color: colors.text, borderColor: colors.text + "40" }
@@ -171,11 +171,11 @@ export default function EventsPage() {
           ) : (
             <div className="flex flex-col gap-4">
               {filteredEvents.map((evt) => (
-                <div key={evt.id} className="flex items-start gap-4">
-                  <div className="flex-1">
+                <div key={evt.id} className="flex items-start gap-4 max-md:flex-col max-md:gap-2">
+                  <div className="flex-1 max-md:w-full">
                     <EventCard event={evt} />
                   </div>
-                  <div className="shrink-0 pt-6">
+                  <div className="shrink-0 pt-6 max-md:pt-0">
                     <InterestedButton eventId={evt.id} initialCount={evt.interestedCount} />
                   </div>
                 </div>

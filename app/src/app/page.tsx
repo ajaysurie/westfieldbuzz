@@ -63,12 +63,12 @@ export default function Home() {
       {/* HERO */}
       <section className="mx-auto max-w-[1100px] px-12 pt-10 pb-[60px] max-md:px-6">
         {/* Dateline rule */}
-        <div className="mb-4 flex items-center gap-1">
-          <div className="h-px flex-1 bg-ink/15" />
-          <div className="whitespace-nowrap px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+        <div className="mb-4 flex items-center gap-1 max-md:justify-center">
+          <div className="h-px flex-1 bg-ink/15 max-md:hidden" />
+          <div className="px-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-ink-muted max-md:text-center">
             Westfield, New Jersey &middot; Est. 1720 &middot; Great American Main Street
           </div>
-          <div className="h-px flex-1 bg-ink/15" />
+          <div className="h-px flex-1 bg-ink/15 max-md:hidden" />
         </div>
 
         {/* Hero layout */}
@@ -121,7 +121,7 @@ export default function Home() {
           <Link
             key={cat}
             href={`/directory?category=${encodeURIComponent(cat)}`}
-            className="rounded-full border border-black/10 px-4 py-1.5 text-[0.8rem] font-medium text-ink-light no-underline transition-all hover:border-accent hover:text-accent hover:bg-accent/4"
+            className="rounded-full border border-black/10 px-4 py-1.5 max-md:py-2 text-[0.8rem] font-medium text-ink-light no-underline transition-all hover:border-accent hover:text-accent hover:bg-accent/4"
           >
             {cat}
           </Link>
@@ -129,7 +129,7 @@ export default function Home() {
       </div>
 
       {/* HOW IT WORKS */}
-      <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6">
+      <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6 max-md:py-12">
         <div
           className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
           style={{ color: "var(--accent)" }}
@@ -194,7 +194,7 @@ export default function Home() {
       </section>
 
       {/* CATEGORIES GRID */}
-      <section className="border-t border-b border-black/6 bg-paper-pure px-12 py-20 max-md:px-6">
+      <section className="border-t border-b border-black/6 bg-paper-pure px-12 py-20 max-md:px-6 max-md:py-12">
         <div className="mx-auto max-w-[1100px]">
           <div
             className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
@@ -232,7 +232,7 @@ export default function Home() {
       </section>
 
       {/* COMMUNITY STATS */}
-      <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6">
+      <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6 max-md:py-12">
         <div
           className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
           style={{ color: "var(--accent)" }}
@@ -276,7 +276,7 @@ export default function Home() {
       </section>
 
       {/* EVENTS */}
-      <section className="px-12 py-20 max-md:px-6" style={{ background: "var(--ink)" }}>
+      <section className="px-12 py-20 max-md:px-6 max-md:py-12" style={{ background: "var(--ink)" }}>
         <div className="mx-auto max-w-[1100px]">
           <div
             className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
@@ -317,7 +317,7 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="mx-auto max-w-[600px] px-12 py-20 text-center max-md:px-6">
+      <section className="mx-auto max-w-[600px] px-12 py-20 text-center max-md:px-6 max-md:py-12">
         <h2
           className="mb-4"
           style={{

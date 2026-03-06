@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700');
+    </style>
+    <clipPath id="rounded">
+      <rect width="1024" height="1024" rx="180" ry="180"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="180" ry="180" fill="#2B5EA7"/>
+
+  <!-- Subtle honeycomb pattern in background -->
+  <g opacity="0.06">
+    <polygon points="200,100 250,75 300,100 300,150 250,175 200,150" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="300,100 350,75 400,100 400,150 350,175 300,150" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="250,175 300,150 350,175 350,225 300,250 250,225" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="624,100 674,75 724,100 724,150 674,175 624,150" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="724,100 774,75 824,100 824,150 774,175 724,150" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="674,175 724,150 774,175 774,225 724,250 674,225" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="200,800 250,775 300,800 300,850 250,875 200,850" fill="none" stroke="#D4A843" stroke-width="2"/>
+    <polygon points="724,800 774,775 824,800 824,850 774,875 724,850" fill="none" stroke="#D4A843" stroke-width="2"/>
+  </g>
+
+  <!-- "W" monogram -->
+  <text x="512" y="520" text-anchor="middle" dominant-baseline="central" font-family="'Playfair Display', 'Georgia', serif" font-size="480" font-weight="700" fill="white" letter-spacing="-10">W</text>
+
+  <!-- Bee sitting on the W -->
+  <g transform="translate(680, 200) scale(5)">
+    <ellipse cx="8" cy="9" rx="4.5" ry="5.5" fill="#D4A843"/>
+    <rect x="3.5" y="7" width="9" height="1.5" rx="0.5" fill="#2B5EA7" opacity="0.5"/>
+    <rect x="3.5" y="10" width="9" height="1.5" rx="0.5" fill="#2B5EA7" opacity="0.5"/>
+    <ellipse cx="4" cy="4.5" rx="4" ry="2" fill="white" opacity="0.25" transform="rotate(-20 4 4.5)"/>
+    <ellipse cx="12" cy="4.5" rx="4" ry="2" fill="white" opacity="0.25" transform="rotate(20 12 4.5)"/>
+    <line x1="7" y1="3.5" x2="5.5" y2="0.5" stroke="#D4A843" stroke-width="1" stroke-linecap="round"/>
+    <line x1="9" y1="3.5" x2="10.5" y2="0.5" stroke="#D4A843" stroke-width="1" stroke-linecap="round"/>
+    <circle cx="5.5" cy="0.5" r="0.8" fill="#D4A843"/>
+    <circle cx="10.5" cy="0.5" r="0.8" fill="#D4A843"/>
+  </g>
+
+  <!-- "BUZZ" subtitle -->
+  <text x="512" y="820" text-anchor="middle" font-family="'Playfair Display', 'Georgia', serif" font-size="100" font-weight="400" font-style="italic" fill="#D4A843" letter-spacing="30" opacity="0.9">BUZZ</text>
+</svg>
