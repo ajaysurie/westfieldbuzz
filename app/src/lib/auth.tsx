@@ -10,6 +10,8 @@ import {
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   type User,
 } from "firebase/auth";
@@ -36,6 +38,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
+
+  // Handle redirect result when returning from Facebook on mobile
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      console.error("[AUTH] Redirect result error:", err);
+    });
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -75,6 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithFacebook = async () => {
     setLoggingIn(true);
     try {
+      // Mobile browsers block popups — use redirect flow instead
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      if (isMobile) {
+        await signInWithRedirect(auth, facebookProvider);
+        // Page will redirect — loggingIn stays true until return
+        return;
+      }
       await signInWithPopup(auth, facebookProvider);
     } finally {
       setLoggingIn(false);
