@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #1A1A1A;
+  --ink-light: #4A4A4A;
+  --ink-muted: #8A8A8A;
+  --paper: #FAF8F4;
+  --paper-dark: #F0EDE6;
+  --paper-pure: #FFFFFF;
+  --accent: #2B5EA7;
+  --accent-light: #3A71C1;
+  --sage: #6B7F5E;
+  --sienna: #A0522D;
+  --blue: #4A6B8A;
+
+  --font-display: var(--font-instrument-serif), Georgia, serif;
+  --font-body: var(--font-dm-sans), -apple-system, sans-serif;
+
+  --shadow-sm: 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,0.08);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-light: var(--ink-light);
+  --color-ink-muted: var(--ink-muted);
+  --color-paper: var(--paper);
+  --color-paper-dark: var(--paper-dark);
+  --color-paper-pure: var(--paper-pure);
+  --color-accent: var(--accent);
+  --color-accent-light: var(--accent-light);
+  --color-sage: var(--sage);
+  --color-sienna: var(--sienna);
+  --color-blue: var(--blue);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--ink);
+  background: var(--paper);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}

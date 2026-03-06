@@ -1,0 +1,227 @@
+[
+  {
+    "name": "Raynor's Electric",
+    "category": "Electrician",
+    "phone": "(908) 654-1234",
+    "email": "info@raynorselectric.com",
+    "address": "123 Elm St, Westfield, NJ",
+    "website": "https://raynorselectric.com",
+    "recommendations": 14
+  },
+  {
+    "name": "Westfield Plumbing & Heating",
+    "category": "Plumber",
+    "phone": "(908) 232-5678",
+    "email": "service@westfieldplumbing.com",
+    "address": "456 South Ave, Westfield, NJ",
+    "website": "https://westfieldplumbing.com",
+    "recommendations": 11
+  },
+  {
+    "name": "Comfort Air HVAC",
+    "category": "HVAC",
+    "phone": "(908) 301-4567",
+    "email": "info@comfortairhvac.com",
+    "address": "789 Central Ave, Westfield, NJ",
+    "website": "https://comfortairhvac.com",
+    "recommendations": 9
+  },
+  {
+    "name": "Green Thumb Landscaping",
+    "category": "Landscaper",
+    "phone": "(908) 789-0123",
+    "email": "mark@greenthumblandscaping.com",
+    "address": "Westfield, NJ",
+    "website": "https://greenthumbwestfield.com",
+    "recommendations": 18
+  },
+  {
+    "name": "Spotless Home Cleaning",
+    "category": "House Cleaner",
+    "phone": "(908) 451-2345",
+    "email": "book@spotlesshome.com",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 12
+  },
+  {
+    "name": "Tom's Handyman Services",
+    "category": "Handyman",
+    "phone": "(908) 654-9876",
+    "email": "tom@tomshandyman.com",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 15
+  },
+  {
+    "name": "Precision Painting",
+    "category": "Painter",
+    "phone": "(908) 233-4567",
+    "email": "estimate@precisionpainting.com",
+    "address": "Westfield, NJ",
+    "website": "https://precisionpaintingnj.com",
+    "recommendations": 8
+  },
+  {
+    "name": "Westfield Tutoring Center",
+    "category": "Tutor",
+    "phone": "(908) 654-3210",
+    "email": "info@westfieldtutoring.com",
+    "address": "251 North Ave, Westfield, NJ",
+    "website": "https://westfieldtutoring.com",
+    "recommendations": 13
+  },
+  {
+    "name": "Summit Contractors",
+    "category": "Contractor",
+    "phone": "(908) 389-1234",
+    "email": "projects@summitcontractors.com",
+    "address": "Westfield, NJ",
+    "website": "https://summitcontractorsnj.com",
+    "recommendations": 7
+  },
+  {
+    "name": "Elm Street Auto",
+    "category": "Auto Mechanic",
+    "phone": "(908) 232-8765",
+    "email": "service@elmstreetauto.com",
+    "address": "505 Elm St, Westfield, NJ",
+    "website": "https://elmstreetauto.com",
+    "recommendations": 10
+  },
+  {
+    "name": "Bright Spark Electric",
+    "category": "Electrician",
+    "phone": "(908) 518-3456",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 6
+  },
+  {
+    "name": "All Season Plumbing",
+    "category": "Plumber",
+    "phone": "(908) 789-5432",
+    "email": "info@allseasonplumbing.com",
+    "address": "Cranford, NJ",
+    "website": "https://allseasonplumbing.com",
+    "recommendations": 5
+  },
+  {
+    "name": "Borelli Landscape Design",
+    "category": "Landscaper",
+    "phone": "(908) 322-7890",
+    "email": "design@borelli.com",
+    "address": "Scotch Plains, NJ",
+    "website": "https://borellilandscape.com",
+    "recommendations": 11
+  },
+  {
+    "name": "Math Wizards Tutoring",
+    "category": "Tutor",
+    "phone": "(908) 301-6543",
+    "email": "learn@mathwizards.com",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 9
+  },
+  {
+    "name": "Westfield Auto Care",
+    "category": "Auto Mechanic",
+    "phone": "(908) 654-7777",
+    "email": "",
+    "address": "401 South Ave, Westfield, NJ",
+    "website": "https://westfieldautocare.com",
+    "recommendations": 8
+  },
+  {
+    "name": "Elite Painting & Restoration",
+    "category": "Painter",
+    "phone": "(908) 377-8901",
+    "email": "info@elitepaintingnj.com",
+    "address": "Westfield, NJ",
+    "website": "https://elitepaintingnj.com",
+    "recommendations": 6
+  },
+  {
+    "name": "Dependable HVAC Solutions",
+    "category": "HVAC",
+    "phone": "(908) 245-6789",
+    "email": "service@dependablehvac.com",
+    "address": "Garwood, NJ",
+    "website": "https://dependablehvac.com",
+    "recommendations": 4
+  },
+  {
+    "name": "Maria's Cleaning Service",
+    "category": "House Cleaner",
+    "phone": "(908) 410-3456",
+    "email": "",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 16
+  },
+  {
+    "name": "Jack of All Trades",
+    "category": "Handyman",
+    "phone": "(908) 232-1111",
+    "email": "jack@jackofalltrades.com",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 7
+  },
+  {
+    "name": "Cornerstone Builders",
+    "category": "Contractor",
+    "phone": "(908) 654-2222",
+    "email": "info@cornerstonebuildersnj.com",
+    "address": "Westfield, NJ",
+    "website": "https://cornerstonebuildersnj.com",
+    "recommendations": 10
+  },
+  {
+    "name": "Premier Lawn Care",
+    "category": "Landscaper",
+    "phone": "(908) 578-4321",
+    "email": "premierlawncare@gmail.com",
+    "address": "Westfield, NJ",
+    "website": "",
+    "recommendations": 8
+  },
+  {
+    "name": "SAT Prep Academy",
+    "category": "Tutor",
+    "phone": "(908) 301-9999",
+    "email": "enroll@satprepacademy.com",
+    "address": "274 East Broad St, Westfield, NJ",
+    "website": "https://satprepacademy.com",
+    "recommendations": 7
+  },
+  {
+    "name": "NJ Clean Pro",
+    "category": "House Cleaner",
+    "phone": "(908) 419-5678",
+    "email": "booking@njcleanpro.com",
+    "address": "Westfield, NJ",
+    "website": "https://njcleanpro.com",
+    "recommendations": 5
+  },
+  {
+    "name": "Central Electric Co",
+    "category": "Electrician",
+    "phone": "(908) 233-6543",
+    "email": "central@centralelectricnj.com",
+    "address": "Westfield, NJ",
+    "website": "https://centralelectricnj.com",
+    "recommendations": 9
+  },
+  {
+    "name": "Atlas Roofing & Siding",
+    "category": "Contractor",
+    "phone": "(908) 377-5555",
+    "email": "info@atlasroofing.com",
+    "address": "Scotch Plains, NJ",
+    "website": "https://atlasroofingnj.com",
+    "recommendations": 6
+  }
+]

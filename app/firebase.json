@@ -1,0 +1,12 @@
+{
+  "firestore": [
+    {
+      "database": "westfieldbuzz-dev",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "westfieldbuzz-prod",
+      "rules": "firestore.rules"
+    }
+  ]
+}

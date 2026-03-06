@@ -1,0 +1,19 @@
+# Westfield Buzz
+
+## About
+Westfield Buzz is a community-curated service directory and events hub for Westfield, New Jersey. Residents recommend trusted local service providers (electricians, plumbers, landscapers, tutors, etc.) and share upcoming community events.
+
+## Key Features
+- **Service Directory**: Browse and search 85+ local service providers recommended by neighbors
+- **Community Recommendations**: Real residents vouch for providers they've personally used
+- **Events Calendar**: Upcoming community events, markets, festivals, and activities
+- **Business Suggestions**: Community members can suggest new businesses to add
+
+## Location
+Westfield, NJ 07090 — a Great American Main Street community established in 1720.
+
+## Categories
+Electrician, Plumber, HVAC, Landscaper, House Cleaner, Handyman, Painter, Tutor, Contractor, Auto Mechanic
+
+## Contact
+Visit https://westfieldbuzz.com

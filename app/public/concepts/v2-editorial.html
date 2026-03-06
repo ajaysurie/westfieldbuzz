@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Westfield Buzz — V2 Editorial</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --ink: #1A1A1A;
+      --ink-light: #4A4A4A;
+      --ink-muted: #8A8A8A;
+      --paper: #FAF8F4;
+      --paper-dark: #F0EDE6;
+      --paper-pure: #FFFFFF;
+      --accent: #B8860B;
+      --accent-light: #D4A843;
+      --sage: #6B7F5E;
+      --sienna: #A0522D;
+      --blue: #4A6B8A;
+
+      --font-display: 'Instrument Serif', Georgia, serif;
+      --font-body: 'DM Sans', -apple-system, sans-serif;
+
+      --shadow-sm: 0 1px 4px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 20px rgba(0,0,0,0.06);
+      --shadow-lg: 0 8px 40px rgba(0,0,0,0.08);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--ink);
+      background: var(--paper);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== NAV ===== */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: var(--paper);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 0 3rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-brand {
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .nav-brand-name {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      color: var(--ink);
+    }
+
+    .nav-brand-dot {
+      color: var(--accent);
+      font-size: 2rem;
+      line-height: 0;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2.5rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--ink-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--ink); }
+
+    .nav-cta {
+      color: var(--accent) !important;
+      font-weight: 600 !important;
+    }
+
+    /* ===== HERO ===== */
+    .hero {
+      padding: 100px 3rem 60px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .hero-top {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .hero-rule {
+      flex: 1;
+      height: 1px;
+      background: var(--ink);
+      opacity: 0.15;
+    }
+
+    .hero-dateline {
+      font-size: 0.72rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      padding: 0 1rem;
+      white-space: nowrap;
+    }
+
+    .hero-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3rem;
+      align-items: center;
+    }
+
+    .hero-text h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.8rem, 5vw, 4rem);
+      font-weight: 400;
+      line-height: 1.08;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-text h1 em {
+      font-style: italic;
+      color: var(--accent);
+    }
+
+    .hero-text p {
+      font-size: 1.05rem;
+      color: var(--ink-light);
+      line-height: 1.7;
+      max-width: 440px;
+      margin-bottom: 2rem;
+    }
+
+    .hero-search {
+      position: relative;
+      max-width: 440px;
+    }
+
+    .hero-search input {
+      width: 100%;
+      padding: 14px 20px 14px 44px;
+      border: 1px solid rgba(0,0,0,0.12);
+      border-radius: 8px;
+      background: var(--paper-pure);
+      font-size: 0.95rem;
+      font-family: var(--font-body);
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .hero-search input::placeholder { color: var(--ink-muted); }
+    .hero-search input:focus { border-color: var(--accent); }
+
+    .hero-search-icon {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--ink-muted);
+      font-size: 0.95rem;
+    }
+
+    .hero-image {
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .hero-image img {
+      width: 100%;
+      display: block;
+    }
+
+    /* ===== CATEGORY STRIP ===== */
+    .category-strip {
+      border-top: 1px solid rgba(0,0,0,0.08);
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 1rem 3rem;
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      background: var(--paper-pure);
+    }
+
+    .cat-pill {
+      padding: 6px 16px;
+      border-radius: 100px;
+      border: 1px solid rgba(0,0,0,0.1);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--ink-light);
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .cat-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(184, 134, 11, 0.04);
+    }
+
+    /* ===== HOW IT WORKS ===== */
+    .how-section {
+      padding: 80px 3rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-eyebrow {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.75rem;
+    }
+
+    .section-h2 {
+      font-family: var(--font-display);
+      font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+      font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 3rem;
+      letter-spacing: -0.01em;
+    }
+
+    .steps-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+    }
+
+    .step-card {
+      padding: 2rem;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 10px;
+      background: var(--paper-pure);
+      transition: all 0.3s;
+    }
+
+    .step-card:hover {
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .step-num {
+      font-family: var(--font-display);
+      font-size: 2.5rem;
+      color: var(--accent-light);
+      opacity: 0.5;
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+
+    .step-card h3 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 400;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-card p {
+      font-size: 0.9rem;
+      color: var(--ink-light);
+      line-height: 1.6;
+    }
+
+    /* ===== CATEGORIES GRID ===== */
+    .categories-section {
+      padding: 80px 3rem;
+      background: var(--paper-pure);
+      border-top: 1px solid rgba(0,0,0,0.06);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .categories-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .cat-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .cat-cell {
+      background: var(--paper-pure);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      color: var(--ink);
+    }
+
+    .cat-cell:hover {
+      background: var(--paper);
+    }
+
+    .cat-cell-icon {
+      font-size: 1.8rem;
+      margin-bottom: 0.75rem;
+      display: block;
+    }
+
+    .cat-cell-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .cat-cell-count {
+      font-size: 0.72rem;
+      color: var(--ink-muted);
+    }
+
+    /* ===== TRUST ===== */
+    .trust-section {
+      padding: 80px 3rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .trust-layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 3rem;
+      align-items: start;
+    }
+
+    .trust-stats {
+      position: sticky;
+      top: 100px;
+    }
+
+    .stat-block {
+      margin-bottom: 2rem;
+      padding-bottom: 2rem;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+
+    .stat-block:last-child { border-bottom: none; }
+
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 400;
+      color: var(--ink);
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-label {
+      font-size: 0.82rem;
+      color: var(--ink-muted);
+      font-weight: 500;
+    }
+
+    .testimonial-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .quote-card {
+      padding: 2rem;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 10px;
+      background: var(--paper-pure);
+    }
+
+    .quote-text {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 400;
+      font-style: italic;
+      line-height: 1.6;
+      color: var(--ink);
+      margin-bottom: 1rem;
+    }
+
+    .quote-author {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--ink-light);
+    }
+
+    .quote-author span {
+      font-weight: 400;
+      color: var(--ink-muted);
+    }
+
+    /* ===== EVENTS ===== */
+    .events-section {
+      padding: 80px 3rem;
+      background: var(--ink);
+    }
+
+    .events-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .events-section .section-eyebrow { color: var(--accent-light); }
+    .events-section .section-h2 { color: var(--paper); }
+
+    .events-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+    }
+
+    .event-item {
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 10px;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .event-item:hover {
+      border-color: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .event-date {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      color: var(--accent-light);
+      margin-bottom: 0.5rem;
+    }
+
+    .event-name {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+      color: var(--paper);
+      margin-bottom: 0.4rem;
+    }
+
+    .event-loc {
+      font-size: 0.82rem;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* ===== CTA ===== */
+    .cta-section {
+      padding: 80px 3rem;
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .cta-section h2 {
+      font-family: var(--font-display);
+      font-size: 2.2rem;
+      font-weight: 400;
+      color: var(--ink);
+      margin-bottom: 1rem;
+    }
+
+    .cta-section p {
+      color: var(--ink-light);
+      margin-bottom: 2rem;
+      line-height: 1.7;
+    }
+
+    .btn-gold {
+      display: inline-block;
+      padding: 14px 36px;
+      background: var(--accent);
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+
+    .btn-gold:hover {
+      background: var(--accent-light);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(184, 134, 11, 0.25);
+    }
+
+    /* ===== FOOTER ===== */
+    footer {
+      padding: 2.5rem 3rem;
+      border-top: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .footer-left {
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-size: 0.8rem;
+      color: var(--ink-muted);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover { color: var(--ink); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 768px) {
+      .hero-layout { grid-template-columns: 1fr; }
+      .steps-row { grid-template-columns: 1fr; }
+      .cat-grid { grid-template-columns: repeat(2, 1fr); }
+      .trust-layout { grid-template-columns: 1fr; }
+      .events-row { grid-template-columns: 1fr; }
+      nav { padding: 0 1.5rem; }
+      .hero, .how-section, .trust-section, .cta-section { padding-left: 1.5rem; padding-right: 1.5rem; }
+      .nav-links { display: none; }
+    }
+
+    /* ===== ANIMATION ===== */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-text > * {
+      animation: fadeIn 0.7s ease-out both;
+    }
+    .hero-text h1 { animation-delay: 0.1s; }
+    .hero-text p { animation-delay: 0.25s; }
+    .hero-search { animation-delay: 0.4s; }
+    .hero-image { animation: fadeIn 0.9s ease-out 0.2s both; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a class="nav-brand" href="#">
+      <span class="nav-brand-name">Westfield Buzz</span>
+      <span class="nav-brand-dot">.</span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#directory">Directory</a></li>
+      <li><a href="#events">Events</a></li>
+      <li><a href="#">About</a></li>
+      <li><a href="#" class="nav-cta">Join</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-top">
+      <div class="hero-rule"></div>
+      <div class="hero-dateline">Westfield, New Jersey &middot; Est. 1720 &middot; Great American Main Street</div>
+      <div class="hero-rule"></div>
+    </div>
+    <div class="hero-layout">
+      <div class="hero-text">
+        <h1>The neighbors' guide to <em>everything local</em></h1>
+        <p>A community-curated directory of Westfield's most trusted service providers. Real recommendations from the people who live here.</p>
+        <div class="hero-search">
+          <span class="hero-search-icon">&#x1F50D;</span>
+          <input type="text" placeholder="Search electricians, plumbers, tutors...">
+        </div>
+      </div>
+      <div class="hero-image">
+        <img src="hero-v2-editorial.jpg" alt="Watercolor illustration of downtown Westfield">
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORY STRIP -->
+  <div class="category-strip" id="directory">
+    <a class="cat-pill" href="#">Electrician</a>
+    <a class="cat-pill" href="#">Plumber</a>
+    <a class="cat-pill" href="#">HVAC</a>
+    <a class="cat-pill" href="#">Landscaper</a>
+    <a class="cat-pill" href="#">Tutor</a>
+    <a class="cat-pill" href="#">Handyman</a>
+    <a class="cat-pill" href="#">Painter</a>
+    <a class="cat-pill" href="#">House Cleaner</a>
+    <a class="cat-pill" href="#">Contractor</a>
+    <a class="cat-pill" href="#">Auto Mechanic</a>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-section">
+    <div class="section-eyebrow">How It Works</div>
+    <h2 class="section-h2">Trusted by design</h2>
+    <div class="steps-row">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <h3>Neighbors recommend</h3>
+        <p>Real Westfield residents share the providers they personally use and trust.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <h3>Community verifies</h3>
+        <p>Multiple recommendations from different neighbors build a trust score over time.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <h3>You hire with confidence</h3>
+        <p>Browse vetted providers, see who recommended them, and reach out directly.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="categories-section">
+    <div class="categories-inner">
+      <div class="section-eyebrow">Browse</div>
+      <h2 class="section-h2">Find what you need</h2>
+      <div class="cat-grid">
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x26A1;</span>
+          <span class="cat-cell-name">Electrician</span>
+          <span class="cat-cell-count">12 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F6BF;</span>
+          <span class="cat-cell-name">Plumber</span>
+          <span class="cat-cell-count">8 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x2744;&#xFE0F;</span>
+          <span class="cat-cell-name">HVAC</span>
+          <span class="cat-cell-count">6 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F33F;</span>
+          <span class="cat-cell-name">Landscaper</span>
+          <span class="cat-cell-count">15 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F3E0;</span>
+          <span class="cat-cell-name">House Cleaner</span>
+          <span class="cat-cell-count">10 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F528;</span>
+          <span class="cat-cell-name">Handyman</span>
+          <span class="cat-cell-count">9 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F3A8;</span>
+          <span class="cat-cell-name">Painter</span>
+          <span class="cat-cell-count">7 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F4DA;</span>
+          <span class="cat-cell-name">Tutor</span>
+          <span class="cat-cell-count">11 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F3D7;&#xFE0F;</span>
+          <span class="cat-cell-name">Contractor</span>
+          <span class="cat-cell-count">5 providers</span>
+        </a>
+        <a class="cat-cell" href="#">
+          <span class="cat-cell-icon">&#x1F697;</span>
+          <span class="cat-cell-name">Auto Mechanic</span>
+          <span class="cat-cell-count">4 providers</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- TRUST -->
+  <section class="trust-section">
+    <div class="section-eyebrow">Community</div>
+    <h2 class="section-h2">Real people. Real recommendations.</h2>
+    <div class="trust-layout">
+      <div class="trust-stats">
+        <div class="stat-block">
+          <div class="stat-num">240+</div>
+          <div class="stat-label">Community Members</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num">85</div>
+          <div class="stat-label">Verified Providers</div>
+        </div>
+        <div class="stat-block">
+          <div class="stat-num">520+</div>
+          <div class="stat-label">Recommendations</div>
+        </div>
+      </div>
+      <div class="testimonial-stack">
+        <div class="quote-card">
+          <p class="quote-text">"Found an incredible electrician through Westfield Buzz. Three neighbors had recommended him &mdash; that's all I needed to hear."</p>
+          <div class="quote-author">Sarah M. <span>&middot; Brightwood</span></div>
+        </div>
+        <div class="quote-card">
+          <p class="quote-text">"So much better than Yelp. These are actual people I know recommending businesses they've actually used."</p>
+          <div class="quote-author">James K. <span>&middot; Wychwood</span></div>
+        </div>
+        <div class="quote-card">
+          <p class="quote-text">"I run a small landscaping business and the leads from Buzz are the best I've ever gotten. People call already trusting you."</p>
+          <div class="quote-author">Mike R. <span>&middot; Service Provider</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTS -->
+  <section class="events-section" id="events">
+    <div class="events-inner">
+      <div class="section-eyebrow">What's Happening</div>
+      <h2 class="section-h2">Upcoming in Westfield</h2>
+      <div class="events-row">
+        <div class="event-item">
+          <div class="event-date">Saturday, March 15</div>
+          <div class="event-name">Westfield Farmers Market</div>
+          <div class="event-loc">South Ave Train Station &middot; 9am&ndash;2pm</div>
+        </div>
+        <div class="event-item">
+          <div class="event-date">Saturday, March 22</div>
+          <div class="event-name">Downtown Jazz Night</div>
+          <div class="event-loc">Elm Street &middot; 7pm&ndash;10pm</div>
+        </div>
+        <div class="event-item">
+          <div class="event-date">Saturday, April 12</div>
+          <div class="event-name">Spring Street Fair</div>
+          <div class="event-loc">Downtown Westfield &middot; All Day</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Know a great local business?</h2>
+    <p>Help your neighbors find the best. Recommend a provider you trust and make Westfield's directory even stronger.</p>
+    <a href="#" class="btn-gold">Recommend a Business</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-left">Westfield Buzz &middot; Curated by neighbors, for neighbors</div>
+    <ul class="footer-links">
+      <li><a href="#">Directory</a></li>
+      <li><a href="#">Events</a></li>
+      <li><a href="#">About</a></li>
+      <li><a href="#">Privacy</a></li>
+    </ul>
+  </footer>
+
+</body>
+</html>

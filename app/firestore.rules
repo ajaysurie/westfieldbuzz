@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if user is admin
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/config/admin).data.allowlist.hasAny([request.auth.token.email]);
+    }
+
+    // Services: public read, admin write
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+
+      // Recommendations subcollection: auth users write own doc
+      match /recommendations/{userId} {
+        allow read: if true;
+        allow create, update: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Events: public read, admin write
+    match /events/{eventId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+
+      // Interested subcollection: auth users write own doc
+      match /interested/{userId} {
+        allow read: if true;
+        allow create, update: if request.auth != null && request.auth.uid == userId;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    // Users: private, owner + admin read/write
+    match /users/{userId} {
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if isAdmin();
+    }
+
+    // Public profiles: public read, owner write
+    match /public_profiles/{userId} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Suggested services: auth users create, owner read, admin full access
+    match /suggested_services/{docId} {
+      allow read: if request.auth != null &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+
+    // Config: public read, admin write
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
