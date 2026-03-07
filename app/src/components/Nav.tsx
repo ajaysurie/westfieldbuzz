@@ -130,6 +130,13 @@ export default function Nav() {
                   >
                     My Profile
                   </Link>
+                  <Link
+                    href="/admin"
+                    className="block rounded-md px-3 py-2 text-[0.85rem] text-ink no-underline transition-colors hover:bg-paper-dark"
+                    onClick={() => setProfileOpen(false)}
+                  >
+                    Admin
+                  </Link>
                   <button
                     onClick={() => {
                       setProfileOpen(false);
@@ -222,6 +229,13 @@ export default function Nav() {
                 onClick={() => setMobileOpen(false)}
               >
                 My Profile
+              </Link>
+              <Link
+                href="/admin"
+                className="text-[0.9rem] font-medium text-ink no-underline py-1"
+                onClick={() => setMobileOpen(false)}
+              >
+                Admin
               </Link>
               <button
                 onClick={() => {
