@@ -13,10 +13,13 @@ vi.mock("firebase/app", () => ({
   getApps: vi.fn(() => [{}]),
 }));
 
-vi.mock("firebase/auth", () => ({
-  getAuth: vi.fn(),
-  FacebookAuthProvider: vi.fn(),
-}));
+vi.mock("firebase/auth", () => {
+  class MockFacebookAuthProvider { addScope() {} }
+  return {
+    getAuth: vi.fn(),
+    FacebookAuthProvider: MockFacebookAuthProvider,
+  };
+});
 
 import { isUserAdmin } from "../admin";
 

@@ -20,9 +20,9 @@ export default function DataDeletionPage() {
       </h1>
       <div className="flex flex-col gap-6 text-[0.92rem] leading-[1.75] text-ink-light">
         <p>
-          Westfield Buzz respects your right to control your personal data. If
-          you would like to delete your account and all associated data, you
-          have two options:
+          Westfield Buzz respects your right to control your personal data. You
+          can request complete deletion of your account and all associated data
+          at any time.
         </p>
 
         <section>
@@ -30,8 +30,11 @@ export default function DataDeletionPage() {
             className="mb-2 text-[1.15rem]"
             style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
           >
-            Option 1: Email Us
+            How to Request Deletion
           </h2>
+          <p className="mb-3">
+            <strong className="text-ink">Option 1: Email us</strong>
+          </p>
           <p>
             Send an email to{" "}
             <a
@@ -40,26 +43,21 @@ export default function DataDeletionPage() {
             >
               ajay@ajaysurie.com
             </a>{" "}
-            with the subject line &ldquo;Data Deletion Request&rdquo; and include
-            the email address associated with your account.
+            with the subject line &ldquo;Data Deletion Request&rdquo; and
+            include the email address associated with your account. We&rsquo;ll
+            confirm receipt and complete the deletion within 30 days.
           </p>
-        </section>
-
-        <section>
-          <h2
-            className="mb-2 text-[1.15rem]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
-          >
-            Option 2: Remove via Facebook
-          </h2>
+          <p className="mt-3">
+            <strong className="text-ink">Option 2: Remove via Facebook</strong>
+          </p>
           <p>
-            You can remove Westfield Buzz from your Facebook account at any time
-            by going to{" "}
+            Go to{" "}
             <strong className="text-ink">
               Facebook Settings &rarr; Apps and Websites
             </strong>{" "}
-            and removing Westfield Buzz. This revokes our access to your Facebook
-            data.
+            and remove Westfield Buzz. This revokes our access to your Facebook
+            data. To also delete your Westfield Buzz account data, please email
+            us as described above.
           </p>
         </section>
 
@@ -73,11 +71,24 @@ export default function DataDeletionPage() {
           <ul className="ml-5 list-disc flex flex-col gap-1">
             <li>Your user profile (name, email, photo)</li>
             <li>Your public profile</li>
-            <li>Your recommendations and activity</li>
+            <li>All recommendations you&rsquo;ve made</li>
             <li>Your event interest markers</li>
+            <li>Any other data associated with your account</li>
           </ul>
-          <p className="mt-2">
-            Deletion is completed within 30 days of your request.
+        </section>
+
+        <section>
+          <h2
+            className="mb-2 text-[1.15rem]"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
+          >
+            Timeline
+          </h2>
+          <p>
+            We process deletion requests within 30 days of receipt. You&rsquo;ll
+            receive a confirmation email once your data has been removed. Some
+            anonymized, aggregated data (like recommendation counts on
+            businesses) may be retained as it cannot be linked back to you.
           </p>
         </section>
 

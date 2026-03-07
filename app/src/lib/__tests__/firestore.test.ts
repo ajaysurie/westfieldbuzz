@@ -29,12 +29,20 @@ vi.mock("firebase/app", () => ({
   getApps: vi.fn(() => [{}]),
 }));
 
-vi.mock("firebase/auth", () => ({
-  getAuth: vi.fn(),
-  FacebookAuthProvider: vi.fn(),
-}));
+vi.mock("firebase/auth", () => {
+  class MockFacebookAuthProvider { addScope() {} }
+  return {
+    getAuth: vi.fn(),
+    FacebookAuthProvider: MockFacebookAuthProvider,
+  };
+});
 
-import { getCommunityStats, getServices, getServiceById } from "../firestore";
+import { getCommunityStats, getServices, getServiceById, recommendService, getSuggestions, submitSuggestion, approveSuggestion } from "../firestore";
+import { setDoc, updateDoc, arrayUnion } from "firebase/firestore";
+
+const mockSetDoc = vi.mocked(setDoc);
+const mockUpdateDoc = vi.mocked(updateDoc);
+const mockArrayUnion = vi.mocked(arrayUnion);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -134,5 +142,95 @@ describe("getServiceById", () => {
     mockGetDoc.mockResolvedValue({ exists: () => false });
     const service = await getServiceById("missing");
     expect(service).toBeNull();
+  });
+});
+
+describe("recommendService", () => {
+  it("stores displayName when provided", async () => {
+    await recommendService("svc-1", "user-1", "Alice Smith");
+    expect(mockSetDoc).toHaveBeenCalled();
+    expect(mockUpdateDoc).toHaveBeenCalled();
+    expect(mockArrayUnion).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: "user-1", displayName: "Alice Smith" })
+    );
+  });
+
+  it("stores null displayName when not provided", async () => {
+    await recommendService("svc-1", "user-1");
+    expect(mockArrayUnion).toHaveBeenCalledWith(
+      expect.objectContaining({ uid: "user-1", displayName: null })
+    );
+  });
+});
+
+describe("getSuggestions", () => {
+  it("returns suggestions sorted by suggestedAt", async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [
+        { id: "s1", data: () => ({ businessName: "A", status: "pending", suggestedAt: { seconds: 100 } }) },
+        { id: "s2", data: () => ({ businessName: "B", status: "pending", suggestedAt: { seconds: 200 } }) },
+      ],
+    });
+
+    const suggestions = await getSuggestions("pending");
+    expect(suggestions).toHaveLength(2);
+  });
+
+  it("falls back to unordered query on error", async () => {
+    // First call (with orderBy) fails, second call (without) succeeds
+    mockGetDocs
+      .mockRejectedValueOnce(new Error("Missing composite index"))
+      .mockResolvedValueOnce({
+        docs: [
+          { id: "s1", data: () => ({ businessName: "A", status: "pending", suggestedAt: { seconds: 100 } }) },
+          { id: "s2", data: () => ({ businessName: "B", status: "pending", suggestedAt: { seconds: 200 } }) },
+        ],
+      });
+
+    const suggestions = await getSuggestions("pending");
+    expect(suggestions).toHaveLength(2);
+    // Should be sorted desc by suggestedAt (client-side)
+    expect(suggestions[0].id).toBe("s2");
+    expect(suggestions[1].id).toBe("s1");
+  });
+});
+
+describe("submitSuggestion", () => {
+  it("stores address field", async () => {
+    await submitSuggestion({
+      userId: "u1",
+      businessName: "Test Biz",
+      category: "Plumber",
+      address: "123 Elm St",
+      phone: "",
+      website: "",
+      notes: "",
+    });
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ address: "123 Elm St", businessName: "Test Biz" })
+    );
+  });
+});
+
+describe("approveSuggestion", () => {
+  it("copies address to new service doc", async () => {
+    await approveSuggestion({
+      id: "sug-1",
+      userId: "u1",
+      businessName: "Test",
+      category: "Plumber",
+      address: "456 Oak Ave",
+      phone: "555-1234",
+      website: "",
+      notes: "",
+      status: "pending",
+      suggestedAt: { seconds: 100, nanoseconds: 0 } as any,
+    });
+    // First setDoc call creates the service
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ address: "456 Oak Ave", name: "Test" })
+    );
   });
 });

@@ -113,6 +113,9 @@ function SuggestionsContent() {
                 </span>
               </div>
 
+              {s.address && (
+                <p className="text-[0.85rem] text-ink-light">Address: {s.address}</p>
+              )}
               {s.phone && (
                 <p className="text-[0.85rem] text-ink-light">Phone: {s.phone}</p>
               )}

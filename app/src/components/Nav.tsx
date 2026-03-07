@@ -4,13 +4,23 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
+import { isUserAdmin } from "@/lib/admin";
 
 export default function Nav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { user, photoURL, logout } = useAuth();
   const pathname = usePathname();
   const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user?.email) {
+      isUserAdmin(user.email).then(setIsAdmin);
+    } else {
+      setIsAdmin(false);
+    }
+  }, [user]);
 
   // Close profile dropdown on outside click
   useEffect(() => {
@@ -130,13 +140,15 @@ export default function Nav() {
                   >
                     My Profile
                   </Link>
-                  <Link
-                    href="/admin"
-                    className="block rounded-md px-3 py-2 text-[0.85rem] text-ink no-underline transition-colors hover:bg-paper-dark"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    Admin
-                  </Link>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="block rounded-md px-3 py-2 text-[0.85rem] text-ink no-underline transition-colors hover:bg-paper-dark"
+                      onClick={() => setProfileOpen(false)}
+                    >
+                      Admin
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       setProfileOpen(false);
@@ -230,13 +242,15 @@ export default function Nav() {
               >
                 My Profile
               </Link>
-              <Link
-                href="/admin"
-                className="text-[0.9rem] font-medium text-ink no-underline py-1"
-                onClick={() => setMobileOpen(false)}
-              >
-                Admin
-              </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="text-[0.9rem] font-medium text-ink no-underline py-1"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Admin
+                </Link>
+              )}
               <button
                 onClick={() => {
                   setMobileOpen(false);

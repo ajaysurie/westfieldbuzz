@@ -31,6 +31,7 @@ function SuggestForm() {
   const [form, setForm] = useState({
     businessName: "",
     category: "",
+    address: "",
     phone: "",
     website: "",
     notes: "",
@@ -50,6 +51,7 @@ function SuggestForm() {
         userId: user.uid,
         businessName: form.businessName,
         category: form.category,
+        address: form.address,
         phone: form.phone,
         website: form.website,
         notes: form.notes,
@@ -98,6 +100,19 @@ function SuggestForm() {
             value={form.businessName}
             onChange={(e) => setForm({ ...form, businessName: e.target.value })}
             placeholder="e.g. Joe's Plumbing"
+            className={inputClass}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[0.8rem] font-medium text-ink-light">
+            Address
+          </label>
+          <input
+            type="text"
+            value={form.address}
+            onChange={(e) => setForm({ ...form, address: e.target.value })}
+            placeholder="123 Elm St, Westfield NJ"
             className={inputClass}
           />
         </div>

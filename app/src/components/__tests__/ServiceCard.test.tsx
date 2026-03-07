@@ -79,4 +79,32 @@ describe("ServiceCard", () => {
     expect(container).toHaveTextContent("Carol");
     expect(container).toHaveTextContent("+ 2 more");
   });
+
+  it("shows displayName from object recommenders", () => {
+    const { container } = render(
+      <ServiceCard
+        service={makeService({
+          recentRecommenders: [
+            { uid: "u1", displayName: "Alice Smith", timestamp: {} as Timestamp },
+            { uid: "u2", displayName: "Bob Jones", timestamp: {} as Timestamp },
+          ],
+        })}
+      />
+    );
+    expect(container).toHaveTextContent("Alice");
+    expect(container).toHaveTextContent("Bob");
+  });
+
+  it("shows 'a neighbor' for object recommenders without displayName", () => {
+    const { container } = render(
+      <ServiceCard
+        service={makeService({
+          recentRecommenders: [
+            { uid: "u1", timestamp: {} as Timestamp },
+          ],
+        })}
+      />
+    );
+    expect(container).toHaveTextContent("a neighbor");
+  });
 });

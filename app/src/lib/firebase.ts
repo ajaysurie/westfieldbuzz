@@ -23,3 +23,5 @@ const firestoreDb = process.env.NEXT_PUBLIC_FIRESTORE_DB || (
 export const db = getFirestore(app, firestoreDb);
 export const auth = getAuth(app);
 export const facebookProvider = new FacebookAuthProvider();
+facebookProvider.addScope("public_profile");
+facebookProvider.addScope("email");

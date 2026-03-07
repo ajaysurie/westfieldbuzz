@@ -1,8 +1,37 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, cleanup } from "@testing-library/react";
-import EventCard from "../EventCard";
 import type { Event } from "@/lib/firestore";
 import type { Timestamp } from "firebase/firestore";
+
+// Mock firebase before importing EventCard (which imports InterestedButton → auth → firebase)
+vi.mock("@/lib/firebase", () => ({
+  auth: {},
+  db: {},
+  facebookProvider: {},
+}));
+
+vi.mock("@/lib/auth", () => ({
+  useAuth: () => ({ user: null, loading: false, loggingIn: false, authError: "", loginWithFacebook: vi.fn(), logout: vi.fn() }),
+}));
+
+vi.mock("@/lib/firestore", () => ({
+  hasUserInterested: vi.fn().mockResolvedValue(false),
+  markInterested: vi.fn().mockResolvedValue(undefined),
+  unmarkInterested: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("firebase/auth", () => ({
+  onAuthStateChanged: vi.fn(),
+  signInWithPopup: vi.fn(),
+  signInWithRedirect: vi.fn(),
+  getRedirectResult: vi.fn().mockResolvedValue(null),
+  signOut: vi.fn(),
+  getAuth: vi.fn(() => ({})),
+  FacebookAuthProvider: vi.fn(),
+}));
+
+// Import after mocks
+import EventCard from "../EventCard";
 
 afterEach(cleanup);
 
@@ -63,5 +92,17 @@ describe("EventCard", () => {
   it("handles null endDate", () => {
     const { container } = render(<EventCard event={makeEvent({ endDate: null })} />);
     expect(container).toHaveTextContent("Downtown Jazz Night");
+  });
+
+  it("renders colored top border on light card", () => {
+    const { container } = render(<EventCard event={makeEvent({ category: "Sports" })} />);
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.style.borderTop).toContain("3px solid");
+  });
+
+  it("uses accent fallback for unknown category border", () => {
+    const { container } = render(<EventCard event={makeEvent({ category: "Unknown" })} />);
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.style.borderTop).toContain("var(--accent)");
   });
 });

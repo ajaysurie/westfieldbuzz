@@ -99,3 +99,16 @@ npx tsx scripts/seed-events-newsletter.ts --prod
 - Facebook app must be in **Live** mode with **email** permission enabled
 - Privacy Policy URL: `https://westfieldbuzz.com/privacy`
 - Data Deletion URL: `https://westfieldbuzz.com/data-deletion`
+
+### Mobile Auth: popup vs redirect
+
+- `signInWithPopup` fails on mobile Safari/Chrome — aggressive popup blockers silently prevent the window from opening
+- `signInWithRedirect` is the correct mobile approach, but requires `getRedirectResult()` on page load to capture the returning auth session
+- **Trap**: calling `getRedirectResult()` alongside `signInWithPopup()` causes `auth/cancelled-popup-request` — the redirect listener cancels the popup flow. The two methods conflict at runtime
+- **Solution**: detect mobile via user agent at module level and branch: `signInWithRedirect` on mobile, `signInWithPopup` on desktop. Keep `getRedirectResult()` in a separate `useEffect` — it's a no-op on desktop but required for mobile return flow
+- **Auth domain proxy was unnecessary**: tried proxying `/__/auth/*` through our domain to avoid third-party storage blocking, but the simpler popup/redirect split solved it without proxy complexity
+- See `app/src/lib/auth.tsx` for the working implementation
+
+## Learnings
+
+- **Firebase mobile auth needs popup/redirect split, not one-size-fits-all**: Mobile browsers block `signInWithPopup` silently. Use `signInWithRedirect` on mobile + `getRedirectResult()` on load, and `signInWithPopup` on desktop. Never mix both flows — `getRedirectResult()` cancels pending popup requests (`auth/cancelled-popup-request`). Detect mobile via user agent at module scope, not per-call. Resist the urge to proxy Firebase auth through your own domain — the popup/redirect split is simpler and sufficient.

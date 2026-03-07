@@ -28,7 +28,7 @@ export interface Service {
   address: string;
   website: string;
   recommendations: number;
-  recentRecommenders: (string | { uid: string; timestamp: Timestamp })[];
+  recentRecommenders: (string | { uid: string; displayName?: string; timestamp: Timestamp })[];
   lastRecommended: Timestamp | null;
   seeded?: boolean;
   createdAt: Timestamp;
@@ -52,6 +52,7 @@ export interface SuggestedService {
   userId: string;
   businessName: string;
   category: string;
+  address: string;
   phone: string;
   website: string;
   notes: string;
@@ -138,7 +139,7 @@ export async function hasUserRecommended(serviceId: string, userId: string): Pro
   return snap.exists();
 }
 
-export async function recommendService(serviceId: string, userId: string) {
+export async function recommendService(serviceId: string, userId: string, displayName?: string) {
   const recRef = doc(db, "services", serviceId, "recommendations", userId);
   const serviceRef = doc(db, "services", serviceId);
 
@@ -147,7 +148,7 @@ export async function recommendService(serviceId: string, userId: string) {
   await updateDoc(serviceRef, {
     recommendations: increment(1),
     lastRecommended: serverTimestamp(),
-    recentRecommenders: arrayUnion({ uid: userId, timestamp: new Date() }),
+    recentRecommenders: arrayUnion({ uid: userId, displayName: displayName || null, timestamp: new Date() }),
   });
 }
 
@@ -218,6 +219,7 @@ export async function submitSuggestion(data: {
   userId: string;
   businessName: string;
   category: string;
+  address: string;
   phone: string;
   website: string;
   notes: string;
@@ -233,16 +235,20 @@ export async function submitSuggestion(data: {
 
 export async function getSuggestions(status?: string): Promise<SuggestedService[]> {
   const ref = collection(db, "suggested_services");
-  let q;
-
-  if (status) {
-    q = query(ref, where("status", "==", status), orderBy("suggestedAt", "desc"));
-  } else {
-    q = query(ref, orderBy("suggestedAt", "desc"));
+  try {
+    const q = status
+      ? query(ref, where("status", "==", status), orderBy("suggestedAt", "desc"))
+      : query(ref, orderBy("suggestedAt", "desc"));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as SuggestedService));
+  } catch {
+    // Fallback: query without orderBy (missing composite index)
+    const q = status ? query(ref, where("status", "==", status)) : query(ref);
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() } as SuggestedService))
+      .sort((a, b) => (b.suggestedAt?.seconds || 0) - (a.suggestedAt?.seconds || 0));
   }
-
-  const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as SuggestedService));
 }
 
 export async function approveSuggestion(suggestion: SuggestedService) {
@@ -253,7 +259,7 @@ export async function approveSuggestion(suggestion: SuggestedService) {
     category: suggestion.category,
     phone: suggestion.phone,
     email: "",
-    address: "",
+    address: suggestion.address || "",
     website: suggestion.website,
     recommendations: 0,
     recentRecommenders: [],

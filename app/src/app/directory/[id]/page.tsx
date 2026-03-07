@@ -97,10 +97,22 @@ function ServiceDetailContent() {
         <div className="flex flex-col gap-4">
           {service.address && (
             <div>
-              <div className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.15em] text-ink-muted">
+              <div className="mb-1 text-[0.75rem] font-bold uppercase tracking-[0.15em] text-ink-muted">
                 Address
               </div>
-              <div className="text-[0.95rem] text-ink">{service.address}</div>
+              <a
+                href={`https://maps.google.com/?q=${encodeURIComponent(service.address)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-[0.95rem] no-underline transition-colors hover:underline"
+                style={{ color: "var(--accent)" }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                {service.address}
+              </a>
             </div>
           )}
 
@@ -161,7 +173,7 @@ function ServiceDetailContent() {
           </div>
           <div className="flex flex-wrap gap-3">
             {service.recentRecommenders.map((rec, i) => {
-              const name = typeof rec === "string" ? rec : "A neighbor";
+              const name = typeof rec === "string" ? rec : (rec.displayName || "A neighbor");
               return (
                 <div
                   key={i}

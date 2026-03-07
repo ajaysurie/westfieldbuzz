@@ -36,7 +36,7 @@ export default function RecommendButton({ serviceId, initialCount }: RecommendBu
         setRecommended(false);
         setCount((c) => Math.max(0, c - 1));
       } else {
-        await recommendService(serviceId, user.uid);
+        await recommendService(serviceId, user.uid, user.displayName || undefined);
         setRecommended(true);
         setCount((c) => c + 1);
       }
