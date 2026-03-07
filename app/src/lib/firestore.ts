@@ -13,6 +13,7 @@ import {
   where,
   arrayUnion,
   arrayRemove,
+  writeBatch,
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -252,25 +253,36 @@ export async function getSuggestions(status?: string): Promise<SuggestedService[
 }
 
 export async function approveSuggestion(suggestion: SuggestedService) {
-  // Create actual service
+  const batch = writeBatch(db);
   const serviceRef = doc(collection(db, "services"));
-  await setDoc(serviceRef, {
+
+  // Create actual service
+  batch.set(serviceRef, {
     name: suggestion.businessName,
     category: suggestion.category,
     phone: suggestion.phone,
     email: "",
     address: suggestion.address || "",
     website: suggestion.website,
-    recommendations: 0,
-    recentRecommenders: [],
-    lastRecommended: null,
+    recommendations: 1,
+    // Firestore doesn't allow serverTimestamp() inside array values, so use new Date()
+    recentRecommenders: [{ uid: suggestion.userId, displayName: null, timestamp: new Date() }],
+    lastRecommended: serverTimestamp(),
     createdAt: serverTimestamp(),
   });
 
+  // Record the submitter's recommendation in the subcollection
+  batch.set(
+    doc(db, "services", serviceRef.id, "recommendations", suggestion.userId),
+    { uid: suggestion.userId, timestamp: serverTimestamp() }
+  );
+
   // Mark suggestion as approved
-  await updateDoc(doc(db, "suggested_services", suggestion.id), {
+  batch.update(doc(db, "suggested_services", suggestion.id), {
     status: "approved",
   });
+
+  await batch.commit();
 }
 
 export async function rejectSuggestion(suggestionId: string) {
