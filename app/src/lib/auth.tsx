@@ -10,8 +10,6 @@ import {
 import {
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   signOut,
   type User,
 } from "firebase/auth";
@@ -22,6 +20,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   loggingIn: boolean;
+  authError: string;
   loginWithFacebook: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -30,6 +29,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   loggingIn: false,
+  authError: "",
   loginWithFacebook: async () => {},
   logout: async () => {},
 });
@@ -38,13 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
-
-  // Handle redirect result when returning from Facebook on mobile
-  useEffect(() => {
-    getRedirectResult(auth).catch((err) => {
-      console.error("[AUTH] Redirect result error:", err);
-    });
-  }, []);
+  const [authError, setAuthError] = useState("");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -82,16 +76,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithFacebook = async () => {
+    if (loggingIn) return;
     setLoggingIn(true);
+    setAuthError("");
     try {
-      // Mobile browsers block popups — use redirect flow instead
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      if (isMobile) {
-        await signInWithRedirect(auth, facebookProvider);
-        // Page will redirect — loggingIn stays true until return
-        return;
-      }
       await signInWithPopup(auth, facebookProvider);
+    } catch (err) {
+      const code = (err as { code?: string }).code || "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User closed the popup — not an error
+      } else if (code === "auth/popup-blocked") {
+        setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
+      } else if (code === "auth/network-request-failed") {
+        setAuthError("Network error. Check your connection and try again.");
+      } else {
+        setAuthError("Sign-in failed. Please try again.");
+      }
     } finally {
       setLoggingIn(false);
     }
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loggingIn, loginWithFacebook, logout }}>
+    <AuthContext.Provider value={{ user, loading, loggingIn, authError, loginWithFacebook, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -3,36 +3,17 @@
 import { useAuth } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function LoginPage() {
-  const { user, loading, loggingIn, loginWithFacebook } = useAuth();
+  const { user, loading, loggingIn, authError, loginWithFacebook } = useAuth();
   const router = useRouter();
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!loading && user) {
       router.push("/");
     }
   }, [user, loading, router]);
-
-  const handleLogin = async () => {
-    try {
-      setError("");
-      await loginWithFacebook();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("popup-closed") || msg.includes("cancelled-popup")) {
-        setError("Sign-in cancelled. Please try again.");
-      } else if (msg.includes("network-request-failed")) {
-        setError("Network error. Please check your connection and try again.");
-      } else if (msg.includes("popup-blocked")) {
-        setError("Pop-up blocked. Please allow pop-ups for this site.");
-      } else {
-        setError("Something went wrong. Please try again.");
-      }
-    }
-  };
 
   if (loading) {
     return (
@@ -68,7 +49,7 @@ export default function LoginPage() {
         </p>
 
         <button
-          onClick={handleLogin}
+          onClick={loginWithFacebook}
           disabled={loggingIn}
           className={`flex w-full items-center justify-center gap-3 rounded-lg px-6 py-3.5 text-[0.95rem] font-semibold text-white transition-all hover:-translate-y-0.5 hover:shadow-md ${loggingIn ? "opacity-60 cursor-not-allowed" : ""}`}
           style={{ background: "#1877F2" }}
@@ -79,8 +60,8 @@ export default function LoginPage() {
           {loggingIn ? "Signing in..." : "Continue with Facebook"}
         </button>
 
-        {error && (
-          <p className="mt-4 text-[0.85rem] text-sienna">{error}</p>
+        {authError && (
+          <p className="mt-4 text-[0.85rem] text-sienna">{authError}</p>
         )}
 
         <p className="mt-6 text-[0.8rem] text-ink-muted">
