@@ -10,6 +10,8 @@ import {
 import {
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut,
   type User,
 } from "firebase/auth";
@@ -34,16 +36,38 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
+const isMobile =
+  typeof navigator !== "undefined" &&
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
 
+  // Handle redirect result when returning from Facebook (mobile flow)
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          console.log("[AUTH] Redirect sign-in successful");
+        }
+      })
+      .catch((err) => {
+        console.error("[AUTH] Redirect result error:", err);
+        const code = (err as { code?: string }).code || "";
+        if (code !== "auth/redirect-cancelled-by-user") {
+          setAuthError(`Sign-in failed: ${code}`);
+        }
+      });
+  }, []);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
+      setLoggingIn(false);
 
       if (firebaseUser) {
         try {
@@ -79,19 +103,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (loggingIn) return;
     setLoggingIn(true);
     setAuthError("");
-    try {
-      await signInWithPopup(auth, facebookProvider);
-    } catch (err) {
-      const code = (err as { code?: string }).code || "";
-      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-        // User closed the popup — not an error
-      } else if (code === "auth/popup-blocked") {
-        setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
-      } else {
-        setAuthError(`Sign-in failed: ${code || "unknown error"}`);
+
+    if (isMobile) {
+      // Mobile: use redirect (popups unreliable on mobile browsers)
+      signInWithRedirect(auth, facebookProvider).catch((err) => {
+        console.error("[AUTH] Redirect error:", err);
+        setLoggingIn(false);
+        setAuthError("Sign-in failed. Please try again.");
+      });
+    } else {
+      // Desktop: use popup
+      try {
+        await signInWithPopup(auth, facebookProvider);
+      } catch (err) {
+        const code = (err as { code?: string }).code || "";
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+          // User closed the popup — not an error
+        } else if (code === "auth/popup-blocked") {
+          setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
+        } else {
+          setAuthError(`Sign-in failed: ${code || "unknown error"}`);
+        }
+      } finally {
+        setLoggingIn(false);
       }
-    } finally {
-      setLoggingIn(false);
     }
   };
 
