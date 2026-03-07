@@ -9,8 +9,7 @@ import {
 } from "react";
 import {
   onAuthStateChanged,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signOut,
   type User,
 } from "firebase/auth";
@@ -40,24 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
-
-  // Handle redirect result when returning from Facebook auth
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result) setLoggingIn(false);
-      })
-      .catch((err) => {
-        console.error("[AUTH] Redirect result error:", err);
-        const code = (err as { code?: string }).code || "";
-        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
-          // User cancelled — not an error
-        } else {
-          setAuthError("Sign-in failed. Please try again.");
-        }
-        setLoggingIn(false);
-      });
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -98,7 +79,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (loggingIn) return;
     setLoggingIn(true);
     setAuthError("");
-    await signInWithRedirect(auth, facebookProvider);
+    try {
+      await signInWithPopup(auth, facebookProvider);
+    } catch (err) {
+      const code = (err as { code?: string }).code || "";
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User closed the popup — not an error
+      } else if (code === "auth/popup-blocked") {
+        setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
+      } else {
+        setAuthError(`Sign-in failed: ${code || "unknown error"}`);
+      }
+    } finally {
+      setLoggingIn(false);
+    }
   };
 
   const logout = async () => {
