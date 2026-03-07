@@ -20,6 +20,7 @@ import { auth, db, facebookProvider } from "./firebase";
 
 interface AuthContextType {
   user: User | null;
+  photoURL: string;
   loading: boolean;
   loggingIn: boolean;
   authError: string;
@@ -29,6 +30,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  photoURL: "",
   loading: true,
   loggingIn: false,
   authError: "",
@@ -42,6 +44,7 @@ const isMobile =
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [photoURL, setPhotoURL] = useState("");
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
@@ -65,7 +68,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      // Build a stable Facebook photo URL from providerData UID
+      // Firebase's photoURL can be null or expired; the Graph API URL is stable
+      let photoURL = firebaseUser?.photoURL || "";
+      const fbProvider = firebaseUser?.providerData?.find(p => p.providerId === "facebook.com");
+      if (fbProvider?.uid) {
+        photoURL = `https://graph.facebook.com/${fbProvider.uid}/picture?type=large`;
+      }
+      console.log("[AUTH] photoURL:", photoURL);
+
       setUser(firebaseUser);
+      setPhotoURL(photoURL);
       setLoading(false);
       setLoggingIn(false);
 
@@ -77,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (!userSnap.exists()) {
             await setDoc(userRef, {
               displayName: firebaseUser.displayName || "",
-              photoURL: firebaseUser.photoURL || "",
+              photoURL,
               email: firebaseUser.email || "",
               joinedDate: serverTimestamp(),
               lastActive: serverTimestamp(),
@@ -88,7 +101,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           await setDoc(doc(db, "public_profiles", firebaseUser.uid), {
             displayName: firebaseUser.displayName || "",
-            photoURL: firebaseUser.photoURL || "",
+            photoURL,
           });
         } catch (err) {
           console.error("[AUTH] Failed to sync user profile:", err);
@@ -135,7 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loggingIn, authError, loginWithFacebook, logout }}>
+    <AuthContext.Provider value={{ user, photoURL, loading, loggingIn, authError, loginWithFacebook, logout }}>
       {children}
     </AuthContext.Provider>
   );

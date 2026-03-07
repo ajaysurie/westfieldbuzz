@@ -13,7 +13,7 @@ export default function AccountPage() {
 }
 
 function AccountContent() {
-  const { user, logout } = useAuth();
+  const { user, photoURL, logout } = useAuth();
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -36,11 +36,12 @@ function AccountContent() {
       </h1>
 
       <div className="mb-8 flex items-center gap-4 rounded-[10px] border border-black/6 bg-paper-pure p-6">
-        {user?.photoURL && (
+        {photoURL && (
           <img
-            src={user.photoURL}
+            src={photoURL}
             alt=""
             className="h-14 w-14 rounded-full"
+            referrerPolicy="no-referrer"
           />
         )}
         <div>

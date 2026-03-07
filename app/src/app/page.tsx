@@ -22,14 +22,10 @@ const CATEGORIES = [
 const CATEGORY_PILLS = [
   "Electrician",
   "Plumber",
-  "HVAC",
   "Landscaper",
-  "Tutor",
   "Handyman",
-  "Painter",
+  "Tutor",
   "House Cleaner",
-  "Contractor",
-  "Auto Mechanic",
 ];
 
 export default function Home() {
@@ -107,7 +103,7 @@ export default function Home() {
           </div>
           <div className="overflow-hidden rounded-xl border border-black/6 shadow-lg max-md:order-first">
             <img
-              src="/hero-v2-editorial.jpg"
+              src="/event-cats/westfield-hero.png"
               alt="Watercolor illustration of downtown Westfield"
               className="block w-full"
             />
@@ -132,7 +128,7 @@ export default function Home() {
       <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6 max-md:py-12">
         <div
           className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-          style={{ color: "var(--accent)" }}
+          style={{ color: "var(--gold)" }}
         >
           How It Works
         </div>
@@ -198,7 +194,7 @@ export default function Home() {
         <div className="mx-auto max-w-[1100px]">
           <div
             className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-            style={{ color: "var(--accent)" }}
+            style={{ color: "var(--gold)" }}
           >
             Browse
           </div>
@@ -235,7 +231,7 @@ export default function Home() {
       <section className="mx-auto max-w-[1100px] px-12 py-20 max-md:px-6 max-md:py-12">
         <div
           className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-          style={{ color: "var(--accent)" }}
+          style={{ color: "var(--gold)" }}
         >
           Community
         </div>
@@ -249,7 +245,7 @@ export default function Home() {
             letterSpacing: "-0.01em",
           }}
         >
-          Real people. Real recommendations.
+          Your neighborhood, connected.
         </h2>
         <div className="grid grid-cols-3 gap-8 max-md:grid-cols-1">
           {[
@@ -263,7 +259,7 @@ export default function Home() {
             >
               <div
                 className="mb-2 text-[3.5rem] leading-none"
-                style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
+                style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--accent)" }}
               >
                 {stat.num > 0 ? stat.num : "\u2014"}
               </div>
@@ -280,7 +276,7 @@ export default function Home() {
         <div className="mx-auto max-w-[1100px]">
           <div
             className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-            style={{ color: "var(--accent-light)" }}
+            style={{ color: "var(--gold)" }}
           >
             What&apos;s Happening
           </div>
