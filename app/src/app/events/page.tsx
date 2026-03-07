@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { getEvents, type Event } from "@/lib/firestore";
 import EventCard from "@/components/EventCard";
 import EventCalendar from "@/components/EventCalendar";
-import InterestedButton from "@/components/InterestedButton";
 import { EVENT_CATEGORY_COLORS } from "@/lib/event-categories";
+import PageHeader from "@/components/PageHeader";
 
 export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -61,24 +61,15 @@ export default function EventsPage() {
   })();
 
   return (
+    <>
+    <PageHeader
+      imageSrc="/header-events.png"
+      title="Upcoming in Westfield"
+      subtitle="Community events, gatherings, and things to do"
+    />
     <div className="mx-auto max-w-[1100px] px-12 py-12 max-md:px-6">
-      <div
-        className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-        style={{ color: "var(--accent)" }}
-      >
-        Events
-      </div>
       <div className="mb-8 flex items-center justify-between">
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)",
-            fontWeight: 400,
-            color: "var(--ink)",
-          }}
-        >
-          Upcoming in Westfield
-        </h1>
+        <div />
         <div className="flex gap-2">
           <button
             onClick={() => { setView("list"); setSelectedDate(null); }}
@@ -171,19 +162,13 @@ export default function EventsPage() {
           ) : (
             <div className="flex flex-col gap-4">
               {filteredEvents.map((evt) => (
-                <div key={evt.id} className="flex items-start gap-4 max-md:flex-col max-md:gap-2">
-                  <div className="flex-1 max-md:w-full">
-                    <EventCard event={evt} />
-                  </div>
-                  <div className="shrink-0 pt-6 max-md:pt-0">
-                    <InterestedButton eventId={evt.id} initialCount={evt.interestedCount} />
-                  </div>
-                </div>
+                <EventCard key={evt.id} event={evt} showInterested />
               ))}
             </div>
           )}
         </>
       )}
     </div>
+    </>
   );
 }

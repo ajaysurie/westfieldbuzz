@@ -9,6 +9,7 @@ import ServiceCard from "@/components/ServiceCard";
 import SearchBar from "@/components/SearchBar";
 import CategoryGrid from "@/components/CategoryGrid";
 import AuthGate from "@/components/AuthGate";
+import PageHeader from "@/components/PageHeader";
 
 function DirectoryContent() {
   const searchParams = useSearchParams();
@@ -44,24 +45,13 @@ function DirectoryContent() {
     : services;
 
   return (
+    <>
+    <PageHeader
+      imageSrc="/header-directory.png"
+      title={categoryParam || "All Providers"}
+      subtitle="Westfield's most trusted local businesses"
+    />
     <div className="mx-auto max-w-[1100px] px-12 py-12 max-md:px-6">
-      <div
-        className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-        style={{ color: "var(--accent)" }}
-      >
-        Directory
-      </div>
-      <h1
-        className="mb-8"
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)",
-          fontWeight: 400,
-          color: "var(--ink)",
-        }}
-      >
-        {categoryParam || "All Providers"}
-      </h1>
 
       <div className="mb-6">
         <SearchBar
@@ -92,6 +82,7 @@ function DirectoryContent() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

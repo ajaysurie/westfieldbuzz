@@ -4,13 +4,21 @@ import { useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { submitSuggestion, getCategories } from "@/lib/firestore";
 import AuthGate from "@/components/AuthGate";
+import PageHeader from "@/components/PageHeader";
 import { useEffect } from "react";
 
 export default function SuggestPage() {
   return (
-    <AuthGate>
-      <SuggestForm />
-    </AuthGate>
+    <>
+      <PageHeader
+        imageSrc="/header-suggest.png"
+        title="Know a great business?"
+        subtitle="Help your neighbors find trusted providers"
+      />
+      <AuthGate>
+        <SuggestForm />
+      </AuthGate>
+    </>
   );
 }
 
@@ -75,26 +83,8 @@ function SuggestForm() {
 
   return (
     <div className="mx-auto max-w-[500px] px-12 py-12 max-md:px-6">
-      <div
-        className="mb-3 text-[0.7rem] font-bold uppercase tracking-[0.15em]"
-        style={{ color: "var(--accent)" }}
-      >
-        Suggest
-      </div>
-      <h1
-        className="mb-2"
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.8rem, 3.5vw, 2.2rem)",
-          fontWeight: 400,
-          color: "var(--ink)",
-        }}
-      >
-        Know a great business?
-      </h1>
       <p className="mb-8 text-[0.9rem] text-ink-light">
-        Help your neighbors find trusted providers. We&apos;ll review and add them
-        to the directory.
+        We&apos;ll review and add them to the directory.
       </p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
