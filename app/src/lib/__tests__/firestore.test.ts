@@ -3,6 +3,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock firebase/firestore before importing our module
 const mockGetDocs = vi.fn();
 const mockGetDoc = vi.fn();
+const mockBatchSet = vi.fn();
+const mockBatchUpdate = vi.fn();
+const mockBatchCommit = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("firebase/firestore", () => ({
   collection: vi.fn((_db, name) => name),
@@ -19,6 +22,11 @@ vi.mock("firebase/firestore", () => ({
   where: vi.fn(),
   arrayUnion: vi.fn(),
   arrayRemove: vi.fn(),
+  writeBatch: vi.fn(() => ({
+    set: mockBatchSet,
+    update: mockBatchUpdate,
+    commit: mockBatchCommit,
+  })),
   getFirestore: vi.fn(),
   initializeApp: vi.fn(),
   getApps: vi.fn(() => [{}]),
@@ -37,11 +45,12 @@ vi.mock("firebase/auth", () => {
   };
 });
 
-import { getCommunityStats, getServices, getServiceById, recommendService, getSuggestions, submitSuggestion, approveSuggestion } from "../firestore";
-import { setDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { getCommunityStats, getServices, getServiceById, recommendService, unrecommendService, getSuggestions, submitSuggestion, approveSuggestion, rejectSuggestion } from "../firestore";
+import { setDoc, updateDoc, deleteDoc, arrayUnion, type Timestamp } from "firebase/firestore";
 
 const mockSetDoc = vi.mocked(setDoc);
 const mockUpdateDoc = vi.mocked(updateDoc);
+const mockDeleteDoc = vi.mocked(deleteDoc);
 const mockArrayUnion = vi.mocked(arrayUnion);
 
 beforeEach(() => {
@@ -214,23 +223,110 @@ describe("submitSuggestion", () => {
 });
 
 describe("approveSuggestion", () => {
-  it("copies address to new service doc", async () => {
-    await approveSuggestion({
-      id: "sug-1",
-      userId: "u1",
-      businessName: "Test",
-      category: "Plumber",
-      address: "456 Oak Ave",
-      phone: "555-1234",
-      website: "",
-      notes: "",
-      status: "pending",
-      suggestedAt: { seconds: 100, nanoseconds: 0 } as any,
-    });
-    // First setDoc call creates the service
-    expect(mockSetDoc).toHaveBeenCalledWith(
+  const suggestion = {
+    id: "sug-1",
+    userId: "u1",
+    businessName: "Test",
+    category: "Plumber",
+    address: "456 Oak Ave",
+    phone: "555-1234",
+    website: "https://test.com",
+    notes: "Great plumber!",
+    status: "pending" as const,
+    suggestedAt: { seconds: 100, nanoseconds: 0 } as unknown as Timestamp,
+  };
+
+  it("copies all fields to new service doc", async () => {
+    await approveSuggestion(suggestion);
+    expect(mockBatchSet).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ address: "456 Oak Ave", name: "Test" })
+      expect.objectContaining({
+        name: "Test",
+        category: "Plumber",
+        address: "456 Oak Ave",
+        phone: "555-1234",
+        website: "https://test.com",
+        email: "",
+      })
     );
+  });
+
+  it("creates service with submitter's recommendation counted", async () => {
+    await approveSuggestion(suggestion);
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        recommendations: 1,
+        recentRecommenders: [expect.objectContaining({ uid: "u1" })],
+      })
+    );
+  });
+
+  it("writes submitter to recommendations subcollection", async () => {
+    await approveSuggestion(suggestion);
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.stringContaining("recommendations"),
+      expect.objectContaining({ uid: "u1" })
+    );
+  });
+
+  it("marks suggestion as approved", async () => {
+    await approveSuggestion(suggestion);
+    expect(mockBatchUpdate).toHaveBeenCalledWith(
+      expect.stringContaining("sug-1"),
+      { status: "approved" }
+    );
+  });
+
+  it("defaults empty address to empty string", async () => {
+    await approveSuggestion({ ...suggestion, address: "" });
+    expect(mockBatchSet).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ address: "" })
+    );
+  });
+
+  it("uses atomic batch write (2 sets + 1 update + commit)", async () => {
+    await approveSuggestion(suggestion);
+    expect(mockBatchSet).toHaveBeenCalledTimes(2); // service + subcollection
+    expect(mockBatchUpdate).toHaveBeenCalledTimes(1); // status update
+    expect(mockBatchCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not copy notes, userId, or suggestedAt to service doc", async () => {
+    await approveSuggestion(suggestion);
+    const serviceDocData = mockBatchSet.mock.calls[0][1];
+    expect(serviceDocData).not.toHaveProperty("notes");
+    expect(serviceDocData).not.toHaveProperty("userId");
+    expect(serviceDocData).not.toHaveProperty("suggestedAt");
+  });
+});
+
+describe("rejectSuggestion", () => {
+  it("marks suggestion as rejected", async () => {
+    await rejectSuggestion("sug-2");
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      expect.stringContaining("sug-2"),
+      { status: "rejected" }
+    );
+  });
+});
+
+describe("unrecommendService", () => {
+  it("deletes recommendation and decrements count when recommendation exists", async () => {
+    mockGetDoc.mockResolvedValue({ exists: () => true, data: () => ({ uid: "u1" }) });
+    await unrecommendService("svc-1", "u1");
+    expect(mockDeleteDoc).toHaveBeenCalled();
+    expect(mockUpdateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ recommendations: -1 })
+    );
+  });
+
+  it("does not decrement count when recommendation does not exist", async () => {
+    mockGetDoc.mockResolvedValue({ exists: () => false });
+    await unrecommendService("svc-1", "u1");
+    expect(mockDeleteDoc).toHaveBeenCalled();
+    expect(mockUpdateDoc).not.toHaveBeenCalled();
   });
 });

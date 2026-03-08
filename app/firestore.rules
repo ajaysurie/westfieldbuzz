@@ -14,11 +14,11 @@ service cloud.firestore {
       allow read: if true;
       allow create, update, delete: if isAdmin();
 
-      // Recommendations subcollection: auth users write own doc
+      // Recommendations subcollection: auth users write own doc, admins can write on behalf (approval flow)
       match /recommendations/{userId} {
         allow read: if true;
-        allow create, update: if request.auth != null && request.auth.uid == userId;
-        allow delete: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if (request.auth != null && request.auth.uid == userId) || isAdmin();
+        allow delete: if (request.auth != null && request.auth.uid == userId) || isAdmin();
       }
     }
 
@@ -52,7 +52,7 @@ service cloud.firestore {
     match /suggested_services/{docId} {
       allow read: if request.auth != null &&
         (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
