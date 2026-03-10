@@ -12,11 +12,12 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  linkWithPopup,
   signOut,
   type User,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
-import { auth, db, facebookProvider } from "./firebase";
+import { auth, db, facebookProvider, googleProvider } from "./firebase";
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +26,8 @@ interface AuthContextType {
   loggingIn: boolean;
   authError: string;
   loginWithFacebook: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  linkFacebook: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,6 +38,8 @@ const AuthContext = createContext<AuthContextType>({
   loggingIn: false,
   authError: "",
   loginWithFacebook: async () => {},
+  loginWithGoogle: async () => {},
+  linkFacebook: async () => {},
   logout: async () => {},
 });
 
@@ -49,7 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
 
-  // Handle redirect result when returning from Facebook (mobile flow)
+  // Handle redirect result when returning from OAuth provider (mobile flow)
   useEffect(() => {
     getRedirectResult(auth)
       .then((result) => {
@@ -60,7 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("[AUTH] Redirect result error:", err);
         const code = (err as { code?: string }).code || "";
-        if (code !== "auth/redirect-cancelled-by-user") {
+        if (code === "auth/account-exists-with-different-credential") {
+          setAuthError("An account already exists with that email. Try the other sign-in method, then link accounts from your account page.");
+        } else if (code !== "auth/redirect-cancelled-by-user") {
           setAuthError(`Sign-in failed: ${code}`);
         }
       });
@@ -134,6 +141,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // User closed the popup — not an error
         } else if (code === "auth/popup-blocked") {
           setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
+        } else if (code === "auth/account-exists-with-different-credential") {
+          setAuthError("An account already exists with that email. Try signing in with Google instead, then link Facebook from your account page.");
         } else {
           setAuthError(`Sign-in failed: ${code || "unknown error"}`);
         }
@@ -143,12 +152,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async () => {
+    if (loggingIn) return;
+    setLoggingIn(true);
+    setAuthError("");
+
+    if (isMobile) {
+      signInWithRedirect(auth, googleProvider).catch((err) => {
+        console.error("[AUTH] Google redirect error:", err);
+        setLoggingIn(false);
+        setAuthError("Sign-in failed. Please try again.");
+      });
+    } else {
+      try {
+        await signInWithPopup(auth, googleProvider);
+      } catch (err) {
+        const code = (err as { code?: string }).code || "";
+        if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+          // User closed the popup — not an error
+        } else if (code === "auth/popup-blocked") {
+          setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
+        } else if (code === "auth/account-exists-with-different-credential") {
+          setAuthError("An account already exists with that email. Try signing in with Facebook instead, then link Google from your account page.");
+        } else {
+          setAuthError(`Sign-in failed: ${code || "unknown error"}`);
+        }
+      } finally {
+        setLoggingIn(false);
+      }
+    }
+  };
+
+  const linkFacebook = async () => {
+    if (!user) return;
+    setAuthError("");
+    try {
+      await linkWithPopup(user, facebookProvider);
+    } catch (err) {
+      const code = (err as { code?: string }).code || "";
+      if (code === "auth/credential-already-in-use") {
+        setAuthError("That Facebook account is already linked to a different user.");
+      } else if (code === "auth/provider-already-linked") {
+        setAuthError("Facebook is already linked to your account.");
+      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User closed the popup — not an error
+      } else {
+        setAuthError(`Link failed: ${code || "unknown error"}`);
+      }
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, photoURL, loading, loggingIn, authError, loginWithFacebook, logout }}>
+    <AuthContext.Provider value={{ user, photoURL, loading, loggingIn, authError, loginWithFacebook, loginWithGoogle, linkFacebook, logout }}>
       {children}
     </AuthContext.Provider>
   );
