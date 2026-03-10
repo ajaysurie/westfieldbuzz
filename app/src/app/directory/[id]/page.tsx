@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { getServiceById, type Service } from "@/lib/firestore";
 import RecommendButton from "@/components/RecommendButton";
-import AuthGate from "@/components/AuthGate";
 
 function ServiceDetailContent() {
   const params = useParams();
@@ -212,9 +211,5 @@ function ServiceDetailContent() {
 }
 
 export default function ServiceDetailPage() {
-  return (
-    <AuthGate>
-      <ServiceDetailContent />
-    </AuthGate>
-  );
+  return <ServiceDetailContent />;
 }

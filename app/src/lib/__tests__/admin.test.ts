@@ -15,9 +15,11 @@ vi.mock("firebase/app", () => ({
 
 vi.mock("firebase/auth", () => {
   class MockFacebookAuthProvider { addScope() {} }
+  class MockGoogleAuthProvider {}
   return {
     getAuth: vi.fn(),
     FacebookAuthProvider: MockFacebookAuthProvider,
+    GoogleAuthProvider: MockGoogleAuthProvider,
   };
 });
 
