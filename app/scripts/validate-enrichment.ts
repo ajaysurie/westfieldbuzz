@@ -19,7 +19,11 @@ const isProd = args.includes("--prod");
 const isWrite = args.includes("--write");
 const dbName = isProd ? "westfieldbuzz-prod" : "westfieldbuzz-dev";
 
-const PLACES_API_KEY = "AIzaSyD9RexgWk1fRjYBUKbWxXUw6GQHIWxDxlM";
+const PLACES_API_KEY = process.env.PLACES_API_KEY;
+if (!PLACES_API_KEY) {
+  console.error("Missing PLACES_API_KEY env var");
+  process.exit(1);
+}
 
 const app = initializeApp({ credential: applicationDefault() });
 const db = getFirestore(app, dbName);

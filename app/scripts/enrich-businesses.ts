@@ -34,7 +34,11 @@ function getArgValue(flag: string): string | undefined {
 
 const limit = parseInt(getArgValue("--limit") || "0", 10);
 
-const PLACES_API_KEY = "AIzaSyD9RexgWk1fRjYBUKbWxXUw6GQHIWxDxlM";
+const PLACES_API_KEY = process.env.PLACES_API_KEY;
+if (!PLACES_API_KEY) {
+  console.error("Missing PLACES_API_KEY env var");
+  process.exit(1);
+}
 
 // ===== Firebase Admin =====
 
