@@ -7,13 +7,15 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "ingest-events": "tsx scripts/ingest-events.ts"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
     "firebase": "^12.10.0",
     "fuse.js": "^7.1.0",
     "next": "16.1.6",
+    "node-ical": "^0.25.5",
     "react": "19.2.3",
     "react-dom": "19.2.3"
   },

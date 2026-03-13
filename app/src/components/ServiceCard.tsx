@@ -1,64 +1,83 @@
 import Link from "next/link";
 import type { Service } from "@/lib/firestore";
-
-function mapsUrl(address: string) {
-  return `https://maps.google.com/?q=${encodeURIComponent(address)}`;
-}
+import { formatReviewerName } from "@/lib/format";
 
 export default function ServiceCard({ service }: { service: Service }) {
   return (
-    <Link
-      href={`/directory/${service.id}`}
-      className="block rounded-[10px] border border-black/6 bg-paper-pure p-6 no-underline transition-all hover:shadow-md hover:-translate-y-0.5"
-    >
-      <div className="mb-1.5 flex items-start justify-between gap-2">
-        <h3
-          className="text-[1.1rem]"
-          style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
-        >
-          {service.name}
-        </h3>
-        <span className="ml-2 shrink-0 rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold text-ink-muted" style={{ background: "var(--paper-dark)" }}>
-          {service.category}
-        </span>
-      </div>
-
-      {service.address && (
-        <p
-          className="mb-2 flex items-center gap-1.5 text-[0.88rem] text-ink-muted"
-          onClick={(e) => {
-            e.preventDefault();
-            window.open(mapsUrl(service.address), "_blank");
-          }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          <span className="hover:underline">{service.address}</span>
-        </p>
-      )}
-
-      <div className="flex items-center gap-4 text-[0.88rem] text-ink-light">
-        {service.phone && <span>{service.phone}</span>}
-        {service.recommendations > 0 && (
-          <span className="text-[0.9rem] font-semibold" style={{ color: "var(--accent)" }}>
-            {service.recommendations} recommendation{service.recommendations !== 1 ? "s" : ""}
+    <div className="rounded-[10px] border border-black/6 bg-paper-pure p-6 transition-all hover:shadow-md hover:-translate-y-0.5">
+      <Link
+        href={`/directory/${service.id}`}
+        className="block no-underline"
+      >
+        <div className="mb-1.5 flex items-start justify-between gap-2">
+          <h3
+            className="text-[1.1rem]"
+            style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
+          >
+            {service.name}
+          </h3>
+          <span className="ml-2 shrink-0 rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold text-ink-muted" style={{ background: "var(--paper-dark)" }}>
+            {service.category}
           </span>
-        )}
-      </div>
+        </div>
 
-      {service.recentRecommenders?.length > 0 && (
-        <p className="mt-2.5 text-[0.84rem] text-ink-muted">
-          Recommended by{" "}
-          {service.recentRecommenders
-            .slice(0, 3)
-            .map((r) => (typeof r === "string" ? r.split(" ")[0] : (r.displayName?.split(" ")[0] || "a neighbor")))
-            .join(", ")}
-          {service.recentRecommenders.length > 3 &&
-            ` + ${service.recentRecommenders.length - 3} more`}
-        </p>
+        {service.address && (
+          <p className="mb-2 flex items-center gap-1.5 text-[0.88rem] text-ink-muted">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 opacity-60">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            {service.address}
+          </p>
+        )}
+
+        <div className="flex items-center gap-4 text-[0.88rem] text-ink-light">
+          {service.phone && <span>{service.phone}</span>}
+          {service.recommendations > 0 && (
+            <span className="text-[0.9rem] font-semibold" style={{ color: "var(--accent)" }}>
+              {service.recommendations} recommendation{service.recommendations !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {service.recentRecommenders?.length > 0 && (
+          <p className="mt-2.5 text-[0.84rem] text-ink-muted">
+            Recommended by{" "}
+            {service.recentRecommenders
+              .slice(0, 3)
+              .map((r) => formatReviewerName(typeof r === "string" ? r : r.displayName))
+              .join(", ")}
+            {service.recentRecommenders.length > 3 &&
+              ` + ${service.recentRecommenders.length - 3} more`}
+          </p>
+        )}
+      </Link>
+
+      {/* Clickable external links — outside the card Link to avoid nested <a> */}
+      {(service.googleMapsUrl || service.instagram || service.facebook || service.yelp) && (
+        <div className="mt-3 flex items-center gap-2.5 border-t border-black/6 pt-3">
+          {service.googleMapsUrl && (
+            <a href={service.googleMapsUrl} target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-80" title="Google Maps" onClick={(e) => e.stopPropagation()}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#EA4335" stroke="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+            </a>
+          )}
+          {service.instagram && (
+            <a href={service.instagram.startsWith("http") ? service.instagram : `https://instagram.com/${service.instagram}`} target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-80" title="Instagram" onClick={(e) => e.stopPropagation()}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="ig-card" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FFDC80"/><stop offset="25%" stopColor="#F77737"/><stop offset="50%" stopColor="#E1306C"/><stop offset="75%" stopColor="#C13584"/><stop offset="100%" stopColor="#833AB4"/></linearGradient></defs><path fill="url(#ig-card)" d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+          )}
+          {service.facebook && (
+            <a href={service.facebook} target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-80" title="Facebook" onClick={(e) => e.stopPropagation()}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#1877F2"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+          )}
+          {service.yelp && (
+            <a href={service.yelp} target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-80" title="Yelp" onClick={(e) => e.stopPropagation()}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#D32323"><path d="M20.16 12.594l-4.995 1.433c-.96.276-1.74-.8-1.176-1.63l2.905-4.308a1.072 1.072 0 011.596-.206 7.26 7.26 0 011.96 3.105c.262.753-.29 1.606-1.09 1.606h-.2zm-5.753 3.381l4.55 2.545a1.073 1.073 0 01.266 1.608 7.244 7.244 0 01-2.905 2.169c-.736.303-1.542-.197-1.612-.998l-.366-5.324c-.067-.979 1.107-1.528 1.867-.8l.2.2zm-2.878-1.677l-4.55 2.545a1.073 1.073 0 01-1.608-.266A7.244 7.244 0 013.2 13.672c-.303-.736.197-1.542.998-1.612l5.324-.366c.979-.067 1.528 1.107.8 1.867l-.2.2-.593.537zm-.702-3.381L5.832 8.372a1.073 1.073 0 01.206-1.596 7.26 7.26 0 013.105-1.96c.753-.262 1.556.29 1.556 1.09v.2l.433 4.995c.076.96-1 1.54-1.63.976l-.58-.56zM12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0z"/></svg>
+            </a>
+          )}
+        </div>
       )}
-    </Link>
+    </div>
   );
 }
