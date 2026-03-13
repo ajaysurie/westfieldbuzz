@@ -23,6 +23,7 @@ const CHROME_PROFILE = path.join(
 const GROUPS = [
   { name: "Westfield NJ", url: "https://www.facebook.com/groups/westfieldnjgroup" },
   { name: "The Dads of Westfield", url: "https://www.facebook.com/groups/413946119005979" },
+  { name: "Westfield Moms", url: "https://www.facebook.com/groups/179587308869394" },
 ];
 
 const SEARCH_TERMS = [

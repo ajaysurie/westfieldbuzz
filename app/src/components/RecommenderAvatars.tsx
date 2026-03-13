@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { formatReviewerName } from "@/lib/format";
 
 interface RecommenderAvatarsProps {
   recentRecommenders: (string | { uid: string })[];
@@ -62,7 +63,7 @@ export default function RecommenderAvatars({
     <div className="flex items-center gap-3">
       <div className="flex -space-x-2">
         {profiles.map((p) => (
-          <div key={p.key} className="relative" title={p.displayName}>
+          <div key={p.key} className="relative" title={formatReviewerName(p.displayName)}>
             {p.photoURL ? (
               <img
                 src={p.photoURL}
@@ -83,7 +84,7 @@ export default function RecommenderAvatars({
       <span className="text-[0.82rem] text-ink-light">
         {profiles.length > 0 && (
           <>
-            {profiles.map((p) => p.displayName.split(" ")[0]).join(", ")}
+            {profiles.map((p) => formatReviewerName(p.displayName)).join(", ")}
             {remaining > 0 && ` + ${remaining} more`}
           </>
         )}
