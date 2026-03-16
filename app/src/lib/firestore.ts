@@ -28,6 +28,10 @@ export interface Service {
   email: string;
   address: string;
   website: string;
+  instagram?: string;
+  facebook?: string;
+  yelp?: string;
+  googleMapsUrl?: string;
   recommendations: number;
   recentRecommenders: (string | { uid: string; displayName?: string; timestamp: Timestamp })[];
   lastRecommended: Timestamp | null;
@@ -46,6 +50,9 @@ export interface Event {
   interestedCount: number;
   createdBy: string;
   createdAt: Timestamp;
+  sourceId?: string;
+  sourceEventId?: string;
+  sourceUrl?: string;
 }
 
 export interface SuggestedService {

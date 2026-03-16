@@ -62,8 +62,8 @@ describe("ServiceCard", () => {
 
   it("links to service detail page", () => {
     const { container } = render(<ServiceCard service={makeService({ id: "svc-42" })} />);
-    const link = container.querySelector("a");
-    expect(link).toHaveAttribute("href", "/directory/svc-42");
+    const link = container.querySelector('a[href="/directory/svc-42"]');
+    expect(link).toBeTruthy();
   });
 
   it("shows first 3 recommender names and +N more", () => {
@@ -105,6 +105,68 @@ describe("ServiceCard", () => {
         })}
       />
     );
-    expect(container).toHaveTextContent("a neighbor");
+    expect(container).toHaveTextContent("A neighbor");
+  });
+
+  it("renders Google Maps link when googleMapsUrl is present", () => {
+    const { container } = render(
+      <ServiceCard
+        service={makeService({
+          googleMapsUrl: "https://maps.google.com/?cid=12345",
+        })}
+      />
+    );
+    const mapLink = container.querySelector('a[title="Google Maps"]');
+    expect(mapLink).toBeTruthy();
+    expect(mapLink).toHaveAttribute("href", "https://maps.google.com/?cid=12345");
+    expect(mapLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders Instagram link when present", () => {
+    const { container } = render(
+      <ServiceCard
+        service={makeService({
+          instagram: "https://www.instagram.com/bobsplumbing",
+        })}
+      />
+    );
+    const igLink = container.querySelector('a[title="Instagram"]');
+    expect(igLink).toBeTruthy();
+    expect(igLink).toHaveAttribute("href", "https://www.instagram.com/bobsplumbing");
+    expect(igLink).toHaveAttribute("target", "_blank");
+  });
+
+  it("renders Facebook link when present", () => {
+    const { container } = render(
+      <ServiceCard
+        service={makeService({
+          facebook: "https://www.facebook.com/bobsplumbing",
+        })}
+      />
+    );
+    const fbLink = container.querySelector('a[title="Facebook"]');
+    expect(fbLink).toBeTruthy();
+    expect(fbLink).toHaveAttribute("href", "https://www.facebook.com/bobsplumbing");
+  });
+
+  it("renders Yelp link when present", () => {
+    const { container } = render(
+      <ServiceCard
+        service={makeService({
+          yelp: "https://www.yelp.com/biz/bobs-plumbing",
+        })}
+      />
+    );
+    const yelpLink = container.querySelector('a[title="Yelp"]');
+    expect(yelpLink).toBeTruthy();
+    expect(yelpLink).toHaveAttribute("href", "https://www.yelp.com/biz/bobs-plumbing");
+  });
+
+  it("does not render social links section when none present", () => {
+    const { container } = render(<ServiceCard service={makeService()} />);
+    expect(container.querySelector('a[title="Google Maps"]')).toBeNull();
+    expect(container.querySelector('a[title="Instagram"]')).toBeNull();
+    expect(container.querySelector('a[title="Facebook"]')).toBeNull();
+    expect(container.querySelector('a[title="Yelp"]')).toBeNull();
   });
 });
