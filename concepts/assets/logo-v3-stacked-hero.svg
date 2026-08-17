@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 80" width="280" height="80">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400');
+    </style>
+  </defs>
+  <!-- WESTFIELD in caps -->
+  <text x="140" y="38" text-anchor="middle" font-family="'Playfair Display', 'Georgia', serif" font-size="38" font-weight="700" fill="#2B5EA7" letter-spacing="3" text-transform="uppercase">WESTFIELD</text>
+  <!-- Divider line -->
+  <line x1="20" y1="46" x2="260" y2="46" stroke="#2B5EA7" stroke-width="1.5"/>
+  <!-- BUZZ with bee flanking -->
+  <g transform="translate(0, 0)">
+    <!-- Left bee -->
+    <g transform="translate(75, 52)">
+      <ellipse cx="8" cy="9" rx="4.5" ry="5.5" fill="#D4A843"/>
+      <rect x="3.5" y="7" width="9" height="1.5" rx="0.5" fill="#2B5EA7" opacity="0.4"/>
+      <rect x="3.5" y="10" width="9" height="1.5" rx="0.5" fill="#2B5EA7" opacity="0.4"/>
+      <ellipse cx="5" cy="5" rx="3" ry="1.5" fill="#2B5EA7" opacity="0.1" transform="rotate(-15 5 5)"/>
+      <ellipse cx="11" cy="5" rx="3" ry="1.5" fill="#2B5EA7" opacity="0.1" transform="rotate(15 11 5)"/>
+      <line x1="7" y1="4" x2="5.5" y2="1" stroke="#2B5EA7" stroke-width="0.8" stroke-linecap="round"/>
+      <line x1="9" y1="4" x2="10.5" y2="1" stroke="#2B5EA7" stroke-width="0.8" stroke-linecap="round"/>
+      <circle cx="5.5" cy="1" r="0.7" fill="#D4A843"/>
+      <circle cx="10.5" cy="1" r="0.7" fill="#D4A843"/>
+    </g>
+    <!-- BUZZ text -->
+    <text x="140" y="71" text-anchor="middle" font-family="'Playfair Display', 'Georgia', serif" font-size="20" font-weight="400" font-style="italic" fill="#D4A843" letter-spacing="6">BUZZ</text>
+    <!-- Right bee -->
+    <g transform="translate(189, 52)">
+      <ellipse cx="8" cy="9" rx="4.5" ry="5.5" fill="#D4A843"/>
+      <rect x="3.5" y="7" width="9" height="1.5" rx="0.5" fill="#2B5EA7" opacity="0.4"/>
+      <rect x="3.5" y="10" width="9" height="1.5" rx="0.5" fill="#2B5EA7" opacity="0.4"/>
+      <ellipse cx="5" cy="5" rx="3" ry="1.5" fill="#2B5EA7" opacity="0.1" transform="rotate(-15 5 5)"/>
+      <ellipse cx="11" cy="5" rx="3" ry="1.5" fill="#2B5EA7" opacity="0.1" transform="rotate(15 11 5)"/>
+      <line x1="7" y1="4" x2="5.5" y2="1" stroke="#2B5EA7" stroke-width="0.8" stroke-linecap="round"/>
+      <line x1="9" y1="4" x2="10.5" y2="1" stroke="#2B5EA7" stroke-width="0.8" stroke-linecap="round"/>
+      <circle cx="5.5" cy="1" r="0.7" fill="#D4A843"/>
+      <circle cx="10.5" cy="1" r="0.7" fill="#D4A843"/>
+    </g>
+  </g>
+</svg>
