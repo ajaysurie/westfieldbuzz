@@ -2,273 +2,105 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef, useEffect } from "react";
-import { useAuth } from "@/lib/auth";
+import { useEffect, useRef, useState } from "react";
 import { isUserAdmin } from "@/lib/admin";
+import { useAuth } from "@/lib/auth";
 
 export default function Nav() {
+  const pathname = usePathname();
+  const { user, photoURL, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const { user, photoURL, logout } = useAuth();
-  const pathname = usePathname();
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user?.email) {
-      isUserAdmin(user.email).then(setIsAdmin);
-    } else {
-      setIsAdmin(false);
-    }
+    if (user?.email) void isUserAdmin(user.email).then(setIsAdmin);
   }, [user]);
 
-  // Close profile dropdown on outside click
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+    function closeProfile(event: MouseEvent) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setProfileOpen(false);
       }
     }
     if (profileOpen) {
-      document.addEventListener("mousedown", handleClick);
-      return () => document.removeEventListener("mousedown", handleClick);
+      document.addEventListener("mousedown", closeProfile);
+      return () => document.removeEventListener("mousedown", closeProfile);
     }
   }, [profileOpen]);
 
-  const isActive = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/");
-
-  const navLinkClass = (href: string) =>
-    `text-[0.85rem] font-medium uppercase tracking-[0.04em] no-underline transition-colors ${
-      isActive(href) ? "text-accent" : "text-ink-muted hover:text-ink"
-    }`;
-
-  const mobileNavClass = (href: string) =>
-    `text-[0.9rem] font-medium no-underline py-1 ${
-      isActive(href) ? "text-accent" : "text-ink"
-    }`;
+  const links = [
+    { href: "/", label: "This week", active: pathname === "/" },
+    { href: "/events", label: "Calendar", active: pathname.startsWith("/events") },
+    { href: "/#friday-list", label: "Get the list", active: false },
+  ];
 
   return (
-    <nav
-      className="fixed top-0 left-0 right-0 z-50 flex h-[60px] items-center justify-between border-b border-black/8 px-12 max-md:px-6"
-      style={{ background: "var(--paper)", borderTop: "3px solid var(--accent)" }}
-    >
-      <Link href="/" className="flex items-center no-underline">
-        <img
-          src="/logo-v3-stacked-hero.svg"
-          alt="Westfield Buzz"
-          className="h-[48px] w-auto"
-        />
+    <nav className="site-nav" aria-label="Primary navigation">
+      <Link href="/" className="site-nav__brand">
+        <img src="/logo-v3-stacked-hero.svg" alt="Westfield Buzz" />
       </Link>
 
-      {/* Desktop links */}
-      <ul className="flex items-center gap-10 list-none max-md:hidden">
-        <li>
-          <Link href="/directory" className={navLinkClass("/directory")}>
-            Directory
-          </Link>
-        </li>
-        <li>
-          <Link href="/events" className={navLinkClass("/events")}>
-            Events
-          </Link>
-        </li>
-        <li>
-          <Link
-            href="/suggest"
-            className={`text-[0.85rem] font-semibold uppercase tracking-[0.04em] no-underline transition-colors ${
-              isActive("/suggest") ? "text-accent" : "text-accent hover:text-accent-light"
-            }`}
-          >
-            Suggest
-          </Link>
-        </li>
-        <li>
-          {user ? (
-            <div ref={profileRef} className="relative">
+      <ul className="site-nav__links">
+        {links.map((link) => (
+          <li key={link.href}>
+            <Link href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>
+          </li>
+        ))}
+        {user && (
+          <li>
+            <div ref={profileRef} className="profile-menu">
               <button
-                onClick={() => setProfileOpen(!profileOpen)}
-                className="flex items-center gap-2 cursor-pointer border-none bg-transparent p-0"
+                type="button"
+                className="profile-menu__trigger"
+                onClick={() => setProfileOpen((open) => !open)}
+                aria-expanded={profileOpen}
+                aria-label="Open account menu"
               >
                 {photoURL ? (
-                  <img
-                    src={photoURL}
-                    alt=""
-                    className="h-8 w-8 rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
+                  <img src={photoURL} alt="" referrerPolicy="no-referrer" />
                 ) : (
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[0.75rem] font-semibold text-white"
-                    style={{ background: "var(--accent)" }}
-                  >
-                    {(user.displayName || "U")[0]}
-                  </div>
+                  <span>{(user.displayName || "U")[0]}</span>
                 )}
               </button>
               {profileOpen && (
-                <div
-                  className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-black/8 bg-paper-pure p-3 shadow-md"
-                  style={{ zIndex: 100 }}
-                >
-                  <div className="mb-3 flex items-center gap-3 border-b border-black/6 pb-3">
-                    {photoURL ? (
-                      <img
-                        src={photoURL}
-                        alt=""
-                        className="h-10 w-10 rounded-full object-cover"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-full text-[0.85rem] font-semibold text-white"
-                        style={{ background: "var(--accent)" }}
-                      >
-                        {(user.displayName || "U")[0]}
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <div className="truncate text-[0.88rem] font-medium text-ink">
-                        {user.displayName || "User"}
-                      </div>
-                    </div>
-                  </div>
-                  <Link
-                    href="/account"
-                    className="block rounded-md px-3 py-2 text-[0.85rem] text-ink no-underline transition-colors hover:bg-paper-dark"
-                    onClick={() => setProfileOpen(false)}
-                  >
-                    My Profile
-                  </Link>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="block rounded-md px-3 py-2 text-[0.85rem] text-ink no-underline transition-colors hover:bg-paper-dark"
-                      onClick={() => setProfileOpen(false)}
-                    >
-                      Admin
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => {
-                      setProfileOpen(false);
-                      logout();
-                    }}
-                    className="w-full cursor-pointer rounded-md border-none bg-transparent px-3 py-2 text-left text-[0.85rem] text-ink transition-colors hover:bg-paper-dark"
-                  >
-                    Sign Out
-                  </button>
+                <div className="profile-menu__panel">
+                  <p>{user.displayName || "Your account"}</p>
+                  <Link href="/account" onClick={() => setProfileOpen(false)}>Account</Link>
+                  {user && isAdmin && <Link href="/admin" onClick={() => setProfileOpen(false)}>Admin</Link>}
+                  <button type="button" onClick={() => { setProfileOpen(false); void logout(); }}>Sign out</button>
                 </div>
               )}
             </div>
-          ) : (
-            <Link
-              href="/login"
-              className="text-[0.85rem] font-semibold uppercase tracking-[0.04em] no-underline transition-colors"
-              style={{ color: "var(--accent)" }}
-            >
-              Join
-            </Link>
-          )}
-        </li>
+          </li>
+        )}
       </ul>
 
-      {/* Mobile hamburger */}
       <button
-        className="hidden max-md:flex flex-col gap-1.5 bg-transparent border-none cursor-pointer p-1"
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label="Toggle menu"
+        type="button"
+        className="site-nav__menu"
+        onClick={() => setMobileOpen((open) => !open)}
+        aria-expanded={mobileOpen}
+        aria-controls="mobile-navigation"
+        aria-label="Toggle navigation menu"
       >
-        <span className="block w-5 h-0.5 rounded-full" style={{ background: "var(--ink)" }} />
-        <span className="block w-5 h-0.5 rounded-full" style={{ background: "var(--ink)" }} />
-        <span className="block w-5 h-0.5 rounded-full" style={{ background: "var(--ink)" }} />
+        <span /><span /><span />
       </button>
 
-      {/* Mobile menu */}
       {mobileOpen && (
-        <div
-          className="fixed top-[60px] left-0 right-0 border-b border-black/8 p-6 flex flex-col gap-3 md:hidden"
-          style={{ background: "var(--paper)" }}
-        >
-          <Link
-            href="/directory"
-            className={mobileNavClass("/directory")}
-            onClick={() => setMobileOpen(false)}
-          >
-            Directory
-          </Link>
-          <Link
-            href="/events"
-            className={mobileNavClass("/events")}
-            onClick={() => setMobileOpen(false)}
-          >
-            Events
-          </Link>
-          <Link
-            href="/suggest"
-            className={`text-[0.9rem] font-semibold no-underline py-1 ${
-              isActive("/suggest") ? "text-accent" : "text-accent"
-            }`}
-            onClick={() => setMobileOpen(false)}
-          >
-            Suggest a Business
-          </Link>
-          {user ? (
-            <>
-              <div className="mt-2 border-t border-black/6 pt-3 flex items-center gap-3">
-                {photoURL ? (
-                  <img
-                    src={photoURL}
-                    alt=""
-                    className="h-8 w-8 rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-[0.75rem] font-semibold text-white"
-                    style={{ background: "var(--accent)" }}
-                  >
-                    {(user.displayName || "U")[0]}
-                  </div>
-                )}
-                <span className="text-[0.88rem] font-medium text-ink">
-                  {user.displayName || "User"}
-                </span>
-              </div>
-              <Link
-                href="/account"
-                className="text-[0.9rem] font-medium text-ink no-underline py-1"
-                onClick={() => setMobileOpen(false)}
-              >
-                My Profile
-              </Link>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  className="text-[0.9rem] font-medium text-ink no-underline py-1"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Admin
-                </Link>
-              )}
-              <button
-                onClick={() => {
-                  setMobileOpen(false);
-                  logout();
-                }}
-                className="w-full cursor-pointer border-none bg-transparent p-0 py-1 text-left text-[0.9rem] font-medium text-ink"
-              >
-                Sign Out
-              </button>
-            </>
-          ) : (
-            <Link
-              href="/login"
-              className="text-[0.9rem] font-semibold text-accent no-underline py-1"
-              onClick={() => setMobileOpen(false)}
-            >
-              Join
+        <div id="mobile-navigation" className="site-nav__mobile">
+          {links.map((link) => (
+            <Link key={link.href} href={link.href} aria-current={link.active ? "page" : undefined} onClick={() => setMobileOpen(false)}>
+              {link.label}
             </Link>
+          ))}
+          {user && (
+            <>
+              <Link href="/account" onClick={() => setMobileOpen(false)}>Account</Link>
+              {user && isAdmin && <Link href="/admin" onClick={() => setMobileOpen(false)}>Admin</Link>}
+              <button type="button" onClick={() => { setMobileOpen(false); void logout(); }}>Sign out</button>
+            </>
           )}
         </div>
       )}

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/admin/", "/account"],
+        disallow: ["/admin/", "/account", "/directory", "/suggest"],
       },
     ],
     sitemap: "https://westfieldbuzz.com/sitemap.xml",
