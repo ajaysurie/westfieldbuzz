@@ -1,0 +1,12 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Westfield Schools//Events//EN
+BEGIN:VEVENT
+UID:school-123
+DTSTART;TZID=America/New_York:20260822T100000
+DTEND;TZID=America/New_York:20260822T110000
+SUMMARY:New Family Welcome
+DESCRIPTION:Meet teachers and other new families.
+LOCATION:Westfield High School
+END:VEVENT
+END:VCALENDAR
