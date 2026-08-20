@@ -16,7 +16,16 @@ vi.mock("@/lib/server/ingestion/lease", () => ({
 }));
 vi.mock("@/lib/server/ingestion/source-registry", () => ({
   isSourceGroup: (group: string) => group === "core-libraries",
-  sourcesForGroup: () => [],
+}));
+vi.mock("@/lib/server/ingestion/source-overrides", () => ({
+  resolvedSourcesForGroup: async () => ({ sources: [], warnings: [] }),
+}));
+vi.mock("@/lib/server/ingestion/community-config", () => ({
+  loadCommunityConfig: async () => ({
+    location: { origin: { latitude: 0, longitude: 0 }, radiusMiles: 10, places: {} },
+    horizonDays: 120,
+    warnings: [],
+  }),
 }));
 vi.mock("@/lib/server/ingestion/runner", () => ({
   makeIngestionWindow: vi.fn(() => ({ from: new Date(), to: new Date(), fromLocalDate: "2026-08-20", toLocalDate: "2026-09-19" })),

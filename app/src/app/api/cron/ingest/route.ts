@@ -6,10 +6,8 @@ import {
   acquireLease,
   releaseLeaseBestEffort,
 } from "@/lib/server/ingestion/lease";
-import {
-  isSourceGroup,
-  sourcesForGroup,
-} from "@/lib/server/ingestion/source-registry";
+import { isSourceGroup } from "@/lib/server/ingestion/source-registry";
+import { resolvedSourcesForGroup } from "@/lib/server/ingestion/source-overrides";
 import {
   makeIngestionWindow,
   runIngestion,
@@ -51,6 +49,7 @@ export async function GET(request: NextRequest) {
   // Horizon is configuration, not a constant: a 30 day window discarded the
   // town's largest annual events, and the right depth varies by community.
   const community = await loadCommunityConfig(db);
+  const resolved = await resolvedSourcesForGroup(db, group);
   const end = new Date(now);
   end.setDate(end.getDate() + community.horizonDays);
   const runId = randomUUID();
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
   try {
     const result = await runIngestion({
       db,
-      sources: sourcesForGroup(group),
+      sources: resolved.sources,
       window: makeIngestionWindow({
         fromLocalDate: localDate(now),
         toLocalDate: localDate(end),
