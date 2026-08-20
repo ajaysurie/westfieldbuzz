@@ -18,6 +18,8 @@ describe("default junk filter", () => {
       "Township Council Public Meeting",
       "Zoning Board Work Session",
       "Staff In-Service Day",
+      "Staff In-Services",
+      "In-Service",
       "Student Early Dismissal (PK-12)",
       "Teachers & Paraprofessionals Return",
       "Municipal Offices Closed - Thanksgiving",

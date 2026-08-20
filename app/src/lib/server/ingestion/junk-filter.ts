@@ -25,8 +25,8 @@ export const DEFAULT_JUNK_TITLE_PATTERNS: string[] = [
   "\\bcaucus\\b",
   "\\bagenda (meeting|session)\\b",
   // School operations
-  "\\bstaff (in-?service|development)\\b",
-  "\\bin-?service day\\b",
+  "\\bstaff (in-?services?|development)\\b",
+  "\\bin-?service(s)?\\b",
   "\\bprofessional development\\b",
   "\\bearly dismissal\\b",
   "\\b(half|full) day\\b",
