@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminDb } from "@/lib/server/firebase-admin";
+import {
+  transitionEventCandidate,
+  type CandidateReviewStatus,
+} from "@/lib/server/ingestion/candidate-lifecycle";
 
 type CandidateKind = "event" | "source";
 type ReviewAction = "approve" | "reject" | "suppress" | "resolve";
@@ -31,7 +35,51 @@ export async function POST(request: Request) {
     || !["approve", "reject", "suppress", "resolve"].includes(body.action ?? "")) {
     return NextResponse.json({ ok: false, message: "Invalid review request." }, { status: 400 });
   }
-  const collection = body.kind === "event" ? "eventCandidates" : "sourceCandidates";
+  // Event candidates go through the lifecycle transition, which validates the
+  // state machine and creates the published event in the same transaction.
+  // Stamping reviewStatus directly would mark a candidate approved while never
+  // publishing anything.
+  if (body.kind === "event") {
+    const target: CandidateReviewStatus | null = body.action === "approve" ? "approved"
+      : body.action === "reject" ? "rejected"
+        : body.action === "suppress" ? "suppressed" : null;
+    if (!target) {
+      return NextResponse.json(
+        { ok: false, message: "Event candidates accept approve, reject, or suppress." },
+        { status: 400 }
+      );
+    }
+    try {
+      const outcome = await transitionEventCandidate({
+        db: getAdminDb(),
+        candidateId: body.id,
+        to: target,
+        reviewer: actor.uid,
+        ...(body.note?.trim() ? { note: body.note.trim().slice(0, 500) } : {}),
+      });
+      return NextResponse.json({
+        ok: true,
+        kind: body.kind,
+        id: body.id,
+        reviewStatus: outcome.status,
+        ...(outcome.eventId ? { eventId: outcome.eventId } : {}),
+      });
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      if (reason === "candidate-not-found") {
+        return NextResponse.json({ ok: false, message: "Candidate not found." }, { status: 404 });
+      }
+      if (reason === "invalid-candidate-transition") {
+        return NextResponse.json(
+          { ok: false, message: "That review transition is not allowed from the candidate's current status." },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
+  }
+
+  const collection = "sourceCandidates";
   const ref = getAdminDb().collection(collection).doc(body.id);
   const snapshot = await ref.get();
   if (!snapshot.exists) return NextResponse.json({ ok: false, message: "Candidate not found." }, { status: 404 });
@@ -46,7 +94,7 @@ export async function POST(request: Request) {
     updatedAt: FieldValue.serverTimestamp(),
   }, { merge: true });
   // Deliberately no eventSources write here. A discovered source being
-  // approved means reviewed, not trusted to crawl; adding crawl policy remains
-  // an explicit configuration/repository change.
+  // approved means reviewed, not trusted to crawl; crawl trust is a separate
+  // explicit decision (see /api/admin/source-trust).
   return NextResponse.json({ ok: true, kind: body.kind, id: body.id, reviewStatus: status });
 }
