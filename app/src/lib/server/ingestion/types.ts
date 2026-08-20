@@ -7,6 +7,7 @@ export interface EventSourcePolicy {
     | "libcal"
     | "ical"
     | "civicplus-ical"
+    | "jsonld"
     | "squarespace-json"
     | "wordpress-mec-html"
     | "wordpress-tribe-json";

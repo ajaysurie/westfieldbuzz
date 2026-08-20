@@ -572,6 +572,140 @@ function finalize(
   };
 }
 
+/** schema.org event types we accept. Subtypes carry the same core fields. */
+const JSON_LD_EVENT_TYPES = new Set([
+  "event", "musicevent", "theaterevent", "socialevent", "festival",
+  "sportsevent", "educationevent", "comedyevent", "danceevent",
+  "exhibitionevent", "literaryevent", "screeningevent", "foodevent",
+  "childrensevent", "businessevent", "publicationevent",
+]);
+
+function isJsonLdEvent(value: UnknownRecord): boolean {
+  const raw = value["@type"];
+  const types = Array.isArray(raw) ? raw : [raw];
+  return types.some((entry) => JSON_LD_EVENT_TYPES.has(text(entry).toLowerCase()));
+}
+
+/**
+ * Publishers nest events inconsistently: bare objects, arrays, @graph, and
+ * ItemList/itemListElement wrappers all appear in the wild. Walking the whole
+ * document is more durable than encoding any one publisher's shape.
+ */
+function collectJsonLdEvents(value: unknown, found: UnknownRecord[], depth = 0): void {
+  if (depth > 8 || found.length >= 500) return;
+  if (Array.isArray(value)) {
+    for (const entry of value) collectJsonLdEvents(entry, found, depth + 1);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const node = value as UnknownRecord;
+  if (isJsonLdEvent(node)) found.push(node);
+  for (const key of ["@graph", "itemListElement", "item", "subEvent", "events"]) {
+    if (key in node) collectJsonLdEvents(node[key], found, depth + 1);
+  }
+}
+
+/** schema.org eventStatus and offer availability are namespaced URLs. */
+function schemaEnumTail(value: unknown): string {
+  return text(value).split("/").pop()?.toLowerCase() ?? "";
+}
+
+function jsonLdStatus(value: unknown): SourceObservation["status"] {
+  const tail = schemaEnumTail(value);
+  if (tail === "eventcancelled") return "cancelled";
+  if (tail === "eventpostponed") return "postponed";
+  if (tail === "eventrescheduled") return "rescheduled";
+  return "scheduled";
+}
+
+function jsonLdAvailability(offers: unknown): SourceObservation["availability"] {
+  const entries = Array.isArray(offers) ? offers : [offers];
+  for (const entry of entries) {
+    const tail = schemaEnumTail(record(entry).availability);
+    if (tail === "soldout") return "sold-out";
+    if (tail === "instock" || tail === "limitedavailability") return "available";
+    if (tail === "preorder" || tail === "backorder") return "registration-required";
+  }
+  return "unknown";
+}
+
+function jsonLdLocation(value: unknown): string {
+  const entries = Array.isArray(value) ? value : [value];
+  for (const entry of entries) {
+    const place = record(entry);
+    const name = text(place.name);
+    const address = record(place.address);
+    const street = text(address.streetAddress);
+    const locality = text(address.addressLocality);
+    const parts = [name, street, locality].filter(Boolean);
+    if (parts.length) return parts.join(", ");
+    if (typeof entry === "string" && entry.trim()) return entry.trim();
+  }
+  return "";
+}
+
+export function parseJsonLdPayload(
+  source: EventSourcePolicy,
+  html: string,
+  window: DateWindow
+): ParsedPayload {
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+  const blocks = html.match(
+    /<script\b[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi
+  ) ?? [];
+
+  const found: UnknownRecord[] = [];
+  for (const block of blocks) {
+    const body = block.replace(/^<script\b[^>]*>/i, "").replace(/<\/script>$/i, "");
+    try {
+      collectJsonLdEvents(JSON.parse(body), found);
+    } catch {
+      // One malformed block must not discard the others on the page.
+      errors.push("Malformed JSON-LD block skipped");
+    }
+  }
+
+  for (const node of found) {
+    const title = text(node.name);
+    const start = parseSourceDateTime(node.startDate, source.timezone);
+    const end = node.endDate ? parseSourceDateTime(node.endDate, source.timezone) : null;
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled JSON-LD event"}`);
+      continue;
+    }
+    if (end && invalidDate(end)) {
+      errors.push(`Invalid end date for ${title || "untitled JSON-LD event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    const url = text(node.url) || text(node["@id"]);
+    events.push({
+      title,
+      description: stripHtml(node.description),
+      date: start,
+      endDate: end,
+      location: jsonLdLocation(node.location) || source.name,
+      town: source.town,
+      category: mapCategory([title, text(record(node.superEvent).name), source.name]),
+      status: jsonLdStatus(node.eventStatus),
+      availability: jsonLdAvailability(node.offers),
+      sourceId: source.id,
+      // Prefer the publisher's own identifier so reruns reconcile instead of
+      // creating duplicates; fall back to start plus title only when absent.
+      sourceEventId: url || `fallback:${start.toISOString()}:${title}`,
+      sourceUrl: url || source.publicUrl || source.url,
+    });
+  }
+
+  return {
+    events,
+    errors,
+    // A page with no JSON-LD at all is a layout change, not an empty calendar.
+    layoutValid: blocks.length > 0,
+  };
+}
+
 export async function fetchSourceEvents(input: {
   source: EventSourcePolicy;
   window: DateWindow;
@@ -654,6 +788,16 @@ export async function fetchSourceEvents(input: {
     return finalize(
       source,
       parseSquarespacePayload(source, parseJson(response.text), window),
+      response.bytes,
+      response.finalUrl
+    );
+  }
+
+  if (source.type === "jsonld") {
+    const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
+    return finalize(
+      source,
+      parseJsonLdPayload(source, response.text, window),
       response.bytes,
       response.finalUrl
     );
