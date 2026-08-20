@@ -13,6 +13,9 @@ import {
   signInWithRedirect,
   getRedirectResult,
   linkWithPopup,
+  sendSignInLinkToEmail,
+  signInWithEmailLink,
+  isSignInWithEmailLink,
   signOut,
   type User,
 } from "firebase/auth";
@@ -25,8 +28,11 @@ interface AuthContextType {
   loading: boolean;
   loggingIn: boolean;
   authError: string;
+  emailLinkSent: boolean;
   loginWithFacebook: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  sendEmailLink: (email: string, returnTo?: string) => Promise<void>;
+  completeEmailLink: (email: string) => Promise<string>;
   linkFacebook: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -37,8 +43,11 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   loggingIn: false,
   authError: "",
+  emailLinkSent: false,
   loginWithFacebook: async () => {},
   loginWithGoogle: async () => {},
+  sendEmailLink: async () => {},
+  completeEmailLink: async () => "/",
   linkFacebook: async () => {},
   logout: async () => {},
 });
@@ -47,12 +56,21 @@ const isMobile =
   typeof navigator !== "undefined" &&
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
+const EMAIL_STORAGE_KEY = "westfieldbuzz:emailForSignIn";
+const RETURN_TO_STORAGE_KEY = "westfieldbuzz:returnTo";
+
+export function safeReturnTo(value: string | null | undefined): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
+  return value;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [photoURL, setPhotoURL] = useState("");
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [emailLinkSent, setEmailLinkSent] = useState(false);
 
   // Handle redirect result when returning from OAuth provider (mobile flow)
   useEffect(() => {
@@ -173,13 +191,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (code === "auth/popup-blocked") {
           setAuthError("Pop-up blocked. Please allow pop-ups for this site.");
         } else if (code === "auth/account-exists-with-different-credential") {
-          setAuthError("An account already exists with that email. Try signing in with Facebook instead, then link Google from your account page.");
+          setAuthError("An account already exists with that email. Use the same sign-in method you used before, or request an email sign-in link.");
         } else {
           setAuthError(`Sign-in failed: ${code || "unknown error"}`);
         }
       } finally {
         setLoggingIn(false);
       }
+    }
+  };
+
+  const sendEmailLink = async (email: string, returnTo = "/") => {
+    if (loggingIn) return;
+    setLoggingIn(true);
+    setEmailLinkSent(false);
+    setAuthError("");
+
+    try {
+      const safeDestination = safeReturnTo(returnTo);
+      const finishUrl = new URL("/auth/finish", window.location.origin);
+      finishUrl.searchParams.set("returnTo", safeDestination);
+      await sendSignInLinkToEmail(auth, email.trim(), {
+        url: finishUrl.toString(),
+        handleCodeInApp: true,
+      });
+      window.localStorage.setItem(EMAIL_STORAGE_KEY, email.trim());
+      window.localStorage.setItem(RETURN_TO_STORAGE_KEY, safeDestination);
+      setEmailLinkSent(true);
+    } catch (err) {
+      const code = (err as { code?: string }).code || "";
+      setAuthError(
+        code === "auth/invalid-email"
+          ? "Enter a valid email address."
+          : "We could not send the sign-in link. Please try again."
+      );
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
+  const completeEmailLink = async (email: string) => {
+    if (typeof window === "undefined" || !isSignInWithEmailLink(auth, window.location.href)) {
+      throw new Error("This sign-in link is invalid or has expired.");
+    }
+    setLoggingIn(true);
+    setAuthError("");
+    try {
+      await signInWithEmailLink(auth, email.trim(), window.location.href);
+      const destination = safeReturnTo(
+        window.localStorage.getItem(RETURN_TO_STORAGE_KEY) ||
+          new URL(window.location.href).searchParams.get("returnTo")
+      );
+      window.localStorage.removeItem(EMAIL_STORAGE_KEY);
+      window.localStorage.removeItem(RETURN_TO_STORAGE_KEY);
+      return destination;
+    } finally {
+      setLoggingIn(false);
     }
   };
 
@@ -207,7 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, photoURL, loading, loggingIn, authError, loginWithFacebook, loginWithGoogle, linkFacebook, logout }}>
+    <AuthContext.Provider value={{ user, photoURL, loading, loggingIn, authError, emailLinkSent, loginWithFacebook, loginWithGoogle, sendEmailLink, completeEmailLink, linkFacebook, logout }}>
       {children}
     </AuthContext.Provider>
   );

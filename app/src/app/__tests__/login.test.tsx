@@ -16,21 +16,24 @@ vi.mock("next/link", () => ({
 }));
 
 // Mock auth context
-const mockLoginWithFacebook = vi.fn();
 const mockLoginWithGoogle = vi.fn();
+const mockSendEmailLink = vi.fn();
 let mockAuthState = {
   user: null as unknown,
   loading: false,
   loggingIn: false,
   authError: "",
-  loginWithFacebook: mockLoginWithFacebook,
   loginWithGoogle: mockLoginWithGoogle,
+  sendEmailLink: mockSendEmailLink,
+  emailLinkSent: false,
   logout: vi.fn(),
   photoURL: "",
 };
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => mockAuthState,
+  safeReturnTo: (value: string | null | undefined) =>
+    value && value.startsWith("/") && !value.startsWith("//") ? value : "/",
 }));
 
 import LoginPage from "../login/page";
@@ -43,32 +46,34 @@ beforeEach(() => {
     loading: false,
     loggingIn: false,
     authError: "",
-    loginWithFacebook: mockLoginWithFacebook,
     loginWithGoogle: mockLoginWithGoogle,
+    sendEmailLink: mockSendEmailLink,
+    emailLinkSent: false,
     logout: vi.fn(),
     photoURL: "",
   };
 });
 
 describe("LoginPage", () => {
-  it("renders both Google and Facebook sign-in buttons", () => {
+  it("renders Google and email-link sign-in without Facebook", () => {
     const { container } = render(<LoginPage />);
     const buttons = container.querySelectorAll("button");
     expect(buttons).toHaveLength(2);
     expect(container).toHaveTextContent("Continue with Google");
-    expect(container).toHaveTextContent("Continue with Facebook");
+    expect(container).toHaveTextContent("Email me a sign-in link");
+    expect(container).not.toHaveTextContent("Continue with Facebook");
   });
 
-  it("renders 'or' divider between buttons", () => {
+  it("renders 'or' divider between sign-in methods", () => {
     const { container } = render(<LoginPage />);
     expect(container).toHaveTextContent("or");
   });
 
-  it("renders Google button before Facebook button", () => {
+  it("renders Google button before the email form", () => {
     const { container } = render(<LoginPage />);
     const buttons = container.querySelectorAll("button");
     expect(buttons[0]).toHaveTextContent("Continue with Google");
-    expect(buttons[1]).toHaveTextContent("Continue with Facebook");
+    expect(buttons[1]).toHaveTextContent("Email me a sign-in link");
   });
 
   it("calls loginWithGoogle when Google button is clicked", () => {
@@ -78,11 +83,11 @@ describe("LoginPage", () => {
     expect(mockLoginWithGoogle).toHaveBeenCalledTimes(1);
   });
 
-  it("calls loginWithFacebook when Facebook button is clicked", () => {
+  it("sends an email link with the entered address", () => {
     const { container } = render(<LoginPage />);
-    const facebookButton = container.querySelectorAll("button")[1];
-    fireEvent.click(facebookButton);
-    expect(mockLoginWithFacebook).toHaveBeenCalledTimes(1);
+    fireEvent.change(container.querySelector("input[type=email]")!, { target: { value: "ajay@example.com" } });
+    fireEvent.submit(container.querySelector("form")!);
+    expect(mockSendEmailLink).toHaveBeenCalledWith("ajay@example.com", "/");
   });
 
   it("disables both buttons when loggingIn is true", () => {
@@ -93,12 +98,12 @@ describe("LoginPage", () => {
     expect(buttons[1]).toBeDisabled();
   });
 
-  it("shows 'Signing in...' on both buttons when loggingIn", () => {
+  it("shows progress on both sign-in methods when loggingIn", () => {
     mockAuthState.loggingIn = true;
     const { container } = render(<LoginPage />);
     const buttons = container.querySelectorAll("button");
     expect(buttons[0]).toHaveTextContent("Signing in...");
-    expect(buttons[1]).toHaveTextContent("Signing in...");
+    expect(buttons[1]).toHaveTextContent("Sending link...");
   });
 
   it("displays auth error when present", () => {
@@ -119,23 +124,21 @@ describe("LoginPage", () => {
     expect(container.querySelectorAll("button")).toHaveLength(0);
   });
 
-  it("redirects to /directory when user is already logged in", () => {
+  it("redirects to home when user is already logged in without returnTo", () => {
     mockAuthState.user = { uid: "u1", displayName: "Test" };
     render(<LoginPage />);
-    expect(mockPush).toHaveBeenCalledWith("/directory");
+    expect(mockPush).toHaveBeenCalledWith("/");
   });
 
-  it("renders provider-neutral copy (no Facebook-specific language)", () => {
+  it("explains that sign-in is optional", () => {
     const { container } = render(<LoginPage />);
     const subtitle = container.querySelector("p");
-    expect(subtitle?.textContent).toContain("Sign in to recommend");
-    expect(subtitle?.textContent).not.toContain("Facebook");
+    expect(subtitle?.textContent).toContain("Sign in only if you want to save");
   });
 
   it("shows helpful message for duplicate-email credential conflict", () => {
-    mockAuthState.authError = "An account already exists with that email. Try signing in with Google instead, then link Facebook from your account page.";
+    mockAuthState.authError = "An account already exists with that email. Use the same sign-in method you used before, or request an email sign-in link.";
     const { container } = render(<LoginPage />);
-    expect(container).toHaveTextContent("Try signing in with Google");
-    expect(container).toHaveTextContent("link Facebook from your account page");
+    expect(container).toHaveTextContent("request an email sign-in link");
   });
 });

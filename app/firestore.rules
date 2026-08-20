@@ -61,6 +61,16 @@ service cloud.firestore {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if isAdmin();
+
+      match /savedEvents/{eventId} {
+        allow read, create, update, delete: if request.auth != null &&
+          (request.auth.uid == userId || isAdmin());
+      }
+
+      match /savedSearches/{searchId} {
+        allow read, create, update, delete: if request.auth != null &&
+          (request.auth.uid == userId || isAdmin());
+      }
     }
 
     // Public profiles: public read, owner write

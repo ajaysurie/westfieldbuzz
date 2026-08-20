@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, cleanup, fireEvent } from "@testing-library/react";
+import { render, cleanup } from "@testing-library/react";
 
 const mockPush = vi.fn();
 
@@ -7,7 +7,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-const mockLinkFacebook = vi.fn();
 const mockLogout = vi.fn();
 let mockAuthState: Record<string, unknown> = {};
 
@@ -35,33 +34,38 @@ beforeEach(() => {
     photoURL: "https://example.com/photo.jpg",
     loading: false,
     authError: "",
-    linkFacebook: mockLinkFacebook,
     logout: mockLogout,
   };
 });
 
-describe("AccountPage — linked accounts", () => {
+vi.mock("@/lib/personalization", () => ({
+  EMPTY_PREFERENCES: {
+    towns: ["Westfield"], driveMinutes: 20, childAges: [], interests: [], indoorPreference: "either", budgetMax: null, personalizeFriday: false,
+  },
+  getPreferences: vi.fn().mockResolvedValue({
+    towns: ["Westfield"], driveMinutes: 20, childAges: [], interests: [], indoorPreference: "either", budgetMax: null, personalizeFriday: false,
+  }),
+  savePreferences: vi.fn().mockResolvedValue(undefined),
+}));
+
+describe("AccountPage — preferences", () => {
   it("shows Google as a linked provider", () => {
     const { container } = render(<AccountPage />);
     expect(container).toHaveTextContent("Google");
   });
 
-  it("shows 'Link Facebook Account' button when Facebook is not linked", () => {
+  it("shows household preference controls", () => {
     const { container } = render(<AccountPage />);
-    expect(container).toHaveTextContent("Link Facebook Account");
+    expect(container).toHaveTextContent("Household preferences");
+    expect(container).toHaveTextContent("Save preferences");
   });
 
-  it("calls linkFacebook when link button is clicked", () => {
+  it("does not promote Facebook linking", () => {
     const { container } = render(<AccountPage />);
-    const linkBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.includes("Link Facebook")
-    );
-    expect(linkBtn).toBeTruthy();
-    fireEvent.click(linkBtn!);
-    expect(mockLinkFacebook).toHaveBeenCalledTimes(1);
+    expect(container).not.toHaveTextContent("Link Facebook Account");
   });
 
-  it("does not show link button when Facebook is already linked", () => {
+  it("still identifies an existing Facebook-linked account", () => {
     mockAuthState.user = {
       uid: "u1",
       displayName: "Test User",
@@ -73,16 +77,15 @@ describe("AccountPage — linked accounts", () => {
     };
     const { container } = render(<AccountPage />);
     expect(container).toHaveTextContent("Google");
-    expect(container).toHaveTextContent("Facebook");
+    expect(container).toHaveTextContent("Facebook (existing account)");
     const linkBtn = Array.from(container.querySelectorAll("button")).find(
       (b) => b.textContent?.includes("Link Facebook")
     );
     expect(linkBtn).toBeUndefined();
   });
 
-  it("shows auth error when linking fails", () => {
-    mockAuthState.authError = "That Facebook account is already linked to a different user.";
+  it("offers explicit Friday personalization opt-in", () => {
     const { container } = render(<AccountPage />);
-    expect(container).toHaveTextContent("already linked to a different user");
+    expect(container).toHaveTextContent("Personalize my Friday email");
   });
 });

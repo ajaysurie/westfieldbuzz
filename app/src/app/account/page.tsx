@@ -3,6 +3,22 @@
 import { useAuth } from "@/lib/auth";
 import AuthGate from "@/components/AuthGate";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import {
+  EMPTY_PREFERENCES,
+  getPreferences,
+  savePreferences,
+  type HouseholdPreferences,
+} from "@/lib/personalization";
+import type { EventCategory } from "@/lib/events/types";
+
+const INTEREST_OPTIONS: EventCategory[] = [
+  "Family & Kids",
+  "Arts & Culture",
+  "Sports & Recreation",
+  "Music",
+  "Food & Drink",
+];
 
 export default function AccountPage() {
   return (
@@ -13,13 +29,60 @@ export default function AccountPage() {
 }
 
 function AccountContent() {
-  const { user, photoURL, authError, linkFacebook, logout } = useAuth();
+  const { user, photoURL, logout } = useAuth();
   const router = useRouter();
-  const hasFacebook = user?.providerData?.some(p => p.providerId === "facebook.com");
+  const [preferences, setPreferences] = useState<HouseholdPreferences>(EMPTY_PREFERENCES);
+  const [townsInput, setTownsInput] = useState("Westfield");
+  const [agesInput, setAgesInput] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    if (!user) return;
+    getPreferences(user.uid)
+      .then((value) => {
+        setPreferences(value);
+        setTownsInput(value.towns.join(", "));
+        setAgesInput(value.childAges.join(", "));
+      })
+      .catch(() => setStatus("We could not load your preferences."));
+  }, [user]);
 
   const handleLogout = async () => {
     await logout();
     router.push("/");
+  };
+
+  const toggleInterest = (interest: EventCategory) => {
+    setPreferences((current) => ({
+      ...current,
+      interests: current.interests.includes(interest)
+        ? current.interests.filter((item) => item !== interest)
+        : [...current.interests, interest],
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    setStatus("");
+    const next: HouseholdPreferences = {
+      ...preferences,
+      towns: townsInput.split(",").map((town) => town.trim()).filter(Boolean),
+      childAges: agesInput
+        .split(",")
+        .map((age) => Number(age.trim()))
+        .filter((age) => Number.isInteger(age) && age >= 0 && age <= 18),
+    };
+    try {
+      await savePreferences(user.uid, next);
+      setPreferences(next);
+      setStatus("Preferences saved.");
+    } catch {
+      setStatus("We could not save your preferences. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -64,26 +127,52 @@ function AccountContent() {
           {user?.providerData?.map((p) => (
             <div key={p.providerId} className="flex items-center gap-2 text-[0.85rem] text-ink-light">
               <span className="inline-block h-2 w-2 rounded-full bg-green-500" />
-              {p.providerId === "google.com" ? "Google" : p.providerId === "facebook.com" ? "Facebook" : p.providerId}
+              {p.providerId === "google.com"
+                ? "Google"
+                : p.providerId === "facebook.com"
+                  ? "Facebook (existing account)"
+                  : p.providerId === "password"
+                    ? "Email link"
+                    : p.providerId}
             </div>
           ))}
-          {!hasFacebook && (
-            <button
-              onClick={linkFacebook}
-              className="mt-1 flex w-fit items-center gap-2 rounded-lg px-4 py-2 text-[0.82rem] font-medium text-white transition-all hover:-translate-y-0.5 hover:shadow-md"
-              style={{ background: "#1877F2" }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
-                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-              </svg>
-              Link Facebook Account
-            </button>
-          )}
         </div>
-        {authError && (
-          <p className="mt-2 text-[0.82rem] text-sienna">{authError}</p>
-        )}
       </div>
+
+      <section className="mb-8 rounded-[10px] border border-black/6 bg-paper-pure p-6">
+        <div className="mb-1 text-[0.72rem] font-bold uppercase tracking-[0.15em] text-accent">
+          Household preferences
+        </div>
+        <p className="mb-6 text-[0.86rem] leading-relaxed text-ink-light">
+          Optional. These improve saved searches and your Friday email; they never limit public browsing.
+        </p>
+
+        <label htmlFor="towns" className="mb-2 block text-[0.78rem] font-semibold text-ink-light">
+          Towns, separated by commas
+        </label>
+        <input id="towns" value={townsInput} onChange={(event) => setTownsInput(event.target.value)} className="mb-5 min-h-11 w-full rounded-lg border border-black/12 px-4 text-base outline-none focus:border-accent" />
+
+        <label htmlFor="ages" className="mb-2 block text-[0.78rem] font-semibold text-ink-light">
+          Children&apos;s ages, separated by commas
+        </label>
+        <input id="ages" inputMode="numeric" value={agesInput} onChange={(event) => setAgesInput(event.target.value)} className="mb-5 min-h-11 w-full rounded-lg border border-black/12 px-4 text-base outline-none focus:border-accent" placeholder="5, 8" />
+
+        <div className="mb-2 text-[0.78rem] font-semibold text-ink-light">Things you want more often</div>
+        <div className="mb-5 flex flex-wrap gap-2">
+          {INTEREST_OPTIONS.map((interest) => {
+            const selected = preferences.interests.includes(interest);
+            return <button key={interest} type="button" aria-pressed={selected} onClick={() => toggleInterest(interest)} className={`min-h-10 rounded-full border px-3.5 text-[0.8rem] font-medium ${selected ? "border-ink bg-ink text-paper-pure" : "border-black/12 bg-paper text-ink-light"}`}>{interest}</button>;
+          })}
+        </div>
+
+        <label className="mb-5 flex items-start gap-3 text-[0.84rem] leading-relaxed text-ink-light">
+          <input type="checkbox" checked={preferences.personalizeFriday} onChange={(event) => setPreferences((current) => ({ ...current, personalizeFriday: event.target.checked }))} className="mt-1 h-4 w-4" />
+          Personalize my Friday email. If there are not enough matches, send the generic list.
+        </label>
+
+        <button type="button" onClick={handleSave} disabled={saving} className="min-h-11 rounded-lg bg-ink px-5 text-[0.86rem] font-semibold text-paper-pure disabled:opacity-50">{saving ? "Saving..." : "Save preferences"}</button>
+        {status && <p role="status" className="mt-3 text-[0.82rem] text-ink-light">{status}</p>}
+      </section>
 
       <button
         onClick={handleLogout}

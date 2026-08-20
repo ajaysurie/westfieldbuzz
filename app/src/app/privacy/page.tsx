@@ -20,11 +20,11 @@ export default function PrivacyPage() {
       </h1>
       <div className="flex flex-col gap-6 text-[0.92rem] leading-[1.75] text-ink-light">
         <p>
-          <strong className="text-ink">Last updated:</strong> March 6, 2026
+          <strong className="text-ink">Last updated:</strong> August 19, 2026
         </p>
 
         <p>
-          Westfield Buzz is a community directory for Westfield, NJ residents.
+          Westfield Buzz is a local event guide for Westfield, NJ and nearby towns.
           This policy explains what data we collect, how we use it, and your
           rights.
         </p>
@@ -37,12 +37,18 @@ export default function PrivacyPage() {
             What We Collect
           </h2>
           <p>
-            When you sign in with Facebook, we receive your name, profile photo,
-            and email address. We use this to create your Westfield Buzz account
-            and display your name when you recommend a local business.
+            You can browse events and search without an account. If you sign in
+            with Google or an email link, we receive the account identifier,
+            name or photo the provider supplies, and verified email address.
+            If you choose to save them, we also store saved events, saved
+            searches, and household preferences such as towns, interests,
+            children&rsquo;s age ranges, budget, timing, or accessibility needs.
           </p>
           <p className="mt-2">
-            We also collect basic usage data through Vercel Analytics (page
+            Natural-language event requests are sent to our AI service to turn
+            them into search filters. Anonymous raw requests are not stored as
+            saved searches unless you explicitly save one. We also collect
+            basic usage data through Vercel Analytics (page
             views, device type, country). This data is anonymous and not tied to
             your account.
           </p>
@@ -56,8 +62,9 @@ export default function PrivacyPage() {
             How We Use Your Information
           </h2>
           <ul className="ml-5 list-disc flex flex-col gap-1">
-            <li>Display your name and photo on recommendations you make</li>
-            <li>Identify you as a Westfield community member</li>
+            <li>Find and rank source-backed events for your request</li>
+            <li>Save events, searches, and optional household preferences</li>
+            <li>Send the generic or personalized Friday email you request</li>
             <li>Improve the platform based on anonymous usage patterns</li>
           </ul>
           <p className="mt-2">
@@ -74,9 +81,11 @@ export default function PrivacyPage() {
             Data Storage
           </h2>
           <p>
-            Your data is stored securely in Google Firebase (Firestore). Only
-            your display name and profile photo are publicly visible. Your email
-            is private and only used for account identification.
+            Account data, preferences, saves, subscriptions, and delivery state
+            are stored in Google Firebase (Firestore). Preferences and saves
+            are private to your account and administrators. We keep operational
+            records only as long as needed for delivery, security, source
+            accuracy, and legal obligations.
           </p>
         </section>
 
@@ -85,13 +94,12 @@ export default function PrivacyPage() {
             className="mb-2 text-[1.15rem]"
             style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
           >
-            Facebook OAuth
+            Authentication
           </h2>
           <p>
-            We use Facebook Login for authentication only. We access your public
-            profile (name and photo) and email address. We do not post to your
-            Facebook account, access your friends list, or request any other
-            Facebook permissions.
+            Google and passwordless email links are the primary sign-in methods.
+            Existing Facebook-linked accounts may retain that provider during
+            migration, but Facebook is not required for browsing or new accounts.
           </p>
         </section>
 
@@ -103,7 +111,8 @@ export default function PrivacyPage() {
             Data Deletion
           </h2>
           <p>
-            You can request deletion of your account and all associated data at
+            You can request deletion of your account, saved searches, saved
+            events, and household preferences at
             any time. See our{" "}
             <a href="/data-deletion" style={{ color: "var(--accent)" }}>
               Data Deletion page
@@ -121,12 +130,16 @@ export default function PrivacyPage() {
           </h2>
           <ul className="ml-5 list-disc flex flex-col gap-1">
             <li>
-              <strong className="text-ink">Facebook Login</strong> &mdash; for
-              authentication only
+              <strong className="text-ink">Google Firebase</strong> &mdash; for
+              authentication and data storage
             </li>
             <li>
-              <strong className="text-ink">Google Firebase</strong> &mdash; for
-              data storage
+              <strong className="text-ink">OpenAI</strong> &mdash; to interpret
+              natural-language searches into structured filters
+            </li>
+            <li>
+              <strong className="text-ink">Resend</strong> &mdash; to deliver
+              requested Friday emails and process delivery status
             </li>
             <li>
               <strong className="text-ink">Vercel</strong> &mdash; for hosting
@@ -143,10 +156,11 @@ export default function PrivacyPage() {
             Children&rsquo;s Privacy
           </h2>
           <p>
-            Westfield Buzz is not directed at children under 13. We do not
-            knowingly collect personal information from children. If you believe
-            a child has provided us with personal data, please contact us and we
-            will delete it promptly.
+            Westfield Buzz is for adults and is not directed at children under
+            13. An adult may optionally save a child&rsquo;s age range to improve
+            event matching; we do not ask for a child&rsquo;s name, contact details,
+            account, or precise identity. If you believe a child has provided us
+            with personal data, contact us and we will delete it promptly.
           </p>
         </section>
 
