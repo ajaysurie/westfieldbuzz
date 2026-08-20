@@ -4,6 +4,10 @@ import {
   locationPolicyFromConfig,
   type LocationPolicy,
 } from "./location-guard";
+import {
+  DEFAULT_JUNK_TITLE_PATTERNS,
+  junkPatternsFromConfig,
+} from "./junk-filter";
 
 /**
  * Runtime configuration for the community this deployment serves.
@@ -35,12 +39,15 @@ export interface CommunityConfig {
   location: LocationPolicy;
   /** Days ahead of now that ingestion should collect. */
   horizonDays: number;
+  /** Cross-source title patterns that mark an entry as not a real event. */
+  junkTitlePatterns: string[];
   warnings: string[];
 }
 
 export const DEFAULT_COMMUNITY_CONFIG: CommunityConfig = {
   location: DEFAULT_LOCATION_POLICY,
   horizonDays: DEFAULT_HORIZON_DAYS,
+  junkTitlePatterns: DEFAULT_JUNK_TITLE_PATTERNS,
   warnings: [],
 };
 
@@ -62,10 +69,12 @@ export async function loadCommunityConfig(db: Firestore): Promise<CommunityConfi
     const data = snapshot.data() ?? {};
     const { policy, warnings } = locationPolicyFromConfig(data);
     const horizon = horizonFromConfig((data as Record<string, unknown>).horizonDays);
+    const junk = junkPatternsFromConfig((data as Record<string, unknown>).junkTitlePatterns);
     return {
       location: policy,
       horizonDays: horizon.days,
-      warnings: horizon.warning ? [...warnings, horizon.warning] : warnings,
+      junkTitlePatterns: junk.patterns,
+      warnings: [...warnings, ...(horizon.warning ? [horizon.warning] : []), ...junk.warnings],
     };
   } catch (error) {
     // Configuration is an optimisation over the defaults, never a dependency.

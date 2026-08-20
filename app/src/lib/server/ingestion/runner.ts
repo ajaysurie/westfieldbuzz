@@ -6,6 +6,7 @@ import {
 } from "firebase-admin/firestore";
 import { checkLocation, type LocationPolicy } from "./location-guard";
 import { loadCommunityConfig, type CommunityConfig } from "./community-config";
+import { compileJunkMatchers, matchesJunk } from "./junk-filter";
 import { fetchSourceEvents } from "./adapters";
 import type { FetchImplementation } from "./safe-fetch";
 import { reconcileSource } from "./firestore-repository";
@@ -160,27 +161,35 @@ async function persistSourceHealth(input: {
  * only "Community Room"), fall back to the source's configured town rather than
  * discarding it, so existing single-town feeds are unaffected.
  */
-function filterByLocation(
+function filterObservations(
   source: EventSourcePolicy,
   observations: SourceObservation[],
-  policy: LocationPolicy
+  policy: LocationPolicy,
+  junkMatchers: RegExp[]
 ): { kept: SourceObservation[]; warnings: string[] } {
   const kept: SourceObservation[] = [];
-  const rejected: string[] = [];
+  const outOfArea: string[] = [];
+  const junk: string[] = [];
   for (const observation of observations) {
+    // Cross-source junk (board meetings, closures, recycling zones) is stripped
+    // before the location check so it never reaches the calendar or the queue.
+    if (matchesJunk(observation.title ?? "", junkMatchers)) {
+      junk.push(observation.title || "(untitled)");
+      continue;
+    }
     let verdict = checkLocation({ location: observation.location ?? "", policy });
     if (verdict.status === "unknown") {
       verdict = checkLocation({ location: observation.town ?? source.town ?? "", policy });
     }
     if (verdict.status === "too-far") {
-      rejected.push(`${observation.title} (${verdict.place}, ${verdict.miles.toFixed(1)} mi)`);
+      outOfArea.push(`${observation.title} (${verdict.place}, ${verdict.miles.toFixed(1)} mi)`);
       continue;
     }
     kept.push(observation);
   }
-  const warnings = rejected.length
-    ? [`Filtered ${rejected.length} out-of-area event(s): ${rejected.slice(0, 5).join("; ")}`]
-    : [];
+  const warnings: string[] = [];
+  if (junk.length) warnings.push(`Filtered ${junk.length} non-event title(s): ${junk.slice(0, 5).join("; ")}`);
+  if (outOfArea.length) warnings.push(`Filtered ${outOfArea.length} out-of-area event(s): ${outOfArea.slice(0, 5).join("; ")}`);
   return { kept, warnings };
 }
 
@@ -193,6 +202,7 @@ async function runSource(input: {
   fetchImpl?: FetchImplementation;
   deadlineAt?: Date;
   locationPolicy: LocationPolicy;
+  junkMatchers: RegExp[];
 }): Promise<SourceRunResult> {
   const started = Date.now();
   let result: SourceRunResult;
@@ -211,7 +221,7 @@ async function runSource(input: {
     });
     const errors = anomaly ? [...fetched.errors, anomaly] : fetched.errors;
     const complete = fetched.complete && !anomaly;
-    const local = filterByLocation(input.source, fetched.events, input.locationPolicy);
+    const local = filterObservations(input.source, fetched.events, input.locationPolicy, input.junkMatchers);
     const reconciliation = await reconcileSource({
       db: input.db,
       source: input.source,
@@ -376,6 +386,7 @@ export async function runIngestion(input: {
   // passes it in rather than paying for a second read.
   const community = input.community ?? await loadCommunityConfig(input.db);
   warnings.push(...community.warnings);
+  const junkMatchers = compileJunkMatchers(community.junkTitlePatterns);
 
   const sourceResults = new Array<SourceRunResult | undefined>(input.sources.length);
   let nextSource = 0;
@@ -387,7 +398,9 @@ export async function runIngestion(input: {
       if (index >= input.sources.length) return;
       const source = input.sources[index];
       const result = await runSource({
-        ...input, source, checkedAt, locationPolicy: community.location,
+        ...input, source, checkedAt,
+        locationPolicy: community.location,
+        junkMatchers,
       });
       sourceResults[index] = result;
       if (input.write) {
