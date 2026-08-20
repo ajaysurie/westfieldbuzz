@@ -35,6 +35,27 @@ service cloud.firestore {
       }
     }
 
+    // Ingestion evidence, review candidates, and run ledgers are never public.
+    match /eventSources/{sourceRecordId} {
+      allow read, write: if isAdmin();
+
+      match /revisions/{revisionId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    match /eventCandidates/{candidateId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /crawlRuns/{runId} {
+      allow read, write: if isAdmin();
+
+      match /sources/{sourceId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
     // Users: private, owner + admin read/write
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());

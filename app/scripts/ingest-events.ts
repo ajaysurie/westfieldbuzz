@@ -1,8 +1,8 @@
 /**
  * Event Ingestion Pipeline
  *
- * Fetches events from public sources (LibCal, CivicPlus iCal) and writes
- * them to Firestore, deduplicating by sourceId + sourceEventId.
+ * Fetches events from approved public sources and reconciles them against
+ * Firestore so changed times, cancellations, and missing events propagate.
  *
  * Usage:
  *   npx tsx scripts/ingest-events.ts                    # Dry run against westfieldbuzz-dev
@@ -14,20 +14,18 @@
 import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { EVENT_SOURCES, mapCategory, type EventSource } from "./event-sources";
+import { reconcileSource } from "../src/lib/server/ingestion/firestore-repository";
+import { parseSourceDateTime } from "../src/lib/server/ingestion/time";
+import type { SourceObservation } from "../src/lib/server/ingestion/types";
 
 // ===== Types =====
 
-interface IngestedEvent {
-  title: string;
-  description: string;
-  date: Date;
-  endDate: Date | null;
-  location: string;
-  category: string;
-  sourceId: string;
-  sourceEventId: string;
-  sourceUrl: string;
-  town: string;
+type IngestedEvent = SourceObservation;
+
+interface FetchResult {
+  events: IngestedEvent[];
+  complete: boolean;
+  errors: string[];
 }
 
 // ===== CLI Args =====
@@ -82,8 +80,10 @@ async function fetchLibCalEvents(
   source: EventSource,
   from: string,
   to: string
-): Promise<IngestedEvent[]> {
+): Promise<FetchResult> {
   const events: IngestedEvent[] = [];
+  const fromBoundary = parseSourceDateTime(`${from} 00:00:00`, source.timezone);
+  const toBoundary = parseSourceDateTime(`${to} 23:59:59`, source.timezone);
   let page = 1;
   let hasMore = true;
 
@@ -93,8 +93,7 @@ async function fetchLibCalEvents(
 
     const res = await fetch(url);
     if (!res.ok) {
-      console.error(`  HTTP ${res.status} from ${url}`);
-      break;
+      throw new Error(`HTTP ${res.status} from ${url}`);
     }
 
     const data = await res.json();
@@ -120,13 +119,22 @@ async function fetchLibCalEvents(
         continue;
       }
 
-      // LibCal startdt format is "2026-03-13 10:00:00" (no timezone) — add T separator for reliable parsing
-      const startDate = new Date(String(startRaw).replace(" ", "T"));
-      const endDate = endRaw ? new Date(String(endRaw).replace(" ", "T")) : null;
+      const startDate = parseSourceDateTime(startRaw, source.timezone);
+      let endDate = endRaw
+        ? parseSourceDateTime(endRaw, source.timezone)
+        : null;
+      if (Number.isNaN(startDate.getTime())) {
+        console.warn(`  Skipping event "${evt.title}" — invalid start date`);
+        continue;
+      }
+      if (endDate && Number.isNaN(endDate.getTime())) {
+        console.warn(`  Ignoring invalid end date for "${evt.title}"`);
+        endDate = null;
+      }
 
       // Filter by date range
-      if (startDate > new Date(to + "T23:59:59")) continue;
-      if (endDate && endDate < new Date(from + "T00:00:00")) continue;
+      if (startDate > toBoundary) continue;
+      if (endDate && endDate < fromBoundary) continue;
 
       // Extract categories from various LibCal fields
       const categories: string[] = [];
@@ -156,8 +164,17 @@ async function fetchLibCalEvents(
         endDate,
         location: evt.location?.name || evt.location || source.name,
         category: mapCategory(categories),
+        status: String(evt.status ?? "").toLowerCase().includes("cancel")
+          ? "cancelled"
+          : "scheduled",
+        availability: "unknown",
         sourceId: source.id,
-        sourceEventId: String(evt.id),
+        sourceEventId:
+          evt.id != null
+            ? String(evt.id)
+            : `fallback:${startDate.toISOString()}:${stripHtml(evt.title || "")}:${
+                evt.location?.name || evt.location || source.name
+              }`,
         sourceUrl: evt.url?.public || evt.url || "",
         town: source.town,
       });
@@ -167,15 +184,24 @@ async function fetchLibCalEvents(
     if (eventList.length < 50) hasMore = false;
   }
 
-  return events;
+  return { events, complete: true, errors: [] };
 }
 
 // ===== CivicPlus iCal Fetcher =====
 
-async function fetchICalEvents(source: EventSource): Promise<IngestedEvent[]> {
+async function fetchICalEvents(source: EventSource): Promise<FetchResult> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const nodeIcal = require("node-ical");
   const events: IngestedEvent[] = [];
+  const errors: string[] = [];
+  const fromBoundary = parseSourceDateTime(
+    `${fromDate} 00:00:00`,
+    source.timezone
+  );
+  const toBoundary = parseSourceDateTime(
+    `${toDate} 23:59:59`,
+    source.timezone
+  );
 
   for (const catId of source.calendarIds || []) {
     const url = `${source.url}?catID=${catId}&feed=calendar`;
@@ -198,11 +224,9 @@ async function fetchICalEvents(source: EventSource): Promise<IngestedEvent[]> {
         }
 
         // Filter by date range
-        const fromD = new Date(fromDate + "T00:00:00");
-        const toD = new Date(toDate + "T23:59:59");
-        if (startDate > toD) continue;
-        if (endDate && endDate < fromD) continue;
-        if (!endDate && startDate < fromD) continue;
+        if (startDate > toBoundary) continue;
+        if (endDate && endDate < fromBoundary) continue;
+        if (!endDate && startDate < fromBoundary) continue;
 
         events.push({
           title: (evt.summary || "").trim(),
@@ -211,6 +235,10 @@ async function fetchICalEvents(source: EventSource): Promise<IngestedEvent[]> {
           endDate,
           location: (evt.location || "").trim(),
           category: mapCategory([source.name]),
+          status: String(evt.status ?? "").toUpperCase() === "CANCELLED"
+            ? "cancelled"
+            : "scheduled",
+          availability: "unknown",
           sourceId: source.id,
           sourceEventId: evt.uid || key,
           sourceUrl: "",
@@ -219,29 +247,13 @@ async function fetchICalEvents(source: EventSource): Promise<IngestedEvent[]> {
       }
     } catch (err) {
       console.error(`  Error fetching iCal for ${source.name} catID=${catId}:`, err);
+      errors.push(
+        `catID=${catId}: ${err instanceof Error ? err.message : String(err)}`
+      );
     }
   }
 
-  return events;
-}
-
-// ===== Deduplication =====
-
-async function getExistingSourceEventIds(sourceId: string): Promise<Set<string>> {
-  const snap = await db
-    .collection("events")
-    .where("sourceId", "==", sourceId)
-    .select("sourceEventId")
-    .get();
-
-  const ids = new Set<string>();
-  for (const doc of snap.docs) {
-    const data = doc.data();
-    if (data.sourceEventId) {
-      ids.add(data.sourceEventId);
-    }
-  }
-  return ids;
+  return { events, complete: errors.length === 0, errors };
 }
 
 // ===== Main =====
@@ -254,98 +266,164 @@ async function main() {
   console.log("");
 
   let totalFetched = 0;
-  let totalNew = 0;
-  let totalSkipped = 0;
+  let totalCreated = 0;
+  let totalUpdated = 0;
+  let totalVerified = 0;
+  let totalMissing = 0;
+  let totalStale = 0;
+  let totalCandidates = 0;
   let totalErrors = 0;
+
+  const runRef = db.collection("crawlRuns").doc();
+  if (isWrite) {
+    await runRef.set({
+      status: "running",
+      database: dbName,
+      fromDate,
+      toDate,
+      sourceCount: EVENT_SOURCES.length,
+      startedAt: FieldValue.serverTimestamp(),
+    });
+  }
 
   for (const source of EVENT_SOURCES) {
     console.log(`\n[${source.id}] ${source.name} (${source.type})`);
 
-    let events: IngestedEvent[] = [];
+    let result: FetchResult;
     try {
       if (source.type === "libcal") {
-        events = await fetchLibCalEvents(source, fromDate, toDate);
+        result = await fetchLibCalEvents(source, fromDate, toDate);
       } else if (source.type === "civicplus-ical") {
-        events = await fetchICalEvents(source);
+        result = await fetchICalEvents(source);
+      } else {
+        throw new Error(`Unsupported source type: ${source.type}`);
       }
     } catch (err) {
       console.error(`  Fatal error fetching ${source.name}:`, err);
       totalErrors++;
+      if (isWrite) {
+        await runRef.collection("sources").doc(source.id).set({
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+          finishedAt: FieldValue.serverTimestamp(),
+        });
+      }
       continue;
     }
 
+    const { events } = result;
     console.log(`  Fetched ${events.length} events`);
     totalFetched += events.length;
 
-    if (events.length === 0) continue;
+    if (!result.complete) {
+      console.warn("  Source fetch incomplete; missing-event aging is disabled");
+      totalErrors += result.errors.length;
+    }
 
-    // Deduplicate against Firestore
-    let existingIds: Set<string>;
     try {
-      existingIds = await getExistingSourceEventIds(source.id);
-    } catch (err) {
-      console.error(`  Error querying existing events for ${source.id}:`, err);
-      totalErrors++;
-      continue;
-    }
-
-    const newEvents = events.filter((e) => !existingIds.has(e.sourceEventId));
-    const skipped = events.length - newEvents.length;
-    totalSkipped += skipped;
-
-    if (skipped > 0) {
-      console.log(`  Skipped ${skipped} duplicates`);
-    }
-
-    console.log(`  New events: ${newEvents.length}`);
-
-    for (const evt of newEvents) {
-      const dateStr = evt.date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
+      const reconciliation = await reconcileSource({
+        db,
+        source,
+        observations: events,
+        checkedAt: new Date(),
+        from: parseSourceDateTime(`${fromDate} 00:00:00`, source.timezone),
+        to: parseSourceDateTime(`${toDate} 23:59:59`, source.timezone),
+        complete: result.complete,
+        write: isWrite,
       });
-      console.log(`    + [${dateStr}] ${evt.title}`);
+
+      totalCreated += reconciliation.created;
+      totalUpdated += reconciliation.updated;
+      totalVerified += reconciliation.verified;
+      totalMissing += reconciliation.missing;
+      totalStale += reconciliation.stale;
+      totalCandidates += reconciliation.candidates;
+      if (reconciliation.safetyHeld) {
+        totalErrors++;
+        console.warn(
+          "  Empty-result safety hold: existing events were not aged as missing"
+        );
+      }
+
+      console.log(
+        `  Reconciled: ${reconciliation.created} created, ${reconciliation.updated} updated, ` +
+          `${reconciliation.verified} verified, ${reconciliation.missing} missing, ` +
+          `${reconciliation.stale} stale, ${reconciliation.candidates} candidates`
+      );
+
+      for (const action of reconciliation.actions) {
+        const marker =
+          action.type === "create"
+            ? "+"
+            : action.type === "update"
+              ? "~"
+              : action.type === "stale"
+                ? "!"
+                : "·";
+        console.log(`    ${marker} [${action.type}] ${action.event.title}`);
+      }
 
       if (isWrite) {
-        try {
-          const ref = db.collection("events").doc();
-          await ref.set({
-            title: evt.title,
-            description: evt.description,
-            date: evt.date,
-            endDate: evt.endDate,
-            location: evt.location,
-            category: evt.category,
-            sourceId: evt.sourceId,
-            sourceEventId: evt.sourceEventId,
-            sourceUrl: evt.sourceUrl,
-            town: evt.town,
-            interestedCount: 0,
-            createdBy: "ingest",
-            createdAt: FieldValue.serverTimestamp(),
-          });
-          totalNew++;
-        } catch (err) {
-          console.error(`    Error writing "${evt.title}":`, err);
-          totalErrors++;
-        }
-      } else {
-        totalNew++;
+        await runRef.collection("sources").doc(source.id).set({
+          status:
+            result.complete && !reconciliation.safetyHeld
+              ? "success"
+              : "partial",
+          fetched: events.length,
+          created: reconciliation.created,
+          updated: reconciliation.updated,
+          verified: reconciliation.verified,
+          missing: reconciliation.missing,
+          stale: reconciliation.stale,
+          candidates: reconciliation.candidates,
+          errors: result.errors,
+          safetyHeld: reconciliation.safetyHeld,
+          finishedAt: FieldValue.serverTimestamp(),
+        });
+      }
+    } catch (err) {
+      console.error(`  Error reconciling events for ${source.id}:`, err);
+      totalErrors++;
+      if (isWrite) {
+        await runRef.collection("sources").doc(source.id).set({
+          status: "failed",
+          error: err instanceof Error ? err.message : String(err),
+          finishedAt: FieldValue.serverTimestamp(),
+        });
       }
     }
   }
 
-  // Summary
   console.log("\n=== Summary ===");
   console.log(`  Sources processed: ${EVENT_SOURCES.length}`);
   console.log(`  Events fetched:    ${totalFetched}`);
-  console.log(`  Duplicates skipped: ${totalSkipped}`);
-  console.log(`  New events:        ${totalNew}`);
+  console.log(`  Events created:    ${totalCreated}`);
+  console.log(`  Events updated:    ${totalUpdated}`);
+  console.log(`  Events verified:   ${totalVerified}`);
+  console.log(`  Events missing:    ${totalMissing}`);
+  console.log(`  Events stale:      ${totalStale}`);
+  console.log(`  Review candidates: ${totalCandidates}`);
   if (totalErrors > 0) {
     console.log(`  Errors:            ${totalErrors}`);
   }
   if (!isWrite) {
     console.log("\n  (Dry run — no events written. Use --write to persist.)");
+  } else {
+    await runRef.set(
+      {
+        status: totalErrors > 0 ? "partial" : "success",
+        fetched: totalFetched,
+        created: totalCreated,
+        updated: totalUpdated,
+        verified: totalVerified,
+        missing: totalMissing,
+        stale: totalStale,
+        candidates: totalCandidates,
+        errorCount: totalErrors,
+        finishedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
   }
 
   process.exit(totalErrors > 0 ? 1 : 0);

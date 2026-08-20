@@ -1,13 +1,8 @@
-export interface EventSource {
-  id: string;
-  name: string;
-  type: "libcal" | "civicplus-ical";
-  url: string;
-  calendarId?: string;
-  calendarIds?: number[];
-  town: string;
-  autoApprove: boolean;
-}
+import { normalizeCategory } from "../src/lib/events/normalize";
+import type { EventCategory } from "../src/lib/events/types";
+import type { EventSourcePolicy } from "../src/lib/server/ingestion/types";
+
+export type EventSource = EventSourcePolicy;
 
 export const EVENT_SOURCES: EventSource[] = [
   {
@@ -17,7 +12,9 @@ export const EVENT_SOURCES: EventSource[] = [
     url: "https://events.wmlnj.org/ajax/calendar/list",
     calendarId: "15909",
     town: "Westfield",
+    timezone: "America/New_York",
     autoApprove: true,
+    missingGraceRuns: 2,
   },
   {
     id: "summit-libcal",
@@ -26,7 +23,9 @@ export const EVENT_SOURCES: EventSource[] = [
     url: "https://summitlibrary.libcal.com/ajax/calendar/list",
     calendarId: "12857",
     town: "Summit",
+    timezone: "America/New_York",
     autoApprove: true,
+    missingGraceRuns: 2,
   },
   {
     id: "westfield-gov-downtown",
@@ -35,7 +34,9 @@ export const EVENT_SOURCES: EventSource[] = [
     url: "https://www.westfieldnj.gov/common/modules/iCalendar/iCalendar.aspx",
     calendarIds: [44],
     town: "Westfield",
+    timezone: "America/New_York",
     autoApprove: true,
+    missingGraceRuns: 2,
   },
   {
     id: "westfield-gov-municipal",
@@ -44,7 +45,9 @@ export const EVENT_SOURCES: EventSource[] = [
     url: "https://www.westfieldnj.gov/common/modules/iCalendar/iCalendar.aspx",
     calendarIds: [25],
     town: "Westfield",
+    timezone: "America/New_York",
     autoApprove: true,
+    missingGraceRuns: 2,
   },
   {
     id: "westfield-gov-recreation",
@@ -53,12 +56,14 @@ export const EVENT_SOURCES: EventSource[] = [
     url: "https://www.westfieldnj.gov/common/modules/iCalendar/iCalendar.aspx",
     calendarIds: [46],
     town: "Westfield",
+    timezone: "America/New_York",
     autoApprove: true,
+    missingGraceRuns: 2,
   },
 ];
 
 // Map source categories to WestfieldBuzz event categories
-export const CATEGORY_MAP: Record<string, string> = {
+export const CATEGORY_MAP: Record<string, EventCategory> = {
   // LibCal
   "Children": "Family & Kids",
   "Children's": "Family & Kids",
@@ -76,10 +81,12 @@ export const CATEGORY_MAP: Record<string, string> = {
   "General": "Community",
 };
 
-export function mapCategory(sourceCategories: string[]): string {
+export function mapCategory(sourceCategories: string[]): EventCategory {
   for (const cat of sourceCategories) {
     const mapped = CATEGORY_MAP[cat];
     if (mapped) return mapped;
+    const normalized = normalizeCategory(cat);
+    if (normalized !== "Community") return normalized;
   }
   return "Community"; // default
 }

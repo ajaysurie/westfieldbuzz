@@ -2,11 +2,13 @@
   "firestore": [
     {
       "database": "westfieldbuzz-dev",
-      "rules": "firestore.rules"
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
     },
     {
       "database": "westfieldbuzz-prod",
-      "rules": "firestore.rules"
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
     }
   ]
 }

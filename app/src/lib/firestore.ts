@@ -17,6 +17,11 @@ import {
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import type {
+  EventAvailability,
+  EventFreshness,
+  EventStatus,
+} from "./events/types";
 
 // ===== Types =====
 
@@ -53,6 +58,15 @@ export interface Event {
   sourceId?: string;
   sourceEventId?: string;
   sourceUrl?: string;
+  town?: string;
+  status?: EventStatus;
+  availability?: EventAvailability;
+  publicationStatus?: "published";
+  freshnessStatus?: EventFreshness;
+  lastSeenAt?: Timestamp;
+  lastVerifiedAt?: Timestamp;
+  missingSince?: Timestamp | null;
+  missingRunCount?: number;
 }
 
 export interface SuggestedService {
