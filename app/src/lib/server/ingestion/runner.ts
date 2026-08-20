@@ -4,12 +4,14 @@ import {
   Timestamp,
   type Firestore,
 } from "firebase-admin/firestore";
+import { checkLocation } from "./location-guard";
 import { fetchSourceEvents } from "./adapters";
 import type { FetchImplementation } from "./safe-fetch";
 import { reconcileSource } from "./firestore-repository";
 import { parseSourceDateTime } from "./time";
 import type {
   EventSourcePolicy,
+  SourceObservation,
   SourceRunResult,
 } from "./types";
 
@@ -148,6 +150,38 @@ async function persistSourceHealth(input: {
   );
 }
 
+/**
+ * Drop observations whose own stated location is outside the community radius.
+ *
+ * The pipeline stamps `town` from source configuration, so without this a
+ * regional listing page produces out-of-area events labelled as local. When an
+ * event's location text does not resolve (common for official feeds that say
+ * only "Community Room"), fall back to the source's configured town rather than
+ * discarding it, so existing single-town feeds are unaffected.
+ */
+function filterByLocation(
+  source: EventSourcePolicy,
+  observations: SourceObservation[]
+): { kept: SourceObservation[]; warnings: string[] } {
+  const kept: SourceObservation[] = [];
+  const rejected: string[] = [];
+  for (const observation of observations) {
+    let verdict = checkLocation({ location: observation.location ?? "" });
+    if (verdict.status === "unknown") {
+      verdict = checkLocation({ location: observation.town ?? source.town ?? "" });
+    }
+    if (verdict.status === "too-far") {
+      rejected.push(`${observation.title} (${verdict.place}, ${verdict.miles.toFixed(1)} mi)`);
+      continue;
+    }
+    kept.push(observation);
+  }
+  const warnings = rejected.length
+    ? [`Filtered ${rejected.length} out-of-area event(s): ${rejected.slice(0, 5).join("; ")}`]
+    : [];
+  return { kept, warnings };
+}
+
 async function runSource(input: {
   db: Firestore;
   source: EventSourcePolicy;
@@ -174,10 +208,11 @@ async function runSource(input: {
     });
     const errors = anomaly ? [...fetched.errors, anomaly] : fetched.errors;
     const complete = fetched.complete && !anomaly;
+    const local = filterByLocation(input.source, fetched.events);
     const reconciliation = await reconcileSource({
       db: input.db,
       source: input.source,
-      observations: fetched.events,
+      observations: local.kept,
       checkedAt: input.checkedAt,
       from: input.window.from,
       to: input.window.to,
@@ -198,7 +233,7 @@ async function runSource(input: {
       candidates: reconciliation.candidates,
       safetyHeld: reconciliation.safetyHeld || Boolean(anomaly),
       errors,
-      warnings: fetched.warnings,
+      warnings: [...fetched.warnings, ...local.warnings],
       ...("incomplete" in reconciliation && reconciliation.incomplete ? { incomplete: true, warnings: [...fetched.warnings, "Deadline reached; only committed writes are reported"] } : {}),
       durationMs: Date.now() - started,
     };
