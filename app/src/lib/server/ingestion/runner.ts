@@ -4,7 +4,8 @@ import {
   Timestamp,
   type Firestore,
 } from "firebase-admin/firestore";
-import { checkLocation } from "./location-guard";
+import { checkLocation, type LocationPolicy } from "./location-guard";
+import { loadCommunityConfig } from "./community-config";
 import { fetchSourceEvents } from "./adapters";
 import type { FetchImplementation } from "./safe-fetch";
 import { reconcileSource } from "./firestore-repository";
@@ -161,14 +162,15 @@ async function persistSourceHealth(input: {
  */
 function filterByLocation(
   source: EventSourcePolicy,
-  observations: SourceObservation[]
+  observations: SourceObservation[],
+  policy: LocationPolicy
 ): { kept: SourceObservation[]; warnings: string[] } {
   const kept: SourceObservation[] = [];
   const rejected: string[] = [];
   for (const observation of observations) {
-    let verdict = checkLocation({ location: observation.location ?? "" });
+    let verdict = checkLocation({ location: observation.location ?? "", policy });
     if (verdict.status === "unknown") {
-      verdict = checkLocation({ location: observation.town ?? source.town ?? "" });
+      verdict = checkLocation({ location: observation.town ?? source.town ?? "", policy });
     }
     if (verdict.status === "too-far") {
       rejected.push(`${observation.title} (${verdict.place}, ${verdict.miles.toFixed(1)} mi)`);
@@ -190,6 +192,7 @@ async function runSource(input: {
   checkedAt: Date;
   fetchImpl?: FetchImplementation;
   deadlineAt?: Date;
+  locationPolicy: LocationPolicy;
 }): Promise<SourceRunResult> {
   const started = Date.now();
   let result: SourceRunResult;
@@ -208,7 +211,7 @@ async function runSource(input: {
     });
     const errors = anomaly ? [...fetched.errors, anomaly] : fetched.errors;
     const complete = fetched.complete && !anomaly;
-    const local = filterByLocation(input.source, fetched.events);
+    const local = filterByLocation(input.source, fetched.events, input.locationPolicy);
     const reconciliation = await reconcileSource({
       db: input.db,
       source: input.source,
@@ -365,6 +368,11 @@ export async function runIngestion(input: {
     }
   }
 
+  // One read per run, shared by every source, so tuning the radius or adding a
+  // place takes effect on the next run without a deploy.
+  const community = await loadCommunityConfig(input.db);
+  warnings.push(...community.warnings);
+
   const sourceResults = new Array<SourceRunResult | undefined>(input.sources.length);
   let nextSource = 0;
   const worker = async () => {
@@ -374,7 +382,9 @@ export async function runIngestion(input: {
       nextSource += 1;
       if (index >= input.sources.length) return;
       const source = input.sources[index];
-      const result = await runSource({ ...input, source, checkedAt });
+      const result = await runSource({
+        ...input, source, checkedAt, locationPolicy: community.location,
+      });
       sourceResults[index] = result;
       if (input.write) {
         try {

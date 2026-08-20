@@ -38,7 +38,7 @@ export const DEFAULT_RADIUS_MILES = 10;
  * distant places are here so their events resolve and get rejected on distance
  * rather than falling into "unknown", which is a weaker signal.
  */
-const GAZETTEER: Record<string, Coordinates> = {
+const BUILT_IN_PLACES: Record<string, Coordinates> = {
   // Westfield and its immediate neighbours
   "westfield": { latitude: 40.6590, longitude: -74.3474 },
   "cranford": { latitude: 40.6584, longitude: -74.3046 },
@@ -90,6 +90,27 @@ const GAZETTEER: Record<string, Coordinates> = {
 
 const EARTH_RADIUS_MILES = 3958.8;
 
+export interface LocationPolicy {
+  /** Centre of the community this deployment serves. */
+  origin: Coordinates;
+  /** Events further than this from the origin are not local. */
+  radiusMiles: number;
+  /** Place name to centroid. Callers may extend or override the built-ins. */
+  places: Record<string, Coordinates>;
+}
+
+/**
+ * Westfield defaults. These are a starting point, not a constraint: every field
+ * is overridable through `config/community` in Firestore, so serving a different
+ * town, widening the radius, or adding a venue is configuration rather than a
+ * code change and a deploy.
+ */
+export const DEFAULT_LOCATION_POLICY: LocationPolicy = {
+  origin: DEFAULT_ORIGIN,
+  radiusMiles: DEFAULT_RADIUS_MILES,
+  places: BUILT_IN_PLACES,
+};
+
 export function distanceMiles(a: Coordinates, b: Coordinates): number {
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
   const deltaLat = toRadians(b.latitude - a.latitude);
@@ -101,17 +122,31 @@ export function distanceMiles(a: Coordinates, b: Coordinates): number {
 }
 
 /**
- * Match the longest gazetteer name contained in the text. Longest-first matters:
- * "south orange" and "roselle park" must not be shadowed by "orange" or
- * "roselle". Matching is word-boundary aware so "Newark Avenue" in a Westfield
- * address does not resolve the event to Newark.
+ * Longest-first ordering matters: "south orange" and "roselle park" must not be
+ * shadowed by "orange" or "roselle". Cached per places table so a custom
+ * gazetteer does not re-sort on every observation.
  */
-const GAZETTEER_KEYS = Object.keys(GAZETTEER).sort((a, b) => b.length - a.length);
+const keyOrderCache = new WeakMap<Record<string, Coordinates>, string[]>();
 
-export function resolvePlace(location: string): { name: string; coordinates: Coordinates } | null {
-  const haystack = ` ${location.toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ")} `;
-  for (const key of GAZETTEER_KEYS) {
-    if (haystack.includes(` ${key} `)) return { name: key, coordinates: GAZETTEER[key] };
+function orderedKeys(places: Record<string, Coordinates>): string[] {
+  const cached = keyOrderCache.get(places);
+  if (cached) return cached;
+  const keys = Object.keys(places).sort((a, b) => b.length - a.length);
+  keyOrderCache.set(places, keys);
+  return keys;
+}
+
+/**
+ * Word-boundary aware so "Newark Avenue" in a local address does not resolve the
+ * event to Newark.
+ */
+export function resolvePlace(
+  location: string,
+  places: Record<string, Coordinates> = BUILT_IN_PLACES
+): { name: string; coordinates: Coordinates } | null {
+  const haystack = ` ${(location ?? "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ")} `;
+  for (const key of orderedKeys(places)) {
+    if (haystack.includes(` ${key} `)) return { name: key, coordinates: places[key] };
   }
   return null;
 }
@@ -124,13 +159,15 @@ export type LocationVerdict =
 export function checkLocation(input: {
   location: string;
   coordinates?: Coordinates | null;
+  policy?: LocationPolicy;
+  /** Convenience overrides; `policy` wins when both are given. */
   origin?: Coordinates;
   radiusMiles?: number;
 }): LocationVerdict {
-  const origin = input.origin ?? DEFAULT_ORIGIN;
-  const radius = input.radiusMiles ?? DEFAULT_RADIUS_MILES;
+  const policy = input.policy ?? DEFAULT_LOCATION_POLICY;
+  const origin = input.policy?.origin ?? input.origin ?? policy.origin;
+  const radius = input.policy?.radiusMiles ?? input.radiusMiles ?? policy.radiusMiles;
 
-  // Coordinates from the source beat any string match.
   if (input.coordinates
     && Number.isFinite(input.coordinates.latitude)
     && Number.isFinite(input.coordinates.longitude)) {
@@ -140,10 +177,68 @@ export function checkLocation(input: {
       : { status: "too-far", miles, place: "source-coordinates" };
   }
 
-  const resolved = resolvePlace(input.location ?? "");
+  const resolved = resolvePlace(input.location ?? "", policy.places);
   if (!resolved) return { status: "unknown" };
   const miles = distanceMiles(origin, resolved.coordinates);
   return miles <= radius
     ? { status: "within", miles, place: resolved.name }
     : { status: "too-far", miles, place: resolved.name };
+}
+
+function finiteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function coordinates(value: unknown): Coordinates | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  const latitude = finiteNumber(record.latitude);
+  const longitude = finiteNumber(record.longitude);
+  if (latitude === null || longitude === null) return null;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+  return { latitude, longitude };
+}
+
+/**
+ * Build a policy from stored configuration, falling back field by field. A
+ * malformed value is ignored rather than fatal, because a bad config entry must
+ * never take ingestion down; the rejected keys are returned so a caller can warn.
+ */
+export function locationPolicyFromConfig(config: unknown): {
+  policy: LocationPolicy;
+  warnings: string[];
+} {
+  const warnings: string[] = [];
+  const record = (config && typeof config === "object" ? config : {}) as Record<string, unknown>;
+
+  const origin = coordinates(record.origin);
+  if (record.origin !== undefined && !origin) warnings.push("Ignored invalid community origin");
+
+  const radius = finiteNumber(record.radiusMiles);
+  const validRadius = radius !== null && radius > 0 && radius <= 500 ? radius : null;
+  if (record.radiusMiles !== undefined && validRadius === null) {
+    warnings.push("Ignored invalid community radiusMiles");
+  }
+
+  // Configured places extend the built-ins and may override one by name.
+  const places: Record<string, Coordinates> = { ...BUILT_IN_PLACES };
+  const configured = record.places;
+  if (configured && typeof configured === "object") {
+    for (const [name, value] of Object.entries(configured as Record<string, unknown>)) {
+      const point = coordinates(value);
+      if (!point) { warnings.push(`Ignored invalid place "${name}"`); continue; }
+      places[name.toLowerCase().trim()] = point;
+    }
+  } else if (configured !== undefined) {
+    warnings.push("Ignored invalid community places");
+  }
+
+  return {
+    policy: {
+      origin: origin ?? DEFAULT_ORIGIN,
+      radiusMiles: validRadius ?? DEFAULT_RADIUS_MILES,
+      places,
+    },
+    warnings,
+  };
 }
