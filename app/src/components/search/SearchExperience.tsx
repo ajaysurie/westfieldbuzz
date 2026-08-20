@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import type { SearchIntent } from "@/lib/search/event-intent";
 import type { EventSearchResponse, EventSearchSuccess } from "@/lib/search/search-contract";
@@ -24,13 +24,13 @@ function removeIntentValue(intent: SearchIntent, field: string, label: string): 
   if (field === "exclusions") next.exclusions.categories = next.exclusions.categories.filter((category) => `Not ${category}` !== label);
   return next;
 }
-export default function SearchExperience() {
-  const [query, setQuery] = useState("");
+export default function SearchExperience({ initialQuery = "" }: { initialQuery?: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [result, setResult] = useState<EventSearchSuccess | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function search(sentence: string, priorIntent: SearchIntent | null = null) {
+  const search = useCallback(async (sentence: string, priorIntent: SearchIntent | null = null) => {
     setLoading(true);
     setError(null);
     try {
@@ -50,7 +50,14 @@ export default function SearchExperience() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  const initialSearchStarted = useRef(false);
+  useEffect(() => {
+    if (initialSearchStarted.current || !initialQuery.trim()) return;
+    initialSearchStarted.current = true;
+    void search(initialQuery);
+  }, [initialQuery, search]);
 
   const submitInitial = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

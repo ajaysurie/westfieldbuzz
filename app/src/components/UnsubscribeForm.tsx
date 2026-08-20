@@ -4,19 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 
 export function UnsubscribeForm({ token }: { token: string }) {
-  const [state, setState] = useState<"ready" | "working" | "done" | "invalid">(
+  const [state, setState] = useState<"ready" | "working" | "done" | "invalid" | "unavailable">(
     token ? "ready" : "invalid"
   );
 
   async function submit() {
     setState("working");
-    const response = await fetch("/api/subscriptions/unsubscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    const body = await response.json().catch(() => ({}));
-    setState(response.ok && body.ok ? "done" : "invalid");
+    try {
+      const response = await fetch("/api/subscriptions/unsubscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (response.ok && body.ok) setState("done");
+      else setState(response.status >= 500 ? "unavailable" : "invalid");
+    } catch {
+      setState("unavailable");
+    }
   }
 
   if (state === "done") {
@@ -35,6 +40,16 @@ export function UnsubscribeForm({ token }: { token: string }) {
         <h1>That link isn&apos;t valid.</h1>
         <p>It may have expired or been replaced. You can reply to the email if you still need help.</p>
         <Link href="/" className="btn btn-primary">Return home</Link>
+      </>
+    );
+  }
+
+  if (state === "unavailable") {
+    return (
+      <>
+        <h1>We couldn&apos;t update that yet.</h1>
+        <p>Your link is still here. Please retry so we can stop the next Friday email.</p>
+        <button className="btn btn-primary" type="button" onClick={submit}>Try again</button>
       </>
     );
   }

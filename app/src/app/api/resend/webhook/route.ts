@@ -34,20 +34,9 @@ export async function POST(request: Request) {
   }
   const providerEmailId = event.data.email_id;
   const incoming = deliveryStatusForWebhook(event.type);
+  if (!incoming) return NextResponse.json({ ok: true });
   const db = getAdminDb();
   const eventRef = db.collection("resendWebhookEvents").doc(eventId);
-
-  const freshEvent = await db.runTransaction(async (transaction) => {
-    if ((await transaction.get(eventRef)).exists) return false;
-    transaction.create(eventRef, {
-      type: event.type,
-      providerEmailId,
-      providerCreatedAt: event.created_at,
-      receivedAt: FieldValue.serverTimestamp(),
-    });
-    return true;
-  });
-  if (!freshEvent || !incoming) return NextResponse.json({ ok: true });
 
   const deliveries = await db
     .collection("digestDeliveries")
@@ -55,17 +44,71 @@ export async function POST(request: Request) {
     .limit(1)
     .get();
   const delivery = deliveries.docs[0];
-  if (delivery) {
-    await db.runTransaction(async (transaction) => {
-      const snapshot = await transaction.get(delivery.ref);
-      const current = (snapshot.data()?.status ?? "sent") as DeliveryStatus;
-      const status = advanceDeliveryStatus(current, incoming);
-      transaction.update(delivery.ref, {
-        status,
-        providerUpdatedAt: Timestamp.fromDate(new Date(event.created_at)),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-    });
+  if (!delivery) {
+    await eventRef.set(
+      {
+        type: event.type,
+        providerEmailId,
+        providerCreatedAt: event.created_at,
+        processed: false,
+        receivedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return NextResponse.json({ ok: false, retry: true }, { status: 503 });
   }
+
+  await db.runTransaction(async (transaction) => {
+    const [eventSnapshot, deliverySnapshot] = await Promise.all([
+      transaction.get(eventRef),
+      transaction.get(delivery.ref),
+    ]);
+    if (eventSnapshot.data()?.processed === true) return;
+
+    const deliveryData = deliverySnapshot.data() ?? {};
+    const current = (deliveryData.status ?? "sent") as DeliveryStatus;
+    const status = advanceDeliveryStatus(current, incoming);
+    const incomingAt = new Date(event.created_at);
+    const storedAt =
+      deliveryData.providerUpdatedAt instanceof Timestamp
+        ? deliveryData.providerUpdatedAt.toDate()
+        : new Date(0);
+
+    transaction.update(delivery.ref, {
+      status,
+      providerUpdatedAt: Timestamp.fromDate(
+        incomingAt.getTime() > storedAt.getTime() ? incomingAt : storedAt
+      ),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    if (
+      typeof deliveryData.subscriberId === "string" &&
+      ["bounced", "complained", "suppressed"].includes(incoming)
+    ) {
+      transaction.set(
+        db.collection("subscribers").doc(deliveryData.subscriberId),
+        {
+          status: "suppressed",
+          suppressedAt: Timestamp.fromDate(incomingAt),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    }
+    transaction.set(
+      eventRef,
+      {
+        type: event.type,
+        providerEmailId,
+        providerCreatedAt: event.created_at,
+        processed: true,
+        processedAt: FieldValue.serverTimestamp(),
+        receivedAt: eventSnapshot.exists
+          ? eventSnapshot.data()?.receivedAt ?? FieldValue.serverTimestamp()
+          : FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+  });
   return NextResponse.json({ ok: true });
 }

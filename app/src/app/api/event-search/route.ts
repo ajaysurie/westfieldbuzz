@@ -22,20 +22,19 @@ import {
   type IntentParser,
 } from "@/lib/server/openai/event-intent-parser";
 import { createFirestoreEventRepository } from "@/lib/server/event-query/firestore-event-repository";
+import { allowEventSearch } from "@/lib/server/search-rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 16_384;
-const RATE_LIMIT_WINDOW_MS = 60_000;
-const RATE_LIMIT_REQUESTS = 24;
-const requestBuckets = new Map<string, { count: number; resetAt: number }>();
 
 interface SearchDependencies {
   repository?: EventRepository;
   parser?: IntentParser;
   now?: Date;
   skipRateLimit?: boolean;
+  rateLimiter?: (request: Request, now: Date) => Promise<boolean>;
 }
 
 function jsonFailure(
@@ -50,24 +49,23 @@ function jsonFailure(
   );
 }
 
-function clientKey(request: Request): string {
-  return (
-    request.headers.get("x-vercel-forwarded-for") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0] ??
-    "anonymous"
-  ).trim();
-}
-
-function isRateLimited(request: Request, now: number): boolean {
-  const key = clientKey(request);
-  const bucket = requestBuckets.get(key);
-  if (!bucket || bucket.resetAt <= now) {
-    if (requestBuckets.size > 1_000) requestBuckets.clear();
-    requestBuckets.set(key, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
+async function readBoundedBody(request: Request): Promise<string | null> {
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const decoder = new TextDecoder();
+  let bytes = 0;
+  let text = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytes += value.byteLength;
+    if (bytes > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    text += decoder.decode(value, { stream: true });
   }
-  bucket.count += 1;
-  return bucket.count > RATE_LIMIT_REQUESTS;
+  return text + decoder.decode();
 }
 
 function noMatchSuggestions(intent: SearchIntent): string[] {
@@ -90,24 +88,39 @@ export async function handleEventSearch(
   dependencies: SearchDependencies = {}
 ): Promise<NextResponse<EventSearchResponse>> {
   const startedAt = Date.now();
-  const contentLength = Number(request.headers.get("content-length") ?? 0);
-  if (contentLength > MAX_BODY_BYTES) {
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader == null ? 0 : Number(contentLengthHeader);
+  if (!Number.isFinite(contentLength) || contentLength > MAX_BODY_BYTES) {
     return jsonFailure("request_too_large", "That search request is too large.", 413);
   }
-  if (!dependencies.skipRateLimit && isRateLimited(request, startedAt)) {
-    return jsonFailure("rate_limited", "Too many searches. Please wait a minute and try again.", 429);
+  if (!dependencies.skipRateLimit) {
+    try {
+      const allowed = await (dependencies.rateLimiter ?? allowEventSearch)(
+        request,
+        dependencies.now ?? new Date()
+      );
+      if (!allowed) {
+        return jsonFailure("rate_limited", "Too many searches. Please wait and try again.", 429);
+      }
+    } catch {
+      return jsonFailure(
+        "inventory_unavailable",
+        "Search is temporarily unavailable. Browse the calendar or try again shortly.",
+        503
+      );
+    }
   }
 
   let bodyText: string;
   try {
-    bodyText = await request.text();
+    const boundedBody = await readBoundedBody(request);
+    if (boundedBody == null) {
+      return jsonFailure("request_too_large", "That search request is too large.", 413);
+    }
+    bodyText = boundedBody;
   } catch {
     return jsonFailure("invalid_request", "The search request could not be read.", 400);
   }
-  if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
-    return jsonFailure("request_too_large", "That search request is too large.", 413);
-  }
-
   let body: unknown;
   try {
     body = JSON.parse(bodyText);

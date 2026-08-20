@@ -665,6 +665,17 @@ a {
   font-size: 0.65rem;
 }
 
+.friday-signup--success {
+  padding: 18px;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: white;
+}
+
+.friday-signup--success strong { display: block; }
+.friday-signup__error { color: #ffd4cb !important; }
+
 .events-header {
   overflow: hidden;
   background: #e7edef;

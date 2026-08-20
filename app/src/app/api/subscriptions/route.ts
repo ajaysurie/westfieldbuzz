@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/server/firebase-admin";
-import { requestSubscription } from "@/lib/server/email/subscribers";
-import { issueEmailToken } from "@/lib/server/email/tokens";
+import {
+  markConfirmationSent,
+  requestSubscription,
+} from "@/lib/server/email/subscribers";
+import { issueEmailToken, normalizeEmail } from "@/lib/server/email/tokens";
+import { enforceSignupRateLimit } from "@/lib/server/email/rate-limit";
 import { sendSubscriptionConfirmation } from "@/lib/server/email/sender";
 
 const PUBLIC_RESPONSE = {
@@ -32,9 +36,28 @@ export async function POST(request: Request) {
   }
 
   try {
+    const normalizedEmail = normalizeEmail(email);
+    if (!normalizedEmail) throw new Error("INVALID_EMAIL");
+    const db = getAdminDb();
+    const ip =
+      request.headers.get("x-vercel-forwarded-for")?.split(",")[0]?.trim() ??
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+      "unknown";
+    const allowed = await enforceSignupRateLimit({
+      db,
+      normalizedEmail,
+      ip,
+      secret: process.env.EMAIL_TOKEN_SECRET ?? "",
+    });
+    if (!allowed) {
+      return NextResponse.json(
+        { ok: false, message: "Too many signup attempts. Please try again later." },
+        { status: 429 }
+      );
+    }
     const result = await requestSubscription({
-      db: getAdminDb(),
-      email,
+      db,
+      email: normalizedEmail,
       source: "public-friday-signup",
     });
 
@@ -48,12 +71,17 @@ export async function POST(request: Request) {
         expiresAt,
         secret,
       });
-      const confirmationUrl = new URL("/api/subscriptions/confirm", siteOrigin(request));
+      const confirmationUrl = new URL("/subscribe/confirm", siteOrigin(request));
       confirmationUrl.searchParams.set("token", token);
       await sendSubscriptionConfirmation({
         email: result.subscriber.email,
         confirmationUrl: confirmationUrl.toString(),
         idempotencyKey: `confirm/${result.subscriber.id}/${result.subscriber.tokenVersion}`,
+      });
+      await markConfirmationSent({
+        db,
+        subscriberId: result.subscriber.id,
+        tokenVersion: result.subscriber.tokenVersion,
       });
     }
     return NextResponse.json(PUBLIC_RESPONSE, { status: 202 });

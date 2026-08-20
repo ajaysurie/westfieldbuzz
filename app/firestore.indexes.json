@@ -13,6 +13,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "publicationStatus", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "events",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "publicationStatus", "order": "ASCENDING" },
         { "fieldPath": "freshnessStatus", "order": "ASCENDING" },
         { "fieldPath": "date", "order": "ASCENDING" }
       ]

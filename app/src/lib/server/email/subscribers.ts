@@ -1,7 +1,7 @@
 import { FieldValue, Timestamp, type Firestore } from "firebase-admin/firestore";
 import { normalizeEmail, subscriberIdForEmail } from "./tokens";
 
-export type SubscriberStatus = "pending" | "active" | "unsubscribed";
+export type SubscriberStatus = "pending" | "active" | "unsubscribed" | "suppressed";
 
 export interface SubscriberRecord {
   id: string;
@@ -10,6 +10,7 @@ export interface SubscriberRecord {
   tokenVersion: number;
   userId: string | null;
   personalize: boolean;
+  confirmationSentAt: Date | null;
 }
 
 function recordFromData(id: string, data: FirebaseFirestore.DocumentData): SubscriberRecord {
@@ -20,6 +21,10 @@ function recordFromData(id: string, data: FirebaseFirestore.DocumentData): Subsc
     tokenVersion: Number(data.tokenVersion ?? 1),
     userId: data.userId ?? null,
     personalize: data.personalize === true,
+    confirmationSentAt:
+      data.confirmationSentAt instanceof Timestamp
+        ? data.confirmationSentAt.toDate()
+        : null,
   };
 }
 
@@ -41,6 +46,14 @@ export async function requestSubscription(input: {
     if (snapshot.exists) {
       const existing = recordFromData(id, snapshot.data() ?? {});
       if (existing.status === "active") {
+        return { subscriber: existing, confirmationRequired: false };
+      }
+
+      if (
+        existing.status === "pending" &&
+        existing.confirmationSentAt &&
+        now.getTime() - existing.confirmationSentAt.getTime() < 15 * 60 * 1000
+      ) {
         return { subscriber: existing, confirmationRequired: false };
       }
 
@@ -70,6 +83,7 @@ export async function requestSubscription(input: {
       tokenVersion: 1,
       userId: null,
       personalize: false,
+      confirmationSentAt: null,
     };
     transaction.create(ref, {
       email: normalizedEmail,
@@ -83,6 +97,25 @@ export async function requestSubscription(input: {
       updatedAt: FieldValue.serverTimestamp(),
     });
     return { subscriber, confirmationRequired: true };
+  });
+}
+
+export async function markConfirmationSent(input: {
+  db: Firestore;
+  subscriberId: string;
+  tokenVersion: number;
+  sentAt?: Date;
+}): Promise<void> {
+  const ref = input.db.collection("subscribers").doc(input.subscriberId);
+  await input.db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    if (!snapshot.exists) return;
+    const subscriber = recordFromData(snapshot.id, snapshot.data() ?? {});
+    if (subscriber.tokenVersion !== input.tokenVersion || subscriber.status !== "pending") return;
+    transaction.update(ref, {
+      confirmationSentAt: Timestamp.fromDate(input.sentAt ?? new Date()),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
   });
 }
 

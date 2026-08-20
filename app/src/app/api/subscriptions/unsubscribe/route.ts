@@ -16,21 +16,28 @@ async function tokenFromRequest(request: Request): Promise<string> {
 }
 
 export async function POST(request: Request) {
+  let tokenValue = "";
   try {
-    const token = verifyEmailToken(
-      await tokenFromRequest(request),
-      process.env.EMAIL_TOKEN_SECRET ?? ""
-    );
-    if (!token || token.purpose !== "unsubscribe") {
-      return NextResponse.json({ ok: false, status: "invalid" }, { status: 400 });
-    }
+    tokenValue = await tokenFromRequest(request);
+  } catch {
+    return NextResponse.json({ ok: false, status: "invalid" }, { status: 400 });
+  }
+  const token = verifyEmailToken(
+    tokenValue,
+    process.env.EMAIL_TOKEN_SECRET ?? ""
+  );
+  if (!token || token.purpose !== "unsubscribe") {
+    return NextResponse.json({ ok: false, status: "invalid" }, { status: 400 });
+  }
+  try {
     const status = await unsubscribe({
       db: getAdminDb(),
       subscriberId: token.subscriberId,
       tokenVersion: token.version,
     });
     return NextResponse.json({ ok: status !== "invalid", status }, { status: status === "invalid" ? 400 : 200 });
-  } catch {
-    return NextResponse.json({ ok: false, status: "invalid" }, { status: 400 });
+  } catch (error) {
+    console.error("Unsubscribe failed", error instanceof Error ? error.message : "unknown");
+    return NextResponse.json({ ok: false, status: "unavailable" }, { status: 503 });
   }
 }

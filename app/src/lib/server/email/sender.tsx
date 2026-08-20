@@ -51,7 +51,7 @@ export async function sendFridayDigest(input: {
       html,
       text: fridayDigestText(input.props),
       headers: {
-        "List-Unsubscribe": `<${input.props.unsubscribeUrl}>`,
+        "List-Unsubscribe": `<${input.props.oneClickUnsubscribeUrl}>`,
         "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
       },
     },

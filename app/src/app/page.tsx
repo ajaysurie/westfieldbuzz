@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import EventCard from "@/components/EventCard";
+import { FridaySignup } from "@/components/FridaySignup";
 import { localDateKey } from "@/components/EventCalendar";
 import { getEvents, type Event } from "@/lib/firestore";
 
@@ -176,14 +177,7 @@ export default function Home() {
             <h2 id="friday-heading">The good stuff, before the weekend starts.</h2>
             <p>One concise local list, checked and arranged for the days ahead.</p>
           </div>
-          <div className="friday-signup" aria-label="Friday email signup preview">
-            <label htmlFor="friday-email">Email address</label>
-            <div>
-              <input id="friday-email" type="email" placeholder="you@example.com" disabled />
-              <button type="button" disabled>Get the list</button>
-            </div>
-            <small>Email signup is coming with Release One.</small>
-          </div>
+          <FridaySignup />
         </div>
       </section>
     </>

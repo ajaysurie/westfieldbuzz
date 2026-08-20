@@ -58,6 +58,25 @@ describe("POST /api/event-search", () => {
     expect(badIntent.status).toBe(400);
   });
 
+  it("rejects an oversized streaming body before JSON parsing", async () => {
+    const response = await handleEventSearch(
+      new Request("http://localhost/api/event-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: "x", padding: "y".repeat(20_000) }),
+      }),
+      { skipRateLimit: true }
+    );
+    expect(response.status).toBe(413);
+  });
+
+  it("honors the shared rate limiter", async () => {
+    const response = await handleEventSearch(request({ query: "music" }), {
+      rateLimiter: async () => false,
+    });
+    expect(response.status).toBe(429);
+  });
+
   it("returns a privacy-safe controlled inventory configuration error", async () => {
     delete process.env.OPENAI_API_KEY;
     const repository: EventRepository = { async listPublishedEvents() { throw new Error("FIREBASE_PRIVATE_KEY=super-secret"); } };

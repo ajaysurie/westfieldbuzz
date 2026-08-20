@@ -15,7 +15,8 @@ export interface FridayDigestProps {
   intro: string;
   events: DigestEventItem[];
   calendarUrl: string;
-  unsubscribeUrl: string;
+  unsubscribePageUrl: string;
+  oneClickUnsubscribeUrl: string;
   personalized?: boolean;
 }
 
@@ -40,7 +41,7 @@ export function FridayDigest({
   intro,
   events,
   calendarUrl,
-  unsubscribeUrl,
+  unsubscribePageUrl,
   personalized = false,
 }: FridayDigestProps) {
   return (
@@ -101,7 +102,7 @@ export function FridayDigest({
 
           <footer style={{ padding: "20px 32px 28px", borderTop: "1px solid #ece5d9", color: colors.muted, fontSize: 12, lineHeight: 1.5 }}>
             <p style={{ margin: 0 }}>
-              You received this Friday list from Westfield Buzz. <a href={unsubscribeUrl} style={{ color: colors.muted }}>Unsubscribe</a>.
+              You received this Friday list from Westfield Buzz. <a href={unsubscribePageUrl} style={{ color: colors.muted }}>Unsubscribe</a>.
             </p>
           </footer>
         </main>
@@ -124,7 +125,7 @@ export function fridayDigestText(props: FridayDigestProps): string {
       "",
     ]),
     `Full calendar: ${props.calendarUrl}`,
-    `Unsubscribe: ${props.unsubscribeUrl}`,
+    `Unsubscribe: ${props.unsubscribePageUrl}`,
   ];
   return lines.join("\n");
 }
