@@ -5,7 +5,7 @@ import {
   type Firestore,
 } from "firebase-admin/firestore";
 import { checkLocation, type LocationPolicy } from "./location-guard";
-import { loadCommunityConfig } from "./community-config";
+import { loadCommunityConfig, type CommunityConfig } from "./community-config";
 import { fetchSourceEvents } from "./adapters";
 import type { FetchImplementation } from "./safe-fetch";
 import { reconcileSource } from "./firestore-repository";
@@ -344,6 +344,8 @@ export async function runIngestion(input: {
   checkedAt?: Date;
   fetchImpl?: FetchImplementation;
   deadlineAt?: Date;
+  /** Pre-resolved community config; loaded here when absent. */
+  community?: CommunityConfig;
 }): Promise<IngestionRunResult> {
   const runId = input.runId ?? randomUUID();
   const checkedAt = input.checkedAt ?? new Date();
@@ -369,8 +371,10 @@ export async function runIngestion(input: {
   }
 
   // One read per run, shared by every source, so tuning the radius or adding a
-  // place takes effect on the next run without a deploy.
-  const community = await loadCommunityConfig(input.db);
+  // place takes effect on the next run without a deploy. A caller that already
+  // resolved the config (the cron route needs the horizon before this point)
+  // passes it in rather than paying for a second read.
+  const community = input.community ?? await loadCommunityConfig(input.db);
   warnings.push(...community.warnings);
 
   const sourceResults = new Array<SourceRunResult | undefined>(input.sources.length);

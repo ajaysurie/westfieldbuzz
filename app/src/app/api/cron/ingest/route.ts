@@ -14,6 +14,7 @@ import {
   makeIngestionWindow,
   runIngestion,
 } from "@/lib/server/ingestion/runner";
+import { loadCommunityConfig } from "@/lib/server/ingestion/community-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,9 +47,12 @@ export async function GET(request: NextRequest) {
 
   const now = new Date();
   const deadlineAt = new Date(now.getTime() + 50_000);
-  const end = new Date(now);
-  end.setDate(end.getDate() + 30);
   const db = serverFirestore();
+  // Horizon is configuration, not a constant: a 30 day window discarded the
+  // town's largest annual events, and the right depth varies by community.
+  const community = await loadCommunityConfig(db);
+  const end = new Date(now);
+  end.setDate(end.getDate() + community.horizonDays);
   const runId = randomUUID();
   const leaseKey = `event-ingest:${group}`;
   const claim = await acquireLease({ db, key: leaseKey, owner: runId });
@@ -64,6 +68,7 @@ export async function GET(request: NextRequest) {
         fromLocalDate: localDate(now),
         toLocalDate: localDate(end),
       }),
+      community,
       write: true,
       runId,
       checkedAt: now,

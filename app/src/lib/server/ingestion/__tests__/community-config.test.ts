@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { Firestore } from "firebase-admin/firestore";
-import { loadCommunityConfig, DEFAULT_COMMUNITY_CONFIG } from "../community-config";
+import {
+  DEFAULT_COMMUNITY_CONFIG,
+  DEFAULT_HORIZON_DAYS,
+  loadCommunityConfig,
+} from "../community-config";
 import {
   DEFAULT_RADIUS_MILES,
   checkLocation,
@@ -74,6 +78,29 @@ describe("locationPolicyFromConfig", () => {
     const { policy, warnings } = locationPolicyFromConfig({});
     expect(policy.radiusMiles).toBe(DEFAULT_RADIUS_MILES);
     expect(warnings).toHaveLength(0);
+  });
+});
+
+describe("ingestion horizon", () => {
+  it("defaults far enough ahead to include a town's marquee events", async () => {
+    // A 30 day window discarded FestiFall by one day, plus the Christmas Tree
+    // Lighting, Small Business Saturday, and the Menorah Lighting.
+    const config = await loadCommunityConfig(db({ exists: false }));
+    expect(config.horizonDays).toBe(DEFAULT_HORIZON_DAYS);
+    expect(config.horizonDays).toBeGreaterThanOrEqual(120);
+  });
+
+  it("takes a configured horizon", async () => {
+    const config = await loadCommunityConfig(db({ exists: true, data: () => ({ horizonDays: 45 }) }));
+    expect(config.horizonDays).toBe(45);
+  });
+
+  it("rejects a horizon that is zero, negative, or absurd", async () => {
+    for (const horizonDays of [0, -10, 5000, "soon"]) {
+      const config = await loadCommunityConfig(db({ exists: true, data: () => ({ horizonDays }) }));
+      expect(config.horizonDays, String(horizonDays)).toBe(DEFAULT_HORIZON_DAYS);
+      expect(config.warnings.join(" ")).toContain("horizonDays");
+    }
   });
 });
 
