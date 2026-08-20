@@ -22,7 +22,7 @@
     },
     {
       "path": "/api/cron/friday-digest",
-      "schedule": "*/15 12-16 * * 5"
+      "schedule": "0 12 * * 5"
     }
   ]
 }
