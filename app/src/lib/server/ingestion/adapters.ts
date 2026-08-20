@@ -461,6 +461,11 @@ export function parseMecHtml(
       sourceUrl: href
         ? decodeHtmlEntities(href)
         : source.publicUrl ?? source.url,
+      imageUrl: safeImageUrl(
+        article.match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i)?.[1]
+          ? decodeHtmlEntities(article.match(/<img\b[^>]*\bsrc=["']([^"']+)["']/i)![1])
+          : undefined
+      ),
     });
   }
 
@@ -514,6 +519,7 @@ export function parseTribePayload(
       sourceId: source.id,
       sourceEventId: text(event.id ?? event.global_id),
       sourceUrl: text(event.url) || source.publicUrl || source.url,
+      imageUrl: safeImageUrl(record(event.image).url ?? event.image),
     });
   }
 
@@ -644,6 +650,13 @@ function jsonLdLocation(value: unknown): string {
   return "";
 }
 
+function jsonLdImage(value: unknown): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  if (typeof first === "string") return safeImageUrl(first);
+  const obj = record(first);
+  return safeImageUrl(obj.url ?? obj.contentUrl);
+}
+
 export function parseJsonLdPayload(
   source: EventSourcePolicy,
   html: string,
@@ -695,6 +708,7 @@ export function parseJsonLdPayload(
       // creating duplicates; fall back to start plus title only when absent.
       sourceEventId: url || `fallback:${start.toISOString()}:${title}`,
       sourceUrl: url || source.publicUrl || source.url,
+      imageUrl: jsonLdImage(node.image),
     });
   }
 
@@ -704,6 +718,15 @@ export function parseJsonLdPayload(
     // A page with no JSON-LD at all is a layout change, not an empty calendar.
     layoutValid: blocks.length > 0,
   };
+}
+
+
+/** Accept only absolute http(s) image URLs; anything else is dropped so a source
+ *  cannot inject a javascript: or data: URL into a rendered card. */
+function safeImageUrl(value: unknown): string | undefined {
+  const raw = text(value);
+  if (!/^https?:\/\//i.test(raw)) return undefined;
+  return raw;
 }
 
 export async function fetchSourceEvents(input: {

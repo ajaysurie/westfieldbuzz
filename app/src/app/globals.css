@@ -432,6 +432,15 @@ a {
   transition: transform 240ms ease;
 }
 
+/* Real source photo uses a plain img (many CDNs, no next/image allowlist), so
+   it needs the absolute fill that next/image would supply on its own. */
+.event-card__photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
 .event-card:hover .event-card__art img {
   transform: scale(1.025);
 }

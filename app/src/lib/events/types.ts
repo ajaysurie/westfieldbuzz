@@ -59,6 +59,9 @@ export interface EventFacts<TDate = Date> {
   sourceId: string;
   sourceEventId: string;
   sourceUrl: string;
+  /** A real photo from the source, when it supplies one. Rendered over the
+   *  category illustration fallback. Absolute http(s) URL only. */
+  imageUrl?: string;
   factEvidence?: EventFactEvidence;
 }
 

@@ -123,4 +123,24 @@ describe("parseJsonLdPayload", () => {
     expect(result.layoutValid).toBe(false);
     expect(result.events).toHaveLength(0);
   });
+  it("captures a real image and rejects an unsafe one", () => {
+    const withImage = parseJsonLdPayload(source, page({
+      "@type": "Event", name: "Has Photo", startDate: "2026-09-14T19:00:00-04:00",
+      image: ["https://cdn.example.com/show.jpg"],
+    }), window);
+    expect(withImage.events[0].imageUrl).toBe("https://cdn.example.com/show.jpg");
+
+    const unsafe = parseJsonLdPayload(source, page({
+      "@type": "Event", name: "Bad Photo", startDate: "2026-09-14T19:00:00-04:00",
+      image: "javascript:alert(1)",
+    }), window);
+    expect(unsafe.events[0].imageUrl).toBeUndefined();
+
+    const imageObject = parseJsonLdPayload(source, page({
+      "@type": "Event", name: "Object Photo", startDate: "2026-09-14T19:00:00-04:00",
+      image: { "@type": "ImageObject", url: "https://cdn.example.com/o.png" },
+    }), window);
+    expect(imageObject.events[0].imageUrl).toBe("https://cdn.example.com/o.png");
+  });
 });
+

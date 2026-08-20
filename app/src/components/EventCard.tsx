@@ -77,6 +77,7 @@ export default function EventCard({ event, dark = false }: EventCardProps) {
   const endTime = formatEventTime(event.endDate);
   const timeRange = endTime ? `${startTime}\u2013${endTime}` : startTime;
   const categoryImage = CATEGORY_IMAGES[event.category] ?? "/event-cats/community.png";
+  const hasPhoto = typeof event.imageUrl === "string" && /^https?:\/\//i.test(event.imageUrl);
 
   return (
     <article className={`event-card${dark ? " event-card--dark" : ""}`}>
@@ -85,7 +86,21 @@ export default function EventCard({ event, dark = false }: EventCardProps) {
         className="event-card__art"
         aria-label={`View ${event.title}`}
       >
-        <Image src={categoryImage} alt="" fill sizes="(max-width: 760px) 104px, 154px" />
+        {hasPhoto ? (
+          // Real source photos come from many venue CDNs, so a plain lazy img
+          // avoids allowlisting every host in next/image; the category
+          // illustration stays the fallback when no photo is provided.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={event.imageUrl}
+            alt=""
+            loading="lazy"
+            className="event-card__photo"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <Image src={categoryImage} alt="" fill sizes="(max-width: 760px) 104px, 154px" />
+        )}
       </Link>
       <div className="event-card__body">
         <div className="event-card__topline">

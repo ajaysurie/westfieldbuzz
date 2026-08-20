@@ -84,6 +84,7 @@ export async function transitionEventCandidate(input: {
         sourceId: string(data, "sourceId"),
         sourceEventId: string(data, "sourceEventId") || input.candidateId,
         ...(string(data, "sourceUrl") ? { sourceUrl: string(data, "sourceUrl") } : {}),
+        ...(string(data, "imageUrl") ? { imageUrl: string(data, "imageUrl") } : {}),
         publicationStatus: "published",
         freshnessStatus: "current",
         provenance: "candidate-review",

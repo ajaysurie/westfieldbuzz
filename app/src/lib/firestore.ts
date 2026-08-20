@@ -66,6 +66,7 @@ export interface Event {
   sourceEventId?: string;
   sourceEventAliases?: string[];
   sourceUrl?: string;
+  imageUrl?: string;
   town?: string;
   status?: EventStatus;
   availability?: EventAvailability;
