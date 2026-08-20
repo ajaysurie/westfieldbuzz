@@ -15,7 +15,13 @@ export function resolveFirebaseAdminEnvironment(env = process.env) {
   const projectId = env.FIREBASE_PROJECT_ID ?? env.GOOGLE_CLOUD_PROJECT ?? env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const clientEmail = env.FIREBASE_CLIENT_EMAIL;
   const privateKey = env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const applicationDefaultConfigured = Boolean(env.GOOGLE_APPLICATION_CREDENTIALS || env.K_SERVICE || env.VERCEL);
+  // An explicitly configured service account always wins. Vercel sets env.VERCEL but
+  // supplies no Google Application Default Credentials, so treating the platform flag
+  // as proof of ADC would silently ignore configured credentials and then fail at the
+  // first Firestore call.
+  const hasServiceAccount = Boolean(clientEmail && privateKey);
+  const applicationDefaultConfigured = !hasServiceAccount
+    && Boolean(env.GOOGLE_APPLICATION_CREDENTIALS || env.K_SERVICE || env.VERCEL);
   const databaseId = env.FIRESTORE_DB ?? env.NEXT_PUBLIC_FIRESTORE_DB ??
     (env.VERCEL_ENV === "production" || env.NODE_ENV === "production" ? "westfieldbuzz-prod" : "westfieldbuzz-dev");
   if (!projectId || (!applicationDefaultConfigured && (!clientEmail || !privateKey))) {
