@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Westfield Buzz — Release one concept</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --ink: #17212b;
+      --ink-soft: #4b5660;
+      --muted: #7d858b;
+      --paper: #faf8f4;
+      --paper-deep: #f0ece4;
+      --white: #fffefa;
+      --navy: #1b3a5c;
+      --navy-light: #2b5ea7;
+      --gold: #c49a3c;
+      --green: #216044;
+      --green-soft: #e8f3eb;
+      --orange: #a44b23;
+      --line: rgba(23, 33, 43, .11);
+      --display: 'Instrument Serif', Georgia, serif;
+      --body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --shadow: 0 18px 60px rgba(27, 58, 92, .11);
+    }
+
+    html { scroll-behavior: smooth; }
+    body { min-width: 320px; background: var(--paper); color: var(--ink); font-family: var(--body); line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+
+    .compare {
+      position: sticky; top: 0; z-index: 200; height: 44px; padding: 0 28px;
+      display: flex; align-items: center; gap: 7px; overflow-x: auto;
+      background: #151b20; color: white;
+    }
+    .compare-label { margin-right: 4px; color: rgba(255,255,255,.44); font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    .compare button { flex: 0 0 auto; padding: 5px 12px; border: 1px solid rgba(255,255,255,.16); border-radius: 999px; background: transparent; color: rgba(255,255,255,.72); font-size: 12px; cursor: pointer; }
+    .compare button.on { border-color: var(--paper); background: var(--paper); color: var(--ink); }
+
+    .site-nav {
+      position: sticky; top: 44px; z-index: 100; height: 64px; padding: 0 42px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(250,248,244,.94); border-top: 3px solid var(--navy); border-bottom: 1px solid var(--line); backdrop-filter: blur(14px);
+    }
+    .site-nav img { display: block; width: auto; height: 47px; }
+    .nav-right { display: flex; align-items: center; gap: 26px; }
+    .nav-right a { color: var(--muted); text-decoration: none; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .nav-right a.active, .nav-right a:hover { color: var(--navy); }
+    .nav-email { padding: 9px 14px; border: 1px solid rgba(27,58,92,.18); border-radius: 8px; }
+    .avatar { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid rgba(27,58,92,.2); border-radius: 50%; color: var(--navy); font-size: 11px; font-weight: 700; }
+
+    .view { display: none; min-height: calc(100vh - 108px); }
+    .view.on { display: block; }
+    .shell { width: min(1120px, calc(100% - 64px)); margin: 0 auto; }
+
+    .dateline { display: flex; align-items: center; gap: 14px; padding-top: 28px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .15em; text-transform: uppercase; }
+    .dateline::before, .dateline::after { content: ''; height: 1px; flex: 1; background: var(--line); }
+
+    .entry-hero { position: relative; min-height: 475px; padding: 40px 0 48px; overflow: hidden; }
+    .entry-art { position: absolute; z-index: -1; right: -64px; top: 12px; width: 500px; height: 420px; border-radius: 48% 0 0 48%; object-fit: cover; opacity: .78; filter: saturate(.86); mask-image: linear-gradient(90deg, transparent 0, black 25%); }
+    .entry-copy { max-width: 760px; }
+    .eyebrow { margin-bottom: 12px; color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { max-width: 720px; margin-bottom: 18px; font-family: var(--display); font-size: clamp(48px, 6vw, 76px); font-weight: 400; letter-spacing: -.035em; line-height: .98; }
+    h1 em { color: var(--navy-light); font-weight: 400; }
+    .lede { max-width: 600px; margin-bottom: 28px; color: var(--ink-soft); font-size: 17px; }
+
+    .ask-box { position: relative; z-index: 2; max-width: 780px; padding: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(27,58,92,.2); border-radius: 18px; background: rgba(255,254,250,.95); box-shadow: var(--shadow); }
+    .ask-icon { flex: 0 0 auto; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: #edf2f7; color: var(--navy); }
+    .ask-box input { min-width: 0; flex: 1; height: 46px; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 16px; }
+    .ask-box input::placeholder { color: #828a90; }
+    .ask-submit { flex: 0 0 auto; width: 46px; height: 46px; border: 0; border-radius: 13px; background: var(--navy); color: white; font-size: 20px; cursor: pointer; }
+    .ask-submit:hover { background: var(--navy-light); }
+    .starter-row { max-width: 780px; margin-top: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .starter { padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,254,250,.72); color: var(--ink-soft); font-size: 12px; cursor: pointer; }
+    .starter:hover { border-color: rgba(27,58,92,.35); color: var(--navy); }
+
+    .week-preview { padding: 36px 0 72px; border-top: 1px solid var(--line); }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+    .section-kicker { color: var(--gold); font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    h2 { margin-top: 5px; font-family: var(--display); font-size: 34px; font-weight: 400; letter-spacing: -.02em; line-height: 1.1; }
+    .text-link { color: var(--navy); font-size: 13px; font-weight: 700; text-decoration: none; }
+    .mini-events { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .mini-event { min-height: 155px; padding: 20px; border-top: 3px solid var(--navy); border-radius: 11px; background: var(--white); box-shadow: 0 3px 18px rgba(27,58,92,.045); }
+    .mini-when { margin-bottom: 22px; color: var(--navy); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .mini-event h3 { margin-bottom: 8px; font-family: var(--display); font-size: 21px; font-weight: 400; line-height: 1.1; }
+    .mini-event p { color: var(--muted); font-size: 12px; }
+    .friday-strip { margin-top: 24px; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-radius: 14px; background: var(--navy); color: white; }
+    .friday-strip h3 { margin-bottom: 3px; font-family: var(--display); font-size: 24px; font-weight: 400; }
+    .friday-strip p { color: rgba(255,255,255,.66); font-size: 11px; }
+    .friday-form { min-width: 390px; padding: 6px; display: flex; gap: 6px; border-radius: 11px; background: white; }
+    .friday-form input { min-width: 0; flex: 1; padding: 0 8px; border: 0; outline: 0; color: var(--ink); font-size: 12px; }
+    .friday-form button { padding: 10px 13px; border: 0; border-radius: 8px; background: var(--gold); color: white; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+    .results-head { padding: 30px 0 18px; border-bottom: 1px solid var(--line); }
+    .search-compact { max-width: 920px; margin: 0 auto; padding: 8px 8px 8px 17px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(27,58,92,.22); border-radius: 15px; background: var(--white); box-shadow: 0 8px 30px rgba(27,58,92,.07); }
+    .search-compact .search-mark { color: var(--navy); font-size: 18px; }
+    .search-query { min-width: 0; flex: 1; color: var(--ink); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .search-edit { padding: 9px 13px; border: 0; border-radius: 9px; background: #eef2f5; color: var(--navy); font-size: 12px; font-weight: 700; cursor: pointer; }
+    .search-go { width: 38px; height: 38px; border: 0; border-radius: 10px; background: var(--navy); color: white; cursor: pointer; }
+    .constraint-row { max-width: 920px; margin: 12px auto 0; display: flex; align-items: center; gap: 7px; overflow-x: auto; }
+    .constraint { flex: 0 0 auto; padding: 6px 10px; border: 1px solid rgba(27,58,92,.14); border-radius: 999px; background: rgba(27,58,92,.055); color: var(--navy); font-size: 11px; font-weight: 600; }
+    .constraint span { margin-left: 5px; opacity: .55; }
+    .filters-link { flex: 0 0 auto; margin-left: auto; padding-left: 10px; border: 0; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+
+    .result-shell { width: min(1040px, calc(100% - 64px)); margin: 0 auto; padding: 36px 0 86px; }
+    .result-intro { margin-bottom: 23px; display: flex; align-items: end; justify-content: space-between; gap: 30px; }
+    .result-intro h1 { margin: 0 0 6px; font-size: 42px; line-height: 1.05; }
+    .result-intro p { color: var(--ink-soft); font-size: 14px; }
+    .result-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+    .result-layout { display: grid; grid-template-columns: minmax(0, 1fr) 276px; gap: 30px; align-items: start; }
+    .result-list { display: grid; gap: 14px; }
+    .result-card { position: relative; display: grid; grid-template-columns: 145px minmax(0, 1fr); min-height: 204px; overflow: hidden; border: 1px solid var(--line); border-radius: 15px; background: var(--white); transition: transform .16s ease, box-shadow .16s ease; }
+    .result-card:hover { transform: translateY(-2px); box-shadow: 0 13px 38px rgba(27,58,92,.09); }
+    .result-art { position: relative; min-height: 100%; overflow: hidden; background: #dce5ea; }
+    .result-art img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.8); }
+    .rank { position: absolute; top: 12px; left: 12px; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(255,254,250,.94); color: var(--navy); font-family: var(--display); font-size: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.1); }
+    .result-body { min-width: 0; padding: 18px 19px 16px; }
+    .match-line { margin-bottom: 7px; display: flex; align-items: center; gap: 7px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .match-dot { width: 7px; height: 7px; border-radius: 50%; background: #43a169; box-shadow: 0 0 0 4px var(--green-soft); }
+    .result-body h3 { margin-bottom: 6px; font-family: var(--display); font-size: 25px; font-weight: 400; letter-spacing: -.01em; line-height: 1.05; }
+    .event-line { color: var(--ink-soft); font-size: 12px; }
+    .why { margin: 10px 0 12px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+    .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .verified { color: var(--muted); font-size: 10px; }
+    .verified strong { color: var(--green); }
+    .card-actions { display: flex; gap: 6px; }
+    .card-actions button { padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--ink-soft); font-size: 10px; font-weight: 700; cursor: pointer; }
+    .card-actions .primary { border-color: var(--navy); background: var(--navy); color: white; }
+
+    .refine-panel { position: sticky; top: 132px; padding: 19px; border-radius: 15px; background: var(--navy); color: white; box-shadow: 0 15px 38px rgba(27,58,92,.18); }
+    .refine-label { margin-bottom: 5px; color: rgba(255,255,255,.54); font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+    .refine-panel h3 { margin-bottom: 8px; font-family: var(--display); font-size: 24px; font-weight: 400; line-height: 1.1; }
+    .refine-panel p { margin-bottom: 15px; color: rgba(255,255,255,.68); font-size: 11px; }
+    .quick-refines { display: grid; gap: 7px; margin-bottom: 15px; }
+    .quick-refines button { padding: 9px 11px; border: 1px solid rgba(255,255,255,.17); border-radius: 9px; background: rgba(255,255,255,.07); color: white; text-align: left; font-size: 11px; cursor: pointer; }
+    .quick-refines button:hover { background: rgba(255,255,255,.12); }
+    .refine-input { padding: 7px 7px 7px 11px; display: flex; gap: 6px; align-items: center; border-radius: 11px; background: white; }
+    .refine-input span { min-width: 0; flex: 1; color: #757f87; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .refine-input button { width: 31px; height: 31px; border: 0; border-radius: 8px; background: var(--gold); color: white; cursor: pointer; }
+    .save-search { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.14); }
+    .save-search a { color: white; font-size: 11px; font-weight: 700; text-decoration: none; }
+
+    .turn-note { max-width: 920px; margin: 15px auto 0; padding: 9px 12px; display: flex; align-items: center; gap: 9px; border-left: 3px solid var(--gold); border-radius: 0 8px 8px 0; background: rgba(196,154,60,.08); color: var(--ink-soft); font-size: 11px; }
+    .turn-note strong { color: var(--ink); }
+    .refined-banner { margin-bottom: 20px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; border-radius: 12px; background: #edf4ee; color: var(--green); font-size: 12px; }
+    .refined-banner button { border: 0; background: transparent; color: var(--green); font-size: 11px; font-weight: 700; cursor: pointer; }
+
+    .preference-stage { min-height: calc(100vh - 108px); padding: 52px 0 90px; background: linear-gradient(180deg, #eef1f3 0, var(--paper) 52%); }
+    .preference-wrap { width: min(920px, calc(100% - 48px)); margin: 0 auto; }
+    .preference-back { display: inline-block; margin-bottom: 22px; color: var(--navy); font-size: 12px; font-weight: 700; text-decoration: none; }
+    .preference-card { display: grid; grid-template-columns: .9fr 1.1fr; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: var(--white); box-shadow: var(--shadow); }
+    .preference-story { position: relative; min-height: 530px; padding: 42px 36px; overflow: hidden; background: var(--navy); color: white; }
+    .preference-story::after { content: ''; position: absolute; inset: auto -55px -85px auto; width: 310px; height: 310px; border-radius: 50%; background: url('assets/event-cats/westfield-hero.png') center/cover; opacity: .35; }
+    .preference-story .eyebrow { color: #e2bd69; }
+    .preference-story h1 { position: relative; z-index: 1; margin-bottom: 17px; font-size: 46px; }
+    .preference-story p { position: relative; z-index: 1; max-width: 330px; color: rgba(255,255,255,.7); font-size: 14px; }
+    .preference-points { position: relative; z-index: 1; margin-top: 33px; display: grid; gap: 13px; }
+    .preference-points div { display: flex; gap: 10px; color: rgba(255,255,255,.84); font-size: 12px; }
+    .check { display: grid; place-items: center; flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,.12); color: #e2bd69; }
+    .preference-form { padding: 39px 38px 35px; }
+    .form-step { margin-bottom: 5px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .preference-form h2 { margin: 0 0 7px; font-size: 31px; }
+    .form-dek { margin-bottom: 25px; color: var(--ink-soft); font-size: 12px; }
+    .field-group { margin-bottom: 22px; }
+    .field-label { display: block; margin-bottom: 9px; font-size: 12px; font-weight: 700; }
+    .choice-row { display: flex; gap: 7px; flex-wrap: wrap; }
+    .choice { padding: 8px 12px; border: 1px solid var(--line); border-radius: 9px; background: white; color: var(--ink-soft); font-size: 11px; cursor: pointer; }
+    .choice.on { border-color: var(--navy); background: #eef2f6; color: var(--navy); font-weight: 700; }
+    .age-row { display: flex; align-items: center; gap: 9px; }
+    .age-chip { padding: 9px 12px; border-radius: 9px; background: #eef2f6; color: var(--navy); font-size: 11px; font-weight: 700; }
+    .age-add { width: 34px; height: 34px; border: 1px dashed rgba(27,58,92,.3); border-radius: 9px; background: transparent; color: var(--navy); cursor: pointer; }
+    .form-actions { margin-top: 27px; display: grid; gap: 9px; }
+    .form-actions button { height: 44px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .save-primary { border: 0; background: var(--navy); color: white; }
+    .save-secondary { border: 1px solid var(--line); background: white; color: var(--ink-soft); }
+    .privacy-note { margin-top: 12px; color: var(--muted); font-size: 10px; text-align: center; }
+    .save-skip { display: block; margin: 3px auto 0; border: 0; background: transparent; color: var(--navy); font-size: 11px; font-weight: 700; cursor: pointer; }
+
+    .detail-stage { min-height: calc(100vh - 108px); padding: 35px 0 80px; background: linear-gradient(180deg, #eef2f3 0, var(--paper) 250px); }
+    .detail-wrap { width: min(1020px, calc(100% - 64px)); margin: 0 auto; }
+    .detail-back { display: inline-block; margin-bottom: 17px; color: var(--navy); font-size: 12px; font-weight: 700; text-decoration: none; }
+    .detail-grid { display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 24px; align-items: start; }
+    .detail-main, .detail-side-card { border: 1px solid var(--line); border-radius: 18px; background: var(--white); box-shadow: 0 12px 38px rgba(27,58,92,.07); }
+    .detail-main { overflow: hidden; }
+    .detail-image { position: relative; height: 280px; overflow: hidden; background: #e4ece7; }
+    .detail-image img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.82); }
+    .detail-image::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 58%, rgba(23,33,43,.24)); }
+    .detail-place { position: absolute; z-index: 1; left: 20px; bottom: 18px; padding: 7px 10px; border-radius: 999px; background: rgba(255,254,250,.94); color: var(--navy); font-size: 10px; font-weight: 700; }
+    .detail-content { padding: 27px 30px 32px; }
+    .detail-status { margin-bottom: 9px; display: flex; align-items: center; gap: 8px; color: var(--green); font-size: 10px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
+    .detail-content h1 { margin-bottom: 10px; font-size: 49px; }
+    .detail-summary { color: var(--ink-soft); font-size: 14px; }
+    .detail-actions { margin: 24px 0 27px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .detail-actions button { min-height: 42px; padding: 0 15px; border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--navy); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .detail-actions .detail-primary { border-color: var(--navy); background: var(--navy); color: white; }
+    .detail-facts { display: grid; grid-template-columns: repeat(2, 1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .detail-fact { padding: 17px 4px; }
+    .detail-fact:nth-child(odd) { padding-right: 20px; border-right: 1px solid var(--line); }
+    .detail-fact:nth-child(even) { padding-left: 20px; }
+    .fact-label { margin-bottom: 3px; color: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .fact-value { color: var(--ink); font-size: 12px; font-weight: 600; }
+    .detail-description { padding-top: 25px; }
+    .detail-description h2 { margin: 0 0 10px; font-size: 28px; }
+    .detail-description p { color: var(--ink-soft); font-size: 13px; line-height: 1.65; }
+    .detail-side { display: grid; gap: 14px; }
+    .detail-side-card { padding: 20px; }
+    .detail-side-card h3 { margin-bottom: 8px; font-family: var(--display); font-size: 24px; font-weight: 400; line-height: 1.08; }
+    .detail-side-card p { color: var(--ink-soft); font-size: 11px; line-height: 1.55; }
+    .fit-list { margin-top: 14px; display: grid; gap: 9px; }
+    .fit-item { display: flex; gap: 9px; color: var(--ink-soft); font-size: 11px; }
+    .fit-check { flex: 0 0 auto; color: var(--green); font-weight: 700; }
+    .map-card { padding: 0; overflow: hidden; }
+    .mini-map { position: relative; height: 172px; overflow: hidden; background: #e9ede8; }
+    .mini-map::before { content: ''; position: absolute; inset: -30px; background: repeating-linear-gradient(34deg, transparent 0 34px, rgba(255,255,255,.9) 35px 44px), repeating-linear-gradient(112deg, transparent 0 55px, rgba(255,255,255,.72) 56px 64px); }
+    .map-road { position: absolute; left: -10%; right: -10%; top: 76px; height: 19px; transform: rotate(-7deg); background: #f5dd9d; border: 5px solid rgba(255,255,255,.75); }
+    .map-pin { position: absolute; z-index: 2; left: 53%; top: 59px; width: 30px; height: 30px; display: grid; place-items: center; transform: rotate(45deg); border-radius: 50% 50% 50% 4px; background: var(--navy); color: white; box-shadow: 0 4px 13px rgba(27,58,92,.25); }
+    .map-pin span { transform: rotate(-45deg); font-size: 10px; font-weight: 700; }
+    .map-copy { padding: 16px 18px 18px; }
+    .map-copy strong { display: block; margin-bottom: 2px; color: var(--navy); font-size: 12px; }
+    .source-row { margin-top: 13px; padding-top: 13px; border-top: 1px solid var(--line); color: var(--muted); font-size: 9px; }
+    .source-row strong { color: var(--green); }
+
+    .mobile-refine { display: none; }
+
+    @media (max-width: 760px) {
+      .compare { padding: 0 12px; }
+      .compare-label { display: none; }
+      .site-nav { height: 57px; padding: 0 16px; }
+      .site-nav img { height: 40px; }
+      .nav-right { gap: 13px; }
+      .nav-right a { font-size: 10px; }
+      .nav-right a:first-child, .nav-email { display: none; }
+      .avatar { width: 30px; height: 30px; }
+      .shell, .result-shell { width: min(100% - 32px, 560px); }
+      .dateline { padding-top: 19px; font-size: 8px; letter-spacing: .1em; }
+      .entry-hero { min-height: 530px; padding: 34px 0 34px; }
+      .entry-art { right: -95px; top: 270px; width: 390px; height: 270px; border-radius: 50% 0 0 0; opacity: .56; }
+      .eyebrow { font-size: 9px; }
+      h1 { margin-bottom: 14px; font-size: 47px; }
+      .lede { margin-bottom: 21px; font-size: 14px; }
+      .ask-box { padding: 7px; gap: 6px; border-radius: 14px; }
+      .ask-icon { display: none; }
+      .ask-box input { height: 42px; padding-left: 7px; font-size: 13px; }
+      .ask-submit { width: 42px; height: 42px; border-radius: 10px; }
+      .starter-row { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+      .starter { flex: 0 0 auto; font-size: 10px; }
+      .week-preview { padding: 29px 0 54px; }
+      .section-head { align-items: start; }
+      h2 { font-size: 29px; }
+      .text-link { padding-top: 6px; font-size: 11px; }
+      .mini-events { display: flex; margin-right: -16px; overflow-x: auto; scroll-snap-type: x mandatory; }
+      .mini-event { min-width: 78vw; scroll-snap-align: start; }
+      .friday-strip { padding: 19px; display: block; }
+      .friday-strip p { margin-bottom: 13px; }
+      .friday-form { min-width: 0; }
+      .results-head { padding: 16px 0 13px; }
+      .search-compact { padding-left: 12px; border-radius: 13px; }
+      .search-mark, .search-edit { display: none; }
+      .search-query { font-size: 12px; }
+      .constraint-row { margin-top: 9px; }
+      .filters-link { margin-left: 0; }
+      .turn-note { margin-top: 9px; border-left-width: 2px; font-size: 10px; }
+      .result-shell { padding: 26px 0 110px; }
+      .result-intro { margin-bottom: 18px; align-items: start; }
+      .result-intro h1 { font-size: 34px; }
+      .result-intro p { max-width: 260px; font-size: 12px; }
+      .result-meta { display: none; }
+      .result-layout { display: block; }
+      .result-card { grid-template-columns: 98px minmax(0,1fr); min-height: 190px; border-radius: 13px; }
+      .result-body { padding: 14px 13px 13px; }
+      .rank { top: 9px; left: 9px; width: 25px; height: 25px; }
+      .match-line { font-size: 8px; }
+      .result-body h3 { font-size: 21px; }
+      .event-line, .why { font-size: 10px; }
+      .why { margin: 8px 0; }
+      .verified { font-size: 8px; }
+      .card-actions button { display: none; }
+      .card-actions .primary { display: block; padding: 6px 8px; font-size: 9px; }
+      .refine-panel { display: none; }
+      .mobile-refine { position: fixed; z-index: 120; left: 12px; right: 12px; bottom: 12px; display: block; padding: 8px; border-radius: 15px; background: var(--navy); box-shadow: 0 14px 42px rgba(17,37,58,.32); }
+      .mobile-refine .refine-input { border-radius: 10px; }
+      .mobile-refine .refine-input span { font-size: 10px; }
+      .mobile-refine-hints { padding: 3px 4px 7px; display: flex; gap: 6px; overflow-x: auto; }
+      .mobile-refine-hints button { flex: 0 0 auto; padding: 5px 8px; border: 1px solid rgba(255,255,255,.14); border-radius: 999px; background: transparent; color: rgba(255,255,255,.78); font-size: 9px; }
+      .refined-banner { align-items: start; font-size: 10px; }
+      .preference-stage { padding: 22px 0 50px; }
+      .preference-wrap { width: min(100% - 24px, 520px); }
+      .preference-back { margin-left: 4px; margin-bottom: 13px; }
+      .preference-card { display: block; border-radius: 16px; }
+      .preference-story { min-height: auto; padding: 25px 22px 29px; }
+      .preference-story h1 { max-width: 330px; font-size: 38px; }
+      .preference-story p { font-size: 12px; }
+      .preference-points { display: none; }
+      .preference-story::after { width: 190px; height: 190px; right: -55px; bottom: -90px; }
+      .preference-form { padding: 25px 22px 24px; }
+      .preference-form h2 { font-size: 27px; }
+      .field-group { margin-bottom: 17px; }
+      .detail-stage { padding: 21px 0 55px; }
+      .detail-wrap { width: min(100% - 24px, 560px); }
+      .detail-grid { display: block; }
+      .detail-main { border-radius: 16px; }
+      .detail-image { height: 210px; }
+      .detail-content { padding: 22px 20px 25px; }
+      .detail-content h1 { font-size: 39px; }
+      .detail-summary { font-size: 12px; }
+      .detail-actions { margin: 19px 0 22px; }
+      .detail-actions button { flex: 1 1 auto; }
+      .detail-facts { grid-template-columns: 1fr; }
+      .detail-fact, .detail-fact:nth-child(odd), .detail-fact:nth-child(even) { padding: 12px 0; border-right: 0; border-bottom: 1px solid var(--line); }
+      .detail-fact:last-child { border-bottom: 0; }
+      .detail-side { margin-top: 14px; }
+      .detail-side-card { border-radius: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="compare">
+    <span class="compare-label">Release one</span>
+    <button class="on" data-view="home" type="button">Search entry</button>
+    <button data-view="results" type="button">Three matches</button>
+    <button data-view="refined" type="button">Refined search</button>
+    <button data-view="detail" type="button">Event detail</button>
+    <button data-view="preferences" type="button">Save &amp; sign in</button>
+  </div>
+
+  <nav class="site-nav">
+    <a href="#" data-goto="home"><img src="assets/logo-v3-stacked-hero.svg" alt="Westfield Buzz"></a>
+    <div class="nav-right">
+      <a class="active" href="#" data-goto="home">This week</a>
+      <a href="#">Calendar</a>
+      <a class="nav-email" href="#">Get the list</a>
+    </div>
+  </nav>
+
+  <main class="view" id="view-home">
+    <div class="shell">
+      <div class="dateline">Westfield + nearby · Week of August 17, 2026</div>
+      <section class="entry-hero">
+        <img class="entry-art" src="assets/event-cats/westfield-hero.png" alt="Watercolor illustration of downtown Westfield">
+        <div class="entry-copy">
+          <div class="eyebrow">Freshly checked local events</div>
+          <h1>What&rsquo;s on around Westfield <em>this week.</em></h1>
+          <p class="lede">From the library to downtown, plus nearby picks worth the drive. Search by who&rsquo;s going, when you&rsquo;re free, or what sounds good.</p>
+          <form class="ask-box" data-goto-form="results">
+            <span class="ask-icon" aria-hidden="true">⌕</span>
+            <input value="" placeholder="Something indoors Saturday for my 7-year-old, under $30" aria-label="Search local events">
+            <button class="ask-submit" type="submit" aria-label="Search">→</button>
+          </form>
+          <div class="starter-row" aria-label="Suggested searches">
+            <button class="starter" type="button" data-goto="results">Rainy-day ideas for kids</button>
+            <button class="starter" type="button">Free this weekend</button>
+            <button class="starter" type="button">A low-key date night</button>
+          </div>
+        </div>
+      </section>
+      <section class="week-preview">
+        <div class="section-head">
+          <div><div class="section-kicker">This week</div><h2>Already worth knowing about</h2></div>
+          <a class="text-link" href="#">See the full week →</a>
+        </div>
+        <div class="mini-events">
+          <article class="mini-event" style="border-top-color:#216044"><div class="mini-when">Today · 3:30 PM</div><h3>Myths &amp; Magic with Miss Hannah</h3><p>Westfield Memorial Library · Ages 6–9</p></article>
+          <article class="mini-event" style="border-top-color:#6b4a8e"><div class="mini-when">Friday · 10:00 AM</div><h3>Patio Playtime</h3><p>Weather dependent · Verified this morning</p></article>
+          <article class="mini-event" style="border-top-color:#a44b23"><div class="mini-when">Saturday · 10:30 AM</div><h3>Matt Myklusch book launch</h3><p>Westfield Memorial Library · Free</p></article>
+        </div>
+        <div class="friday-strip"><div><h3>The useful five, every Friday.</h3><p>A short local list. No account required; personalize it later if you want.</p></div><form class="friday-form" onsubmit="return false;"><input type="email" placeholder="you@email.com" aria-label="Email address"><button type="submit">Get Friday&rsquo;s list</button></form></div>
+      </section>
+    </div>
+  </main>
+
+  <main class="view" id="view-results">
+    <header class="results-head">
+      <div class="shell">
+        <div class="search-compact"><span class="search-mark">⌕</span><div class="search-query">Something indoors this Saturday for my 7-year-old, under $30</div><button class="search-edit">Edit</button><button class="search-go">→</button></div>
+        <div class="constraint-row"><span class="constraint">Saturday <span>×</span></span><span class="constraint">Age 7 <span>×</span></span><span class="constraint">Indoors <span>×</span></span><span class="constraint">Under $30 <span>×</span></span><span class="constraint">20 min <span>×</span></span><button class="filters-link">All filters</button></div>
+      </div>
+    </header>
+    <section class="result-shell">
+      <div class="result-intro"><div><h1>Three good matches</h1><p>Different enough to make the choice easy. All checked against their original source.</p></div><div class="result-meta">18 total events · Updated 9:42 AM</div></div>
+      <div class="result-layout">
+        <div class="result-list">
+          <article class="result-card">
+            <div class="result-art"><img src="assets/event-cats/family.png" alt="Children making art"><span class="rank">1</span></div>
+            <div class="result-body"><div class="match-line"><span class="match-dot"></span>Best overall fit</div><h3>Myths &amp; Magic with Miss Hannah</h3><div class="event-line">Saturday, 3:30–4:30 PM · Westfield · Free · Ages 6–9</div><p class="why">Exactly the right age, fully indoors, and nine minutes away. Tickets are handed out the day of.</p><div class="card-foot"><span class="verified"><strong>✓ Verified today</strong> · Library</span><div class="card-actions"><button>Share</button><button class="primary" data-goto="detail">View event</button></div></div></div>
+          </article>
+          <article class="result-card">
+            <div class="result-art"><img src="assets/event-cats/arts.png" alt="Colorful art supplies"><span class="rank">2</span></div>
+            <div class="result-body"><div class="match-line"><span class="match-dot"></span>Best hands-on option</div><h3>Family Clay Lab</h3><div class="event-line">Saturday, 1:00–2:15 PM · Summit · $18 · Ages 5–10</div><p class="why">A hands-on backup with confirmed space, 17 minutes away. Aprons and materials are included.</p><div class="card-foot"><span class="verified"><strong>✓ Verified today</strong> · Organizer</span><div class="card-actions"><button>Share</button><button class="primary">View event</button></div></div></div>
+          </article>
+          <article class="result-card">
+            <div class="result-art"><img src="assets/event-cats/community.png" alt="Community theater stage"><span class="rank">3</span></div>
+            <div class="result-body"><div class="match-line"><span class="match-dot"></span>Best show</div><h3>Junie B. Jones, Jr.</h3><div class="event-line">Saturday, 2:00–3:10 PM · Cranford · $22 · All ages</div><p class="why">A seated indoor option under budget. The matinee still has adjacent seats available.</p><div class="card-foot"><span class="verified"><strong>✓ Verified 2h ago</strong> · Box office</span><div class="card-actions"><button>Share</button><button class="primary">View event</button></div></div></div>
+          </article>
+          <a class="text-link" href="#">See all 18 matching events →</a>
+        </div>
+        <aside class="refine-panel"><div class="refine-label">Keep narrowing</div><h3>Want something different?</h3><p>I&rsquo;ll remember the search above while you refine it.</p><div class="quick-refines"><button data-goto="refined">Only after 2 PM</button><button>Make it free</button><button>Closer to Westfield</button></div><div class="refine-input"><span>Or say what to change…</span><button data-goto="refined">→</button></div><div class="save-search"><a href="#" data-goto="preferences">♡ Save this search &amp; personalize Fridays</a></div></aside>
+      </div>
+    </section>
+    <div class="mobile-refine"><div class="mobile-refine-hints"><button data-goto="refined">After 2 PM</button><button>Make it free</button><button>Closer</button></div><div class="refine-input"><span>Refine these results…</span><button data-goto="refined">→</button></div></div>
+  </main>
+
+  <main class="view" id="view-refined">
+    <header class="results-head">
+      <div class="shell">
+        <div class="search-compact"><span class="search-mark">⌕</span><div class="search-query">Something indoors Saturday for my 7-year-old, under $30</div><button class="search-edit">Edit</button><button class="search-go">→</button></div>
+        <div class="turn-note"><span>↳</span><span><strong>You added:</strong> Actually, only after 2 PM—and nothing that needs advance registration.</span></div>
+        <div class="constraint-row"><span class="constraint">Saturday <span>×</span></span><span class="constraint">Age 7 <span>×</span></span><span class="constraint">After 2 PM <span>×</span></span><span class="constraint">No registration <span>×</span></span><span class="constraint">Under $30 <span>×</span></span></div>
+      </div>
+    </header>
+    <section class="result-shell">
+      <div class="refined-banner"><span><strong>Updated.</strong> I removed the clay lab and moved the easiest drop-in choice to the top.</span><button>Undo</button></div>
+      <div class="result-intro"><div><h1>Two better matches</h1><p>Both work after 2 PM without advance registration.</p></div><div class="result-meta">Context carried from your first search</div></div>
+      <div class="result-layout">
+        <div class="result-list">
+          <article class="result-card">
+            <div class="result-art"><img src="assets/event-cats/family.png" alt="Children making art"><span class="rank">1</span></div>
+            <div class="result-body"><div class="match-line"><span class="match-dot"></span>Easiest drop-in</div><h3>Myths &amp; Magic with Miss Hannah</h3><div class="event-line">Saturday, 3:30–4:30 PM · Westfield · Free · Ages 6–9</div><p class="why">The closest exact-age match. Day-of tickets begin at 3:00 PM; no online registration.</p><div class="card-foot"><span class="verified"><strong>✓ Verified today</strong> · Library</span><div class="card-actions"><button>Calendar</button><button class="primary" data-goto="detail">View event</button></div></div></div>
+          </article>
+          <article class="result-card">
+            <div class="result-art"><img src="assets/event-cats/community.png" alt="Community theater stage"><span class="rank">2</span></div>
+            <div class="result-body"><div class="match-line"><span class="match-dot"></span>Best if you want a show</div><h3>Junie B. Jones, Jr.</h3><div class="event-line">Saturday, 2:00–3:10 PM · Cranford · $22 · All ages</div><p class="why">Walk-up tickets are available, though arriving 20 minutes early is safest.</p><div class="card-foot"><span class="verified"><strong>✓ Verified 2h ago</strong> · Box office</span><div class="card-actions"><button>Calendar</button><button class="primary">View event</button></div></div></div>
+          </article>
+          <a class="text-link" href="#">Show five looser matches →</a>
+        </div>
+        <aside class="refine-panel"><div class="refine-label">One search, ongoing context</div><h3>Keep adjusting</h3><p>No need to repeat who, when, or your budget.</p><div class="quick-refines"><button>What if it rains harder?</button><button>Something more active</button><button>Include Sunday too</button></div><div class="refine-input"><span>Ask a follow-up…</span><button>→</button></div><div class="save-search"><a href="#" data-goto="preferences">♡ Remember these preferences</a></div></aside>
+      </div>
+    </section>
+    <div class="mobile-refine"><div class="mobile-refine-hints"><button>More active</button><button>Include Sunday</button><button>Closer</button></div><div class="refine-input"><span>Ask a follow-up…</span><button>→</button></div></div>
+  </main>
+
+  <main class="view" id="view-detail">
+    <section class="detail-stage">
+      <div class="detail-wrap">
+        <a class="detail-back" href="#" data-goto="results">← Back to matches</a>
+        <div class="detail-grid">
+          <article class="detail-main">
+            <div class="detail-image"><img src="assets/event-cats/family.png" alt="Children making art together"><span class="detail-place">Westfield · 0.7 mi</span></div>
+            <div class="detail-content">
+              <div class="detail-status"><span class="match-dot"></span>Verified today · Drop-in</div>
+              <h1>Myths &amp; Magic with Miss Hannah</h1>
+              <p class="detail-summary">Saturday, August 22 · 3:30–4:30 PM<br>Westfield Memorial Library, Meeting Room</p>
+              <div class="detail-actions"><button class="detail-primary">Add to calendar</button><button data-goto="preferences">♡ Save event</button><button>Share</button></div>
+              <div class="detail-facts">
+                <div class="detail-fact"><div class="fact-label">Good for</div><div class="fact-value">Ages 6–9</div></div>
+                <div class="detail-fact"><div class="fact-label">Cost</div><div class="fact-value">Free</div></div>
+                <div class="detail-fact"><div class="fact-label">Registration</div><div class="fact-value">Day-of tickets from 3 PM</div></div>
+                <div class="detail-fact"><div class="fact-label">Weather</div><div class="fact-value">Indoors · rain safe</div></div>
+              </div>
+              <div class="detail-description"><h2>What to know</h2><p>Stories, crafts, and mythical creatures for elementary-age kids. Tickets are handed out at the children&rsquo;s desk beginning 30 minutes before the program; everyone attending needs a ticket.</p></div>
+            </div>
+          </article>
+          <aside class="detail-side">
+            <section class="detail-side-card"><div class="refine-label" style="color:var(--green)">Why it fits your search</div><h3>The easiest exact-age option.</h3><p>No advance registration, fully indoors, and under ten minutes from central Westfield.</p><div class="fit-list"><div class="fit-item"><span class="fit-check">✓</span><span>Starts after 2 PM</span></div><div class="fit-item"><span class="fit-check">✓</span><span>Free and age-specific</span></div><div class="fit-item"><span class="fit-check">✓</span><span>No online registration</span></div></div></section>
+            <section class="detail-side-card map-card"><div class="mini-map"><div class="map-road"></div><div class="map-pin"><span>WB</span></div></div><div class="map-copy"><strong>550 East Broad Street</strong><p>About 9 minutes from downtown Westfield.</p><div class="source-row"><strong>Checked 9:42 AM</strong> against the library&rsquo;s event page · View source ↗</div></div></section>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <main class="view" id="view-preferences">
+    <section class="preference-stage">
+      <div class="preference-wrap">
+        <a class="preference-back" href="#" data-goto="results">← Back to results</a>
+        <div class="preference-card">
+          <div class="preference-story"><div class="eyebrow">Optional household profile</div><h1>Make the next search feel like yours.</h1><p>Save only the details you&rsquo;re comfortable sharing. You can change or delete them anytime.</p><div class="preference-points"><div><span class="check">✓</span><span>Better-ranked event searches</span></div><div><span class="check">✓</span><span>A personalized Friday shortlist</span></div><div><span class="check">✓</span><span>Alerts when a saved event changes</span></div></div></div>
+          <form class="preference-form" onsubmit="return false;"><div class="form-step">Optional account</div><h2>Save what we learned</h2><p class="form-dek">We filled these from your search. Sign in only if you want them next time.</p><div class="field-group"><label class="field-label">Who usually comes along?</label><div class="age-row"><span class="age-chip">Child · age 7&nbsp; ×</span><button class="age-add" type="button">+</button></div></div><div class="field-group"><label class="field-label">Default drive</label><div class="choice-row"><button class="choice" type="button">10 min</button><button class="choice on" type="button">20 min</button><button class="choice" type="button">30 min</button></div></div><div class="field-group"><label class="field-label">Things you want more often</label><div class="choice-row"><button class="choice on" type="button">Hands-on</button><button class="choice on" type="button">Shows</button><button class="choice" type="button">Outdoors</button><button class="choice" type="button">Sports</button><button class="choice" type="button">Food</button></div></div><div class="form-actions"><button class="save-primary" type="button">Continue with Google</button><button class="save-secondary" type="button">Email me a sign-in link</button><button class="save-skip" type="button" data-goto="results">Not now—keep browsing</button></div><p class="privacy-note">No password and no Facebook required. Browsing and the full calendar stay open to everyone.</p></form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const buttons = [...document.querySelectorAll('.compare button')];
+    const views = Object.fromEntries([...document.querySelectorAll('.view')].map((el) => [el.id.replace('view-', ''), el]));
+    function showView(name) {
+      if (!views[name]) return;
+      buttons.forEach((button) => button.classList.toggle('on', button.dataset.view === name));
+      Object.entries(views).forEach(([key, view]) => view.classList.toggle('on', key === name));
+      history.replaceState(null, '', `?view=${name}`);
+      window.scrollTo(0, 0);
+    }
+    buttons.forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
+    document.querySelectorAll('[data-goto]').forEach((el) => el.addEventListener('click', (event) => { event.preventDefault(); showView(el.dataset.goto); }));
+    document.querySelectorAll('[data-goto-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); showView(form.dataset.gotoForm); }));
+    showView(new URLSearchParams(location.search).get('view') || 'home');
+  </script>
+</body>
+</html>
