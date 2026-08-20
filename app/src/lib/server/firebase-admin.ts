@@ -60,6 +60,12 @@ export function getAdminDb(databaseId = currentDatabaseName()): Firestore {
   const cached = databaseCache.get(databaseId);
   if (cached) return cached;
   const database = getFirestore(getAdminApp(), databaseId);
+  // Crawlers assemble documents from ten heterogeneous external sources, so optional
+  // fields routinely arrive undefined. Without this, one undefined value aborts the
+  // entire write with "Cannot use undefined as a Firestore value" and the whole
+  // source run fails. Settings must be applied before the first operation, which the
+  // cache below guarantees.
+  database.settings({ ignoreUndefinedProperties: true });
   databaseCache.set(databaseId, database);
   return database;
 }
