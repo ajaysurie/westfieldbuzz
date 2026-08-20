@@ -16,6 +16,8 @@ export interface EventSearchSuccess {
   fallbackUsed: boolean;
   parserWarning?: ParsedIntent["parserWarning"];
   ambiguities: SearchIntent["ambiguities"];
+  /** Requested hard facts that inventory cannot currently verify. */
+  unresolvedConstraints?: string[];
   suggestions: string[];
   meta: {
     candidateCount: number;

@@ -95,7 +95,6 @@ async function main() {
 
   let valid = 0;
   let invalid = 0;
-  let errors = 0;
 
   for (let i = 0; i < enriched.length; i++) {
     const doc = enriched[i];

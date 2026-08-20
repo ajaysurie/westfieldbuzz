@@ -128,6 +128,9 @@ export const DISCOVERY_SEEDS: DiscoverySeed[] = [
   },
 ];
 
+export const DISCOVERY_CONCURRENCY = 3;
+export const DISCOVERY_CLEANUP_RESERVE_MS = 2_000;
+
 function stableId(url: string): string {
   return createHash("sha256").update(new URL(url).toString()).digest("hex");
 }
@@ -141,12 +144,12 @@ export async function discoverSourceCandidates(input: {
   seeds?: DiscoverySeed[];
   now?: Date;
   fetchImpl?: FetchImplementation;
+  deadlineAt?: Date;
 }): Promise<SourceCandidate[]> {
   const checkedAt = (input.now ?? new Date()).toISOString();
   const seeds = input.seeds ?? DISCOVERY_SEEDS;
-  const candidates: SourceCandidate[] = [];
-
-  for (const seed of seeds) {
+  const candidates = new Array<SourceCandidate | undefined>(seeds.length);
+  const candidateForSeed = async (seed: DiscoverySeed): Promise<SourceCandidate> => {
     const host = new URL(seed.url).hostname;
     const allowedHosts = host.startsWith("www.")
       ? [host, host.slice(4)]
@@ -174,8 +177,9 @@ export async function discoverSourceCandidates(input: {
         },
         fetchImpl: input.fetchImpl,
         maxRedirects: 2,
+        deadlineAt: input.deadlineAt,
       });
-      candidates.push({
+      return {
         ...base,
         reachable: true,
         evidence: {
@@ -187,18 +191,53 @@ export async function discoverSourceCandidates(input: {
             .update(response.text)
             .digest("hex"),
         },
-      });
+      };
     } catch (error) {
-      candidates.push({
+      return {
         ...base,
         reachable: false,
         evidence: {
           error: error instanceof Error ? error.message : String(error),
         },
-      });
+      };
     }
+  };
+
+  let nextSeed = 0;
+  const worker = async () => {
+    while (true) {
+      if (
+        input.deadlineAt &&
+        Date.now() + DISCOVERY_CLEANUP_RESERVE_MS >= input.deadlineAt.getTime()
+      ) {
+        return;
+      }
+      const index = nextSeed;
+      nextSeed += 1;
+      if (index >= seeds.length) return;
+      candidates[index] = await candidateForSeed(seeds[index]);
+    }
+  };
+  await Promise.all(
+    Array.from(
+      { length: Math.min(DISCOVERY_CONCURRENCY, seeds.length) },
+      worker
+    )
+  );
+  for (let index = 0; index < seeds.length; index += 1) {
+    if (candidates[index]) continue;
+    const seed = seeds[index];
+    candidates[index] = {
+      id: stableId(seed.url),
+      ...seed,
+      reviewStatus: "pending",
+      enabled: false,
+      checkedAt,
+      reachable: false,
+      evidence: { error: "Global crawl deadline exhausted before discovery seed could start" },
+    };
   }
-  return candidates;
+  return candidates as SourceCandidate[];
 }
 
 export async function runDiscovery(input: {
@@ -207,37 +246,35 @@ export async function runDiscovery(input: {
   runId?: string;
   now?: Date;
   fetchImpl?: FetchImplementation;
+  deadlineAt?: Date;
+  seeds?: DiscoverySeed[];
 }) {
   const runId = input.runId ?? randomUUID();
   const now = input.now ?? new Date();
   const runRef = input.db.collection("crawlRuns").doc(runId);
+  const warnings: string[] = [];
   if (input.write) {
-    await runRef.set({
-      mode: "discovery",
-      status: "running",
-      startedAt: Timestamp.fromDate(now),
-    });
+    try {
+      await runRef.set({
+        mode: "discovery",
+        status: "running",
+        startedAt: Timestamp.fromDate(now),
+      });
+    } catch (error) {
+      const message = `Discovery run ledger start failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      warnings.push(message);
+      console.error({ event: "discovery.run_start_failed", runId, error: message });
+    }
   }
 
-  let candidates: SourceCandidate[];
-  try {
-    candidates = await discoverSourceCandidates({
-      now,
-      fetchImpl: input.fetchImpl,
-    });
-  } catch (error) {
-    if (input.write) {
-      await runRef.set(
-        {
-          status: "failed",
-          error: error instanceof Error ? error.message : String(error),
-          finishedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-    }
-    throw error;
-  }
+  const candidates = await discoverSourceCandidates({
+    now,
+    fetchImpl: input.fetchImpl,
+    deadlineAt: input.deadlineAt,
+    seeds: input.seeds,
+  });
 
   const unreachable = candidates.filter((candidate) => !candidate.reachable).length;
   const status =
@@ -250,38 +287,79 @@ export async function runDiscovery(input: {
     const candidateRefs = candidates.map((candidate) =>
       input.db.collection("sourceCandidates").doc(candidate.id)
     );
-    const existing = await input.db.getAll(...candidateRefs);
-    const existingIds = new Set(
-      existing.filter((snapshot) => snapshot.exists).map((snapshot) => snapshot.id)
-    );
-    for (let index = 0; index < candidates.length; index += 400) {
-      const batch = input.db.batch();
-      for (const candidate of candidates.slice(index, index + 400)) {
-        batch.set(
-          input.db.collection("sourceCandidates").doc(candidate.id),
-          {
-            ...candidate,
-            ...(!existingIds.has(candidate.id)
-              ? { firstSeenAt: FieldValue.serverTimestamp() }
-              : {}),
-            lastCheckedAt: Timestamp.fromDate(now),
-            updatedAt: FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
-      await batch.commit();
+    let existingCandidates = new Map<string, FirebaseFirestore.DocumentData>();
+    let candidateLookupSucceeded = false;
+    try {
+      const existing = await input.db.getAll(...candidateRefs);
+      existingCandidates = new Map(existing.filter((snapshot) => snapshot.exists)
+        .map((snapshot) => [snapshot.id, snapshot.data() ?? {}]));
+      candidateLookupSucceeded = true;
+    } catch (error) {
+      const message = `Candidate lookup failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      warnings.push(message);
+      console.error({ event: "discovery.candidate_lookup_failed", runId, error: message });
     }
-    await runRef.set(
-      {
-        status,
-        candidateCount: candidates.length,
-        reachable: candidates.filter((candidate) => candidate.reachable).length,
-        unreachable,
-        finishedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    // Without the snapshot we cannot safely preserve operator-owned review
+    // fields or first-observation timestamps. Prefer a stale ledger to a
+    // destructive refresh.
+    if (!candidateLookupSucceeded) {
+      warnings.push("Candidate refresh skipped because existing review state could not be loaded");
+    }
+    for (let index = 0; candidateLookupSucceeded && index < candidates.length; index += 400) {
+      try {
+        const batch = input.db.batch();
+        for (const candidate of candidates.slice(index, index + 400)) {
+          const existing = existingCandidates.get(candidate.id);
+          batch.set(
+            input.db.collection("sourceCandidates").doc(candidate.id),
+            {
+              ...candidate,
+              reviewStatus: existing?.reviewStatus ?? candidate.reviewStatus,
+              ...(existing?.reviewedAt ? { reviewedAt: existing.reviewedAt } : {}),
+              ...(existing?.reviewedBy ? { reviewedBy: existing.reviewedBy } : {}),
+              ...(existing?.reviewNotes ? { reviewNotes: existing.reviewNotes } : {}),
+              ...(candidateLookupSucceeded && !existing
+                ? { firstSeenAt: FieldValue.serverTimestamp(), createdAt: FieldValue.serverTimestamp() }
+                : {}),
+              lastCheckedAt: Timestamp.fromDate(now),
+              updatedAt: FieldValue.serverTimestamp(),
+            },
+            { merge: true }
+          );
+        }
+        await batch.commit();
+      } catch (error) {
+        const message = `Candidate ledger write failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`;
+        warnings.push(message);
+        console.error({
+          event: "discovery.candidate_write_failed",
+          runId,
+          error: message,
+        });
+      }
+    }
+    try {
+      await runRef.set(
+        {
+          status,
+          candidateCount: candidates.length,
+          reachable: candidates.filter((candidate) => candidate.reachable).length,
+          unreachable,
+          finishedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      const message = `Discovery run ledger finalize failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      warnings.push(message);
+      console.error({ event: "discovery.run_finalize_failed", runId, error: message });
+    }
   }
-  return { runId, status, candidates };
+  return { runId, status, candidates, warnings };
 }

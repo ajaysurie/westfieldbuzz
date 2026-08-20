@@ -1,7 +1,7 @@
-import { Timestamp } from "firebase-admin/firestore";
+import { Timestamp, type Firestore } from "firebase-admin/firestore";
 import { describe, expect, it } from "vitest";
 import { authorizeCron } from "../cron-auth";
-import { DISCOVERY_SEEDS, discoverSourceCandidates } from "../discovery";
+import { DISCOVERY_SEEDS, discoverSourceCandidates, runDiscovery } from "../discovery";
 import { leaseIsActive } from "../lease";
 import { EVENT_SOURCES, SOURCE_GROUPS } from "../source-registry";
 import { countAnomaly } from "../runner";
@@ -73,5 +73,67 @@ describe("source registry and discovery boundary", () => {
       evidence: { pageTitle: "Community Players" },
     });
     expect(EVENT_SOURCES.some((source) => source.url === candidates[0].url)).toBe(false);
+  });
+
+  it("fetches discovery seeds with concurrency three while preserving seed order", async () => {
+    let active = 0;
+    let maximum = 0;
+    const seeds = DISCOVERY_SEEDS.slice(0, 4);
+    const candidates = await discoverSourceCandidates({
+      seeds,
+      fetchImpl: async (url) => {
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await new Promise((resolve) => setTimeout(resolve, String(url).includes("ludus") ? 25 : 5));
+        active -= 1;
+        return new Response("<html><title>Candidate</title></html>", {
+          headers: { "content-type": "text/html" },
+        });
+      },
+    });
+    expect(maximum).toBe(3);
+    expect(candidates.map((candidate) => candidate.name)).toEqual(seeds.map((seed) => seed.name));
+  });
+
+  it("does not start discovery seeds after its deadline reserve", async () => {
+    const fetchImpl = async () => new Response("<html></html>", {
+      headers: { "content-type": "text/html" },
+    });
+    const candidates = await discoverSourceCandidates({
+      seeds: DISCOVERY_SEEDS.slice(0, 2),
+      deadlineAt: new Date(Date.now() + 1_000),
+      fetchImpl,
+    });
+    expect(candidates.every((candidate) => !candidate.reachable)).toBe(true);
+    expect(candidates.every((candidate) => candidate.evidence.error?.includes("deadline exhausted"))).toBe(true);
+  });
+
+  it("does not reset first-seen timestamps when candidate lookup bookkeeping fails", async () => {
+    const writes: Array<Record<string, unknown>> = [];
+    const collection = (path: string) => ({
+      doc: (id: string) => ({
+        set: async () => undefined,
+        collection: (name: string) => collection(`${path}/${id}/${name}`),
+      }),
+    });
+    const db = {
+      collection,
+      getAll: async () => { throw new Error("lookup unavailable"); },
+      batch: () => ({
+        set: (_ref: unknown, value: Record<string, unknown>) => writes.push(value),
+        commit: async () => undefined,
+      }),
+    } as unknown as Firestore;
+    const result = await runDiscovery({
+      db,
+      write: true,
+      seeds: [DISCOVERY_SEEDS[0]],
+      fetchImpl: async () => new Response("<html></html>", {
+        headers: { "content-type": "text/html" },
+      }),
+    });
+    expect(result.status).toBe("success");
+    expect(result.warnings).toContain("Candidate lookup failed: lookup unavailable");
+    expect(writes).toHaveLength(0);
   });
 });

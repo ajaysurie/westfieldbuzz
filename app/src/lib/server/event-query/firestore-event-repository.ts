@@ -1,4 +1,5 @@
-import type { EventCategory } from "@/lib/events/types";
+import { normalizeCategory } from "@/lib/events/normalize";
+import { isWithinVerificationAge } from "@/lib/events/freshness";
 import type {
   EventQueryWindow,
   EventRepository,
@@ -39,10 +40,21 @@ function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function factEvidence(value: unknown): SearchableEvent["factEvidence"] {
+  if (!value || typeof value !== "object") return {};
+  const record = value as Record<string, unknown>;
+  const names = ["age", "cost", "environment", "registration", "accessibility", "travelTime"] as const;
+  return Object.fromEntries(names.flatMap((name) =>
+    record[name] === "known" || record[name] === "unknown"
+      ? [[name, record[name]]]
+      : []
+  )) as SearchableEvent["factEvidence"];
+}
+
 function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | null {
   const date = toDate(data.date);
   const verified = toDate(data.lastVerifiedAt);
-  if (!date || !verified || typeof data.title !== "string" || typeof data.sourceUrl !== "string") {
+  if (!date || !verified || typeof data.title !== "string") {
     return null;
   }
   const cost = data.cost && typeof data.cost === "object"
@@ -66,7 +78,7 @@ function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | 
         ? costAmount === 0
         : null;
 
-  return {
+  const mapped: SearchableEvent = {
     id,
     title: data.title,
     description: typeof data.description === "string" ? data.description : "",
@@ -74,12 +86,17 @@ function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | 
     endDate: toDate(data.endDate)?.toISOString() ?? null,
     location: typeof data.location === "string" ? data.location : "",
     town: typeof data.town === "string" ? data.town : "",
-    category: (typeof data.category === "string" ? data.category : "Community") as EventCategory,
-    status: data.status === "rescheduled" ? "rescheduled" : data.status === "cancelled" ? "cancelled" : data.status === "postponed" ? "postponed" : "scheduled",
+    category: normalizeCategory(typeof data.category === "string" ? data.category : undefined),
+    status: data.status === "rescheduled" ? "rescheduled"
+      : data.status === "cancelled" ? "cancelled"
+      : data.status === "postponed" ? "postponed"
+      : data.status === "weather-dependent" ? "weather-dependent"
+      : "scheduled",
     availability: data.availability === "available" || data.availability === "registration-required" || data.availability === "waitlist" || data.availability === "sold-out" ? data.availability : "unknown",
     publicationStatus: "published",
     freshnessStatus: data.freshnessStatus === "stale" || data.freshnessStatus === "missing" ? data.freshnessStatus : "current",
-    sourceUrl: data.sourceUrl,
+    // Manual events have operator verification instead of an invented source URL.
+    sourceUrl: typeof data.sourceUrl === "string" ? data.sourceUrl : "",
     sourceId: typeof data.sourceId === "string" ? data.sourceId : "",
     lastVerifiedAt: verified.toISOString(),
     tags: strings(data.tags),
@@ -91,7 +108,9 @@ function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | 
     registration,
     accessibility: strings(data.accessibility),
     driveMinutes: finiteNumber(data.driveMinutes),
+    factEvidence: factEvidence(data.factEvidence),
   };
+  return isWithinVerificationAge(verified) ? mapped : null;
 }
 
 async function createDatabase() {

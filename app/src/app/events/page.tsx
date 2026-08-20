@@ -5,7 +5,9 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import EventCalendar, { localDateKey, moveCalendarMonth } from "@/components/EventCalendar";
 import EventCard from "@/components/EventCard";
-import { getEvents, type Event } from "@/lib/firestore";
+import { getPublicEvents, type Event } from "@/lib/firestore";
+import { EVENT_CATEGORIES, type EventCategory } from "@/lib/events/types";
+import { publicEventQueryRange } from "@/lib/events/query-range";
 
 type EventsView = "agenda" | "calendar";
 
@@ -46,7 +48,10 @@ function EventsContent() {
   const selectedDate = /^\d{4}-\d{2}-\d{2}$/.test(searchParams.get("date") ?? "")
     ? searchParams.get("date")
     : null;
-  const activeCategory = searchParams.get("category");
+  const categoryParam = searchParams.get("category");
+  const activeCategory = categoryParam && EVENT_CATEGORIES.includes(categoryParam as EventCategory)
+    ? categoryParam as EventCategory
+    : null;
   const visibleMonth = monthFromParams(searchParams.get("month"), selectedDate);
 
   const [events, setEvents] = useState<Event[]>([]);
@@ -67,13 +72,23 @@ function EventsContent() {
     setLoading(true);
     setError(false);
     try {
-      setEvents(await getEvents());
+      const range = publicEventQueryRange({
+        view,
+        month: visibleMonth.month,
+        year: visibleMonth.year,
+        selectedDate,
+      });
+      setEvents(await getPublicEvents({
+        ...range,
+        ...(activeCategory ? { category: activeCategory } : {}),
+        limit: view === "calendar" ? 160 : 200,
+      }));
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeCategory, selectedDate, view, visibleMonth.month, visibleMonth.year]);
 
   useEffect(() => {
     void loadEvents();
@@ -82,14 +97,11 @@ function EventsContent() {
   const publicEvents = useMemo(() => {
     const today = startOfToday();
     return events
-      .filter((event) => event.publicationStatus === "published" && toDate(event) >= today)
+      .filter((event) => toDate(event) >= today)
       .sort((left, right) => toDate(left).getTime() - toDate(right).getTime());
   }, [events]);
 
-  const categories = useMemo(
-    () => Array.from(new Set(publicEvents.map((event) => event.category).filter(Boolean))).sort(),
-    [publicEvents]
-  );
+  const categories = EVENT_CATEGORIES;
 
   const filteredEvents = useMemo(() => publicEvents.filter((event) => {
     if (activeCategory && event.category !== activeCategory) return false;

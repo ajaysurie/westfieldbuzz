@@ -9,8 +9,11 @@ export default function FinishSignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
+  const [repeatSaveAt, setRepeatSaveAt] = useState<string | null>(null);
 
   useEffect(() => {
+    // Browser storage is the external source used by Firebase's same-device email-link flow.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEmail(window.localStorage.getItem("westfieldbuzz:emailForSignIn") || "");
   }, []);
 
@@ -18,8 +21,12 @@ export default function FinishSignInPage() {
     event.preventDefault();
     setError("");
     try {
-      const destination = await completeEmailLink(email);
-      router.replace(destination);
+      const result = await completeEmailLink(email);
+      if (result.continuationMissing) {
+        setRepeatSaveAt(result.destination);
+      } else {
+        router.replace(result.destination);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "The sign-in link could not be completed.");
     }
@@ -55,6 +62,12 @@ export default function FinishSignInPage() {
           {loggingIn ? "Signing in..." : "Continue"}
         </button>
         {error && <p role="alert" className="mt-4 text-[0.85rem] text-sienna">{error}</p>}
+        {repeatSaveAt && (
+          <div role="status" className="mt-4 rounded-lg bg-mist p-3 text-sm text-ink-light">
+            You&apos;re signed in. For your privacy, open this page on the device where you started and tap Save again.
+            <button type="button" onClick={() => router.replace(repeatSaveAt)} className="mt-3 block font-semibold text-accent underline">Continue to the page</button>
+          </div>
+        )}
       </form>
     </main>
   );

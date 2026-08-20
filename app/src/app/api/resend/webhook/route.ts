@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { Resend } from "resend";
 import { getAdminDb } from "@/lib/server/firebase-admin";
 import {
-  advanceDeliveryStatus,
   deliveryStatusForWebhook,
+  isSubscriberSuppressingDeliveryStatus,
+  reduceDeliveryTransition,
   type DeliveryStatus,
 } from "@/lib/server/email/webhooks";
 
@@ -37,63 +38,105 @@ export async function POST(request: Request) {
   if (!incoming) return NextResponse.json({ ok: true });
   const db = getAdminDb();
   const eventRef = db.collection("resendWebhookEvents").doc(eventId);
+  const tags = "tags" in event.data && event.data.tags ? event.data.tags : {};
+  let deliveryRef =
+    typeof tags.delivery_id === "string"
+      ? db.collection("digestDeliveries").doc(tags.delivery_id)
+      : typeof tags.confirmation_delivery_id === "string"
+        ? db.collection("confirmationDeliveries").doc(tags.confirmation_delivery_id)
+        : null;
 
-  const deliveries = await db
-    .collection("digestDeliveries")
-    .where("providerEmailId", "==", providerEmailId)
-    .limit(1)
-    .get();
-  const delivery = deliveries.docs[0];
-  if (!delivery) {
+  if (!deliveryRef) {
+    const digestDeliveries = await db
+      .collection("digestDeliveries")
+      .where("providerEmailId", "==", providerEmailId)
+      .limit(1)
+      .get();
+    deliveryRef = digestDeliveries.docs[0]?.ref ?? null;
+  }
+  if (!deliveryRef) {
+    const confirmations = await db
+      .collection("confirmationDeliveries")
+      .where("providerEmailId", "==", providerEmailId)
+      .limit(1)
+      .get();
+    deliveryRef = confirmations.docs[0]?.ref ?? null;
+  }
+  if (!deliveryRef) {
     await eventRef.set(
       {
         type: event.type,
         providerEmailId,
         providerCreatedAt: event.created_at,
-        processed: false,
+        processed: true,
+        uncorrelated: true,
         receivedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );
-    return NextResponse.json({ ok: false, retry: true }, { status: 503 });
+    return NextResponse.json({ ok: true });
   }
+  const targetRef = deliveryRef;
 
   await db.runTransaction(async (transaction) => {
     const [eventSnapshot, deliverySnapshot] = await Promise.all([
       transaction.get(eventRef),
-      transaction.get(delivery.ref),
+      transaction.get(targetRef),
     ]);
     if (eventSnapshot.data()?.processed === true) return;
+    if (!deliverySnapshot.exists) {
+      transaction.set(eventRef, {
+        type: event.type,
+        providerEmailId,
+        providerCreatedAt: event.created_at,
+        processed: true,
+        uncorrelated: true,
+        processedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      return;
+    }
 
     const deliveryData = deliverySnapshot.data() ?? {};
     const current = (deliveryData.status ?? "sent") as DeliveryStatus;
-    const status = advanceDeliveryStatus(current, incoming);
     const incomingAt = new Date(event.created_at);
     const storedAt =
       deliveryData.providerUpdatedAt instanceof Timestamp
         ? deliveryData.providerUpdatedAt.toDate()
         : new Date(0);
-
-    transaction.update(delivery.ref, {
-      status,
-      providerUpdatedAt: Timestamp.fromDate(
-        incomingAt.getTime() > storedAt.getTime() ? incomingAt : storedAt
-      ),
-      updatedAt: FieldValue.serverTimestamp(),
+    const transition = reduceDeliveryTransition({
+      currentStatus: current,
+      currentProviderUpdatedAt: storedAt.getTime() > 0 ? storedAt : null,
+      incomingStatus: incoming,
+      incomingProviderUpdatedAt: incomingAt,
     });
+
     if (
-      typeof deliveryData.subscriberId === "string" &&
-      ["bounced", "complained", "suppressed"].includes(incoming)
+      transition.applied
+      && typeof deliveryData.subscriberId === "string"
+      && isSubscriberSuppressingDeliveryStatus(incoming)
     ) {
-      transaction.set(
-        db.collection("subscribers").doc(deliveryData.subscriberId),
-        {
+      const subscriberRef = db.collection("subscribers").doc(deliveryData.subscriberId);
+      const subscriber = await transaction.get(subscriberRef);
+      // A provider event belongs to its delivery's consent generation. Do not
+      // let a delayed old delivery suppress a newer opt-in for the same email.
+      const subscriberVersion = Number(subscriber.data()?.tokenVersion ?? 1);
+      const deliveryVersion = Number(deliveryData.tokenVersion ?? 1);
+      if (subscriber.exists && subscriberVersion === deliveryVersion) {
+        transaction.set(subscriberRef, {
           status: "suppressed",
           suppressedAt: Timestamp.fromDate(incomingAt),
           updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
+        }, { merge: true });
+      }
+    }
+    if (transition.applied && transition.providerUpdatedAt) {
+      transaction.update(targetRef, {
+        status: transition.status,
+        providerEmailId,
+        ...(incoming === "failed" ? { failureOrigin: "provider" } : {}),
+        providerUpdatedAt: Timestamp.fromDate(transition.providerUpdatedAt),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
     }
     transaction.set(
       eventRef,

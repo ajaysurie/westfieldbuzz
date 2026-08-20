@@ -1,5 +1,6 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { handleEventSearch } from "@/app/api/event-search/route";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { emptySearchIntent } from "../event-intent";
+import { handleEventSearch } from "@/app/api/event-search/handler";
 import type { EventRepository } from "../event-retrieval";
 import { eventFixture } from "./test-events";
 
@@ -48,6 +49,7 @@ describe("POST /api/event-search", () => {
     expect(payload.results).toEqual([]);
     expect(payload.suggestions).toContain("Include indoor and outdoor events");
     expect(JSON.stringify(payload)).not.toMatch(/sample|made up|suggested event/i);
+    expect(payload.unresolvedConstraints).toContain("We do not yet have verified indoor/outdoor setting for these events.");
   });
 
   it("validates query and prior intent limits", async () => {
@@ -72,9 +74,60 @@ describe("POST /api/event-search", () => {
 
   it("honors the shared rate limiter", async () => {
     const response = await handleEventSearch(request({ query: "music" }), {
-      rateLimiter: async () => false,
+      ingressLimiter: async () => false,
     });
     expect(response.status).toBe(429);
+  });
+
+  it("does not charge expensive quota for malformed requests, but charges a valid one once", async () => {
+    let quotaCalls = 0;
+    const quotaLimiter = async () => {
+      quotaCalls += 1;
+      return true;
+    };
+    const common = {
+      ingressLimiter: async () => true,
+      quotaLimiter,
+      repository: { async listPublishedEvents() { return []; } } satisfies EventRepository,
+      now: NOW,
+    };
+
+    const invalidJson = await handleEventSearch(
+      new Request("http://localhost/api/event-search", { method: "POST", body: "{" }),
+      common
+    );
+    const invalidIntent = await handleEventSearch(request({ query: "music", intent: { version: 99 } }), common);
+    const valid = await handleEventSearch(request({ query: "music" }), common);
+
+    expect(invalidJson.status).toBe(400);
+    expect(invalidIntent.status).toBe(400);
+    expect(valid.status).toBe(200);
+    expect(quotaCalls).toBe(1);
+  });
+
+  it("executes a validated structured intent without invoking the model or expensive quota", async () => {
+    let ingressCalls = 0;
+    let quotaCalls = 0;
+    const parser = { parse: vi.fn() };
+    const intent = { ...emptySearchIntent(), categories: ["Music" as const], towns: ["Cranford"] };
+    const listPublishedEvents = vi.fn(async () => []);
+    const repository: EventRepository = { listPublishedEvents };
+
+    const response = await handleEventSearch(request({ mode: "structured", intent }), {
+      repository,
+      parser,
+      now: NOW,
+      ingressLimiter: async () => { ingressCalls += 1; return true; },
+      quotaLimiter: async () => { quotaCalls += 1; return true; },
+    });
+    const payload = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(payload.intent).toEqual(intent);
+    expect(listPublishedEvents).toHaveBeenCalledTimes(1);
+    expect(ingressCalls).toBe(1);
+    expect(quotaCalls).toBe(0);
+    expect(parser.parse).not.toHaveBeenCalled();
   });
 
   it("returns a privacy-safe controlled inventory configuration error", async () => {

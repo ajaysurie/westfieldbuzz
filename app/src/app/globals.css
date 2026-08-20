@@ -323,7 +323,8 @@ a {
   scrollbar-width: none;
 }
 
-.search-starters a {
+.search-starters a,
+.search-starters button {
   min-height: 40px;
   display: inline-flex;
   flex: 0 0 auto;

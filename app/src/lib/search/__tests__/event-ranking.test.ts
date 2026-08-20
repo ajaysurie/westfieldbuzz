@@ -37,6 +37,19 @@ describe("event retrieval and ranking", () => {
     expect(filterEvents([sport, market], intent).map((event) => event.id)).toEqual(["market"]);
   });
 
+  it("keeps weather-dependent events searchable so callers can present their warning", () => {
+    const intent = fallbackParseIntent({ query: "Saturday", now: NOW });
+    const weatherDependent = eventFixture({
+      id: "weather",
+      title: "Outdoor concert",
+      date: "2026-08-22T14:00:00.000Z",
+      status: "weather-dependent",
+    });
+
+    expect(filterEvents([weatherDependent], intent).map((event) => event.status))
+      .toEqual(["weather-dependent"]);
+  });
+
   it("ranks reproducibly with stable tie breaking", () => {
     const intent = fallbackParseIntent({ query: "music Friday night near Cranford", now: NOW });
     const exact = eventFixture({ id: "z-exact", title: "Friday Night Jazz Music", date: "2026-08-21T23:00:00.000Z", town: "Cranford", category: "Music" });
@@ -65,5 +78,15 @@ describe("event retrieval and ranking", () => {
     expect(reason).toMatch(/ages 5–10/i);
     expect(reason).toMatch(/indoor/i);
     expect(reason).not.toMatch(/tickets|space|recommended/i);
+  });
+
+  it("never treats an unsupported hard fact as satisfied", () => {
+    const intent = fallbackParseIntent({ query: "free indoor Saturday", now: NOW });
+    const unknown = eventFixture({
+      id: "unknown", title: "Unverified setting", date: "2026-08-22T17:00:00.000Z",
+      environment: "indoor", isFree: true, costAmount: 0,
+      factEvidence: { age: "unknown", cost: "unknown", environment: "unknown", registration: "unknown", accessibility: "unknown", travelTime: "unknown" },
+    });
+    expect(filterEvents([unknown], intent)).toEqual([]);
   });
 });

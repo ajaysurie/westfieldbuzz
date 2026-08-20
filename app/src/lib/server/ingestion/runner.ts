@@ -24,6 +24,8 @@ export interface IngestionRunResult {
   runId: string;
   status: "success" | "partial" | "failed";
   sourceResults: SourceRunResult[];
+  /** Bookkeeping failures that did not change the actual crawl outcome. */
+  warnings: string[];
   totals: {
     fetched: number;
     created: number;
@@ -36,6 +38,9 @@ export interface IngestionRunResult {
     errors: number;
   };
 }
+
+export const INGESTION_CONCURRENCY = 2;
+export const CLEANUP_RESERVE_MS = 2_000;
 
 export function makeIngestionWindow(input: {
   fromLocalDate: string;
@@ -119,6 +124,12 @@ async function persistSourceHealth(input: {
       group: input.source.group,
       status: input.result.status,
       fetched: input.result.fetched,
+      created: input.result.created,
+      updated: input.result.updated,
+      verified: input.result.verified,
+      missing: input.result.missing,
+      stale: input.result.stale,
+      candidates: input.result.candidates,
       errors: input.result.errors,
       warnings: input.result.warnings,
       safetyHeld: input.result.safetyHeld,
@@ -144,13 +155,16 @@ async function runSource(input: {
   write: boolean;
   checkedAt: Date;
   fetchImpl?: FetchImplementation;
+  deadlineAt?: Date;
 }): Promise<SourceRunResult> {
   const started = Date.now();
+  let result: SourceRunResult;
   try {
     const fetched = await fetchSourceEvents({
       source: input.source,
       window: input.window,
       fetchImpl: input.fetchImpl,
+      deadlineAt: input.deadlineAt,
     });
     const anomaly = await applyBaselineAnomaly({
       db: input.db,
@@ -169,11 +183,12 @@ async function runSource(input: {
       to: input.window.to,
       complete,
       write: input.write,
+      deadlineAt: input.deadlineAt,
     });
-    const result: SourceRunResult = {
+    result = {
       sourceId: input.source.id,
       sourceName: input.source.name,
-      status: sourceStatus(errors, fetched.events.length),
+      status: "incomplete" in reconciliation && reconciliation.incomplete ? "partial" : sourceStatus(errors, fetched.events.length),
       fetched: fetched.events.length,
       created: reconciliation.created,
       updated: reconciliation.updated,
@@ -184,19 +199,11 @@ async function runSource(input: {
       safetyHeld: reconciliation.safetyHeld || Boolean(anomaly),
       errors,
       warnings: fetched.warnings,
+      ...("incomplete" in reconciliation && reconciliation.incomplete ? { incomplete: true, warnings: [...fetched.warnings, "Deadline reached; only committed writes are reported"] } : {}),
       durationMs: Date.now() - started,
     };
-    if (input.write) {
-      await persistSourceHealth({
-        db: input.db,
-        source: input.source,
-        result,
-        checkedAt: input.checkedAt,
-      });
-    }
-    return result;
   } catch (error) {
-    const result: SourceRunResult = {
+    result = {
       sourceId: input.source.id,
       sourceName: input.source.name,
       status: "failed",
@@ -212,16 +219,55 @@ async function runSource(input: {
       warnings: [],
       durationMs: Date.now() - started,
     };
-    if (input.write) {
+  }
+
+  // Health records are observability, not part of reconciliation. In particular,
+  // do not turn an already-successful reconcile into a failure (or execute it again)
+  // because its health record could not be saved.
+  if (input.write) {
+    try {
       await persistSourceHealth({
         db: input.db,
         source: input.source,
         result,
         checkedAt: input.checkedAt,
       });
+    } catch (error) {
+      const message = `Health persistence failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      result.warnings.push(message);
+      console.error({
+        event: "ingestion.health_persist_failed",
+        sourceId: input.source.id,
+        error: message,
+      });
     }
-    return result;
   }
+  return result;
+}
+
+function deadlineHeldResult(source: EventSourcePolicy): SourceRunResult {
+  return {
+    sourceId: source.id,
+    sourceName: source.name,
+    status: "failed",
+    fetched: 0,
+    created: 0,
+    updated: 0,
+    verified: 0,
+    missing: 0,
+    stale: 0,
+    candidates: 0,
+    safetyHeld: true,
+    errors: ["Global crawl deadline exhausted before source could start"],
+    warnings: [],
+    durationMs: 0,
+  };
+}
+
+function mayStartBeforeDeadline(deadlineAt?: Date): boolean {
+  return !deadlineAt || Date.now() + CLEANUP_RESERVE_MS < deadlineAt.getTime();
 }
 
 function totals(results: SourceRunResult[]): IngestionRunResult["totals"] {
@@ -259,48 +305,98 @@ export async function runIngestion(input: {
   runId?: string;
   checkedAt?: Date;
   fetchImpl?: FetchImplementation;
+  deadlineAt?: Date;
 }): Promise<IngestionRunResult> {
   const runId = input.runId ?? randomUUID();
   const checkedAt = input.checkedAt ?? new Date();
   const runRef = input.db.collection("crawlRuns").doc(runId);
+  const warnings: string[] = [];
   if (input.write) {
-    await runRef.set({
-      status: "running",
-      mode: "collection",
-      sourceIds: input.sources.map((source) => source.id),
-      fromDate: input.window.fromLocalDate,
-      toDate: input.window.toLocalDate,
-      startedAt: Timestamp.fromDate(checkedAt),
-    });
-  }
-
-  const sourceResults: SourceRunResult[] = [];
-  for (const source of input.sources) {
-    const result = await runSource({ ...input, source, checkedAt });
-    sourceResults.push(result);
-    if (input.write) {
-      await runRef.collection("sources").doc(source.id).set(result);
+    try {
+      await runRef.set({
+        status: "running",
+        mode: "collection",
+        sourceIds: input.sources.map((source) => source.id),
+        fromDate: input.window.fromLocalDate,
+        toDate: input.window.toLocalDate,
+        startedAt: Timestamp.fromDate(checkedAt),
+      });
+    } catch (error) {
+      const message = `Run ledger start failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      warnings.push(message);
+      console.error({ event: "ingestion.run_start_failed", runId, error: message });
     }
   }
 
-  const failed = sourceResults.filter((result) => result.status === "failed").length;
-  const nonSuccess = sourceResults.filter((result) => result.status !== "success").length;
+  const sourceResults = new Array<SourceRunResult | undefined>(input.sources.length);
+  let nextSource = 0;
+  const worker = async () => {
+    while (true) {
+      if (!mayStartBeforeDeadline(input.deadlineAt)) return;
+      const index = nextSource;
+      nextSource += 1;
+      if (index >= input.sources.length) return;
+      const source = input.sources[index];
+      const result = await runSource({ ...input, source, checkedAt });
+      sourceResults[index] = result;
+      if (input.write) {
+        try {
+          await runRef.collection("sources").doc(source.id).set(result);
+        } catch (error) {
+          const message = `Source ledger write failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`;
+          result.warnings.push(message);
+          warnings.push(`${source.id}: ${message}`);
+          console.error({
+            event: "ingestion.source_ledger_failed",
+            runId,
+            sourceId: source.id,
+            error: message,
+          });
+        }
+      }
+    }
+  };
+  await Promise.all(
+    Array.from(
+      { length: Math.min(INGESTION_CONCURRENCY, input.sources.length) },
+      worker
+    )
+  );
+  for (let index = 0; index < input.sources.length; index += 1) {
+    sourceResults[index] ??= deadlineHeldResult(input.sources[index]);
+  }
+  const orderedResults = sourceResults as SourceRunResult[];
+
+  const failed = orderedResults.filter((result) => result.status === "failed").length;
+  const nonSuccess = orderedResults.filter((result) => result.status !== "success").length;
   const status =
-    sourceResults.length > 0 && failed === sourceResults.length
+    orderedResults.length > 0 && failed === orderedResults.length
       ? "failed"
       : nonSuccess > 0
         ? "partial"
         : "success";
-  const summary = totals(sourceResults);
+  const summary = totals(orderedResults);
   if (input.write) {
-    await runRef.set(
-      {
-        status,
-        ...summary,
-        finishedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    try {
+      await runRef.set(
+        {
+          status,
+          ...summary,
+          finishedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      const message = `Run ledger finalize failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`;
+      warnings.push(message);
+      console.error({ event: "ingestion.run_finalize_failed", runId, error: message });
+    }
   }
-  return { runId, status, sourceResults, totals: summary };
+  return { runId, status, sourceResults: orderedResults, warnings, totals: summary };
 }

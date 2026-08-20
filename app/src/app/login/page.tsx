@@ -1,6 +1,7 @@
 "use client";
 
-import { safeReturnTo, useAuth } from "@/lib/auth";
+import { clearStoredAuthResume, readStoredAuthResume, safeReturnTo, useAuth } from "@/lib/auth";
+import { authResumeDestination, isAuthContinuationId } from "@/lib/auth-continuation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
@@ -17,23 +18,35 @@ export default function LoginPage() {
   } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [returnTo, setReturnTo] = useState("/");
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [continuation, setContinuation] = useState<string | null>(null);
 
   useEffect(() => {
-    setReturnTo(
-      safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"))
-    );
+    // The return path is browser-owned URL state and must be captured after hydration.
+    const params = new URLSearchParams(window.location.search);
+    const storedResume = readStoredAuthResume();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser URL/storage are unavailable during SSR
+    setReturnTo(safeReturnTo(params.get("returnTo") || storedResume.returnTo));
+    const id = params.get("continuation");
+    setContinuation(isAuthContinuationId(id) ? id : storedResume.continuation);
   }, []);
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push(returnTo);
+    if (!loading && user && returnTo !== null) {
+      router.push(authResumeDestination(returnTo, continuation));
+      clearStoredAuthResume();
     }
-  }, [user, loading, router, returnTo]);
+  }, [user, loading, router, returnTo, continuation]);
 
   const handleEmailLink = async (event: FormEvent) => {
     event.preventDefault();
-    await sendEmailLink(email, returnTo);
+    if (continuation) await sendEmailLink(email, returnTo ?? "/", continuation);
+    else await sendEmailLink(email, returnTo ?? "/");
+  };
+
+  const cancelContinuation = () => {
+    clearStoredAuthResume();
+    router.push(authResumeDestination(returnTo, continuation, "cancel"));
   };
 
   if (loading) {
@@ -69,8 +82,14 @@ export default function LoginPage() {
           preferences. Browsing and the full calendar stay open to everyone.
         </p>
 
+        {continuation && (
+          <button type="button" onClick={cancelContinuation} className="mb-5 text-sm font-semibold text-accent underline">
+            Cancel saving and return
+          </button>
+        )}
+
         <button
-          onClick={loginWithGoogle}
+          onClick={() => loginWithGoogle(returnTo ?? "/", continuation)}
           disabled={loggingIn}
           className={`flex w-full items-center justify-center gap-3 rounded-lg px-6 py-3.5 text-[0.95rem] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md ${loggingIn ? "opacity-60 cursor-not-allowed" : ""}`}
           style={{ background: "#fff", color: "#3c4043", border: "1px solid #dadce0" }}

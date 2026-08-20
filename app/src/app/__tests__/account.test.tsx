@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, cleanup } from "@testing-library/react";
+import { act, render, cleanup, screen, waitFor } from "@testing-library/react";
 
 const mockPush = vi.fn();
 
@@ -20,10 +20,30 @@ vi.mock("@/components/AuthGate", () => ({
 }));
 
 import AccountPage from "../account/page";
+import { getPreferences, type HouseholdPreferences } from "@/lib/personalization";
+
+const DEFAULT_PREFERENCES: HouseholdPreferences = {
+  towns: ["Westfield"],
+  driveMinutes: 20,
+  childAges: [],
+  interests: [],
+  indoorPreference: "either",
+  budgetMax: null,
+  personalizeFriday: false,
+};
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((next) => {
+    resolve = next;
+  });
+  return { promise, resolve };
+}
 
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getPreferences).mockReset().mockResolvedValue(DEFAULT_PREFERENCES);
   mockAuthState = {
     user: {
       uid: "u1",
@@ -46,7 +66,12 @@ vi.mock("@/lib/personalization", () => ({
     towns: ["Westfield"], driveMinutes: 20, childAges: [], interests: [], indoorPreference: "either", budgetMax: null, personalizeFriday: false,
   }),
   savePreferences: vi.fn().mockResolvedValue(undefined),
+  getSavedEventIds: vi.fn().mockResolvedValue([]),
+  getSavedSearches: vi.fn().mockResolvedValue([]),
+  unsaveEvent: vi.fn().mockResolvedValue(undefined),
+  unsaveSearch: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("@/lib/firestore", () => ({ getPublishedEventById: vi.fn().mockResolvedValue(null) }));
 
 describe("AccountPage — preferences", () => {
   it("shows Google as a linked provider", () => {
@@ -87,5 +112,48 @@ describe("AccountPage — preferences", () => {
   it("offers explicit Friday personalization opt-in", () => {
     const { container } = render(<AccountPage />);
     expect(container).toHaveTextContent("Personalize my Friday email");
+  });
+
+  it("waits for the current user's preferences and ignores obsolete hydration", async () => {
+    const first = deferred<HouseholdPreferences>();
+    const second = deferred<HouseholdPreferences>();
+    vi.mocked(getPreferences)
+      .mockReset()
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+
+    const { rerender } = render(<AccountPage />);
+    expect(screen.getByLabelText("Towns, separated by commas")).toBeDisabled();
+    expect(screen.getByLabelText("Children's ages, separated by commas")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Music" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /Personalize my Friday email/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save preferences" })).toBeDisabled();
+
+    mockAuthState = {
+      ...mockAuthState,
+      user: {
+        uid: "u2",
+        displayName: "Second User",
+        email: "second@example.com",
+        providerData: [{ providerId: "google.com" }],
+      },
+    };
+    rerender(<AccountPage />);
+    expect(screen.getByRole("button", { name: "Save preferences" })).toBeDisabled();
+
+    await act(async () => {
+      second.resolve({ ...DEFAULT_PREFERENCES, towns: ["Cranford"], childAges: [7] });
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save preferences" })).toBeEnabled());
+    expect(screen.getByLabelText("Towns, separated by commas")).toHaveValue("Cranford");
+    expect(screen.getByLabelText("Children's ages, separated by commas")).toHaveValue("7");
+
+    await act(async () => {
+      first.resolve({ ...DEFAULT_PREFERENCES, towns: ["Summit"], childAges: [4] });
+    });
+    expect(screen.getByLabelText("Towns, separated by commas")).toHaveValue("Cranford");
+    expect(screen.getByLabelText("Children's ages, separated by commas")).toHaveValue("7");
+    expect(getPreferences).toHaveBeenNthCalledWith(1, "u1");
+    expect(getPreferences).toHaveBeenNthCalledWith(2, "u2");
   });
 });

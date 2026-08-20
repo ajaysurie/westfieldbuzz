@@ -5,7 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import EventCard from "@/components/EventCard";
 import { FridaySignup } from "@/components/FridaySignup";
 import { localDateKey } from "@/components/EventCalendar";
-import { getEvents, type Event } from "@/lib/firestore";
+import { getPublicEvents, type Event } from "@/lib/firestore";
+import HomeSearch from "@/components/search/HomeSearch";
 
 const SEARCH_STARTERS = [
   "Rainy-day ideas for kids",
@@ -23,6 +24,12 @@ function startOfToday(): Date {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   return today;
+}
+
+function endOfLocalDay(date: Date): Date {
+  const end = new Date(date);
+  end.setHours(23, 59, 59, 999);
+  return end;
 }
 
 function dateHeading(key: string): string {
@@ -43,7 +50,10 @@ export default function Home() {
     setLoading(true);
     setError(false);
     try {
-      setEvents(await getEvents());
+      const from = startOfToday();
+      const to = new Date(from);
+      to.setDate(to.getDate() + 8);
+      setEvents(await getPublicEvents({ from, to: endOfLocalDay(to), limit: 80 }));
     } catch {
       setError(true);
     } finally {
@@ -58,11 +68,12 @@ export default function Home() {
   const weekGroups = useMemo(() => {
     const start = startOfToday();
     const end = new Date(start);
-    end.setDate(end.getDate() + 7);
+    end.setDate(end.getDate() + 8);
+    const endInclusive = endOfLocalDay(end);
     const upcoming = events
       .filter((event) => {
         const date = eventDate(event);
-        return event.publicationStatus === "published" && date >= start && date < end;
+        return date >= start && date <= endInclusive;
       })
       .sort((left, right) => eventDate(left).getTime() - eventDate(right).getTime());
 
@@ -99,27 +110,7 @@ export default function Home() {
                 From the library to downtown, plus nearby picks worth the drive. Search by
                 who&apos;s going, when you&apos;re free, or what sounds good.
               </p>
-              <form action="/search" method="get" className="event-search-form">
-                <label htmlFor="home-search" className="sr-only">Search local events</label>
-                <input
-                  id="home-search"
-                  name="q"
-                  type="search"
-                  placeholder="Something indoors Saturday for my 7-year-old"
-                  minLength={2}
-                  required
-                />
-                <button type="submit" aria-label="Search local events">
-                  <span aria-hidden="true">→</span>
-                </button>
-              </form>
-              <div className="search-starters" aria-label="Suggested searches">
-                {SEARCH_STARTERS.map((query) => (
-                  <Link key={query} href={`/search?q=${encodeURIComponent(query)}`}>
-                    {query}
-                  </Link>
-                ))}
-              </div>
+              <HomeSearch starters={SEARCH_STARTERS} />
             </div>
           </div>
         </div>

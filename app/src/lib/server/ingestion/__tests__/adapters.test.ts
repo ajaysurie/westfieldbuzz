@@ -46,6 +46,65 @@ describe("approved source adapters", () => {
     expect(parsed.events[0].date.toISOString()).toBe("2026-08-22T14:00:00.000Z");
   });
 
+  it("keeps a moved recurring override on its original slot and uses override facts", () => {
+    const parsed = parseICalPayload(
+      source("westfield-schools-ical"),
+      [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "BEGIN:VEVENT",
+        "UID:series-1",
+        "DTSTART:20260822T140000Z",
+        "DTEND:20260822T150000Z",
+        "RRULE:FREQ=WEEKLY;COUNT=2",
+        "SUMMARY:Base story time",
+        "DESCRIPTION:Base description",
+        "LOCATION:Base library",
+        "CATEGORIES:Family",
+        "URL:https://example.com/base",
+        "END:VEVENT",
+        "BEGIN:VEVENT",
+        "UID:series-1",
+        "RECURRENCE-ID:20260829T140000Z",
+        "DTSTART:20260829T160000Z",
+        "DTEND:20260829T170000Z",
+        "SUMMARY:Moved and cancelled story time",
+        "DESCRIPTION:Override description",
+        "LOCATION:Override library",
+        "CATEGORIES:Music",
+        "STATUS:CANCELLED",
+        "URL:https://example.com/override",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n"),
+      window
+    );
+    const moved = parsed.events.find((event) => event.title === "Moved and cancelled story time");
+    const generated = parsed.events.find((event) => event.title === "Base story time");
+
+    expect(generated).toMatchObject({
+      sourceEventId: "series-1:2026-08-22T14:00:00.000Z",
+      date: new Date("2026-08-22T14:00:00.000Z"),
+      endDate: new Date("2026-08-22T15:00:00.000Z"),
+    });
+    expect(parsed.events.map((event) => event.date.toISOString()).sort()).toEqual([
+      "2026-08-22T14:00:00.000Z",
+      "2026-08-29T16:00:00.000Z",
+    ]);
+
+    expect(moved).toMatchObject({
+      sourceEventId: "series-1:2026-08-29T14:00:00.000Z",
+      sourceEventAliases: ["series-1:2026-08-29T16:00:00.000Z"],
+      date: new Date("2026-08-29T16:00:00.000Z"),
+      endDate: new Date("2026-08-29T17:00:00.000Z"),
+      description: "Override description",
+      location: "Override library",
+      sourceUrl: "https://example.com/override",
+      category: "Music",
+      status: "cancelled",
+    });
+  });
+
   it("distinguishes an empty iCal from a broken envelope", () => {
     const policy = source("westfield-schools-ical");
     const empty = parseICalPayload(policy, fixture("ical/empty.ics"), window);

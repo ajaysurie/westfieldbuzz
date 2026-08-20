@@ -1,10 +1,12 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { useAuth } from "@/lib/auth";
 
 type SignupState = "idle" | "submitting" | "success" | "error";
 
 export function FridaySignup() {
+  const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [state, setState] = useState<SignupState>("idle");
   const [message, setMessage] = useState("No account needed. Confirm once by email.");
@@ -13,9 +15,13 @@ export function FridaySignup() {
     event.preventDefault();
     setState("submitting");
     try {
+      const normalizedEmail = email.trim().toLowerCase();
+      const token = user?.emailVerified && user.email?.trim().toLowerCase() === normalizedEmail
+        ? await user.getIdToken()
+        : null;
       const response = await fetch("/api/subscriptions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ email }),
       });
       const body = await response.json().catch(() => ({}));

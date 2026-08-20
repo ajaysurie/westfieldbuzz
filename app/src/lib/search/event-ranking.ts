@@ -1,5 +1,5 @@
 import type { SearchIntent } from "./event-intent";
-import type { SearchableEvent } from "./event-retrieval";
+import { factMatch, type SearchableEvent } from "./event-retrieval";
 
 export type MatchContribution =
   | "category"
@@ -37,11 +37,11 @@ export function scoreEvent(
 
   if (intent.categories.includes(event.category)) add(30, "category");
   if (intent.towns.some((town) => town.toLowerCase() === event.town.toLowerCase())) add(20, "town");
-  if (intent.partyAges.length) add(18, "age");
+  if (intent.partyAges.length && factMatch(event, "age", true) === "known-match") add(18, "age");
   if (intent.timeOfDay.length) add(12, "time");
-  if (intent.environment && intent.environment === event.environment) add(12, "environment");
-  if (intent.budget && (event.isFree || event.costAmount != null)) add(10, "budget");
-  if (intent.registration && intent.registration === event.registration) add(8, "registration");
+  if (intent.environment && factMatch(event, "environment", intent.environment === event.environment) === "known-match") add(12, "environment");
+  if (intent.budget && factMatch(event, "cost", event.isFree === true || event.costAmount != null) === "known-match") add(10, "budget");
+  if (intent.registration && factMatch(event, "registration", intent.registration === event.registration) === "known-match") add(8, "registration");
   if (intent.availability.includes(event.availability as never)) add(6, "availability");
 
   for (const keyword of intent.keywords) {

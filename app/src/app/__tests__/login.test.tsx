@@ -18,6 +18,9 @@ vi.mock("next/link", () => ({
 // Mock auth context
 const mockLoginWithGoogle = vi.fn();
 const mockSendEmailLink = vi.fn();
+const mockClearStoredAuthResume = vi.hoisted(() => vi.fn());
+let store: Record<string, string>;
+let mockStoredAuthResume = { returnTo: "/", continuation: null as string | null };
 let mockAuthState = {
   user: null as unknown,
   loading: false,
@@ -34,6 +37,8 @@ vi.mock("@/lib/auth", () => ({
   useAuth: () => mockAuthState,
   safeReturnTo: (value: string | null | undefined) =>
     value && value.startsWith("/") && !value.startsWith("//") ? value : "/",
+  readStoredAuthResume: () => mockStoredAuthResume,
+  clearStoredAuthResume: mockClearStoredAuthResume,
 }));
 
 import LoginPage from "../login/page";
@@ -41,6 +46,18 @@ import LoginPage from "../login/page";
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
+  mockStoredAuthResume = { returnTo: "/", continuation: null };
+  store = {};
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      clear: () => { store = {}; },
+      getItem: (key: string) => store[key] ?? null,
+      removeItem: (key: string) => { delete store[key]; },
+      setItem: (key: string, value: string) => { store[key] = value; },
+    },
+  });
+  window.history.replaceState({}, "", "/login");
   mockAuthState = {
     user: null,
     loading: false,
@@ -80,7 +97,7 @@ describe("LoginPage", () => {
     const { container } = render(<LoginPage />);
     const googleButton = container.querySelectorAll("button")[0];
     fireEvent.click(googleButton);
-    expect(mockLoginWithGoogle).toHaveBeenCalledTimes(1);
+    expect(mockLoginWithGoogle).toHaveBeenCalledWith("/", null);
   });
 
   it("sends an email link with the entered address", () => {
@@ -128,6 +145,40 @@ describe("LoginPage", () => {
     mockAuthState.user = { uid: "u1", displayName: "Test" };
     render(<LoginPage />);
     expect(mockPush).toHaveBeenCalledWith("/");
+  });
+
+  it("resumes an already signed-in user with the opaque continuation", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    window.history.replaceState({}, "", `/login?returnTo=%2Fevents%2Fa%3Fview%3Dcalendar&continuation=${id}`);
+    mockAuthState.user = { uid: "u1", displayName: "Test" };
+    render(<LoginPage />);
+    expect(mockPush).toHaveBeenCalledWith(`/events/a?view=calendar&continuation=${id}&mode=resume`);
+    expect(mockClearStoredAuthResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the stored opaque continuation after a mobile redirect loses the login query", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    mockStoredAuthResume = { returnTo: "/events/a", continuation: id };
+    mockAuthState.user = { uid: "u1", displayName: "Test" };
+    render(<LoginPage />);
+    expect(mockPush).toHaveBeenCalledWith(`/events/a?continuation=${id}&mode=resume`);
+  });
+
+  it("passes the opaque continuation into Google sign-in", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    window.history.replaceState({}, "", `/login?returnTo=%2Fevents%2Fa&continuation=${id}`);
+    const { container } = render(<LoginPage />);
+    fireEvent.click(container.querySelectorAll("button")[1]);
+    expect(mockLoginWithGoogle).toHaveBeenCalledWith("/events/a", id);
+  });
+
+  it("cancels by preserving the opaque continuation for the target", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    window.history.replaceState({}, "", `/login?returnTo=%2Fevents%2Fa&continuation=${id}`);
+    const { container } = render(<LoginPage />);
+    fireEvent.click(container.querySelectorAll("button")[0]);
+    expect(mockPush).toHaveBeenCalledWith(`/events/a?continuation=${id}&mode=cancel`);
+    expect(mockClearStoredAuthResume).toHaveBeenCalledTimes(1);
   });
 
   it("explains that sign-in is optional", () => {

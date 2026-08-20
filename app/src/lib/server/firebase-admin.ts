@@ -4,42 +4,61 @@ import {
   getApps,
   initializeApp,
 } from "firebase-admin/app";
+import { getAuth, type Auth } from "firebase-admin/auth";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 
-let cachedDb: Firestore | undefined;
+const ADMIN_APP_NAME = "westfieldbuzz-server";
+const databaseCache = new Map<string, Firestore>();
+let cachedAuth: Auth | undefined;
 
-export function getAdminDb(): Firestore {
-  if (cachedDb) return cachedDb;
-
-  const projectId =
-    process.env.FIREBASE_PROJECT_ID ??
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  const hasApplicationDefault = Boolean(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-  if (!projectId || (!hasApplicationDefault && (!clientEmail || !privateKey))) {
+export function resolveFirebaseAdminEnvironment(env = process.env) {
+  const projectId = env.FIREBASE_PROJECT_ID ?? env.GOOGLE_CLOUD_PROJECT ?? env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const applicationDefaultConfigured = Boolean(env.GOOGLE_APPLICATION_CREDENTIALS || env.K_SERVICE || env.VERCEL);
+  const databaseId = env.FIRESTORE_DB ?? env.NEXT_PUBLIC_FIRESTORE_DB ??
+    (env.VERCEL_ENV === "production" || env.NODE_ENV === "production" ? "westfieldbuzz-prod" : "westfieldbuzz-dev");
+  if (!projectId || (!applicationDefaultConfigured && (!clientEmail || !privateKey))) {
     throw new Error("Firebase Admin credentials are not configured");
   }
+  return { projectId, clientEmail, privateKey, applicationDefaultConfigured, databaseId };
+}
 
-  const app =
-    getApps().find((candidate) => candidate.name === "westfieldbuzz-server") ??
+function getAdminApp() {
+  const {
+    projectId,
+    clientEmail,
+    privateKey,
+    applicationDefaultConfigured,
+  } = resolveFirebaseAdminEnvironment();
+
+  return (
+    getApps().find((candidate) => candidate.name === ADMIN_APP_NAME) ??
     initializeApp(
       {
-        credential: hasApplicationDefault
+        credential: applicationDefaultConfigured
           ? applicationDefault()
           : cert({ projectId, clientEmail, privateKey }),
         projectId,
       },
-      "westfieldbuzz-server"
-    );
+      ADMIN_APP_NAME
+    )
+  );
+}
 
-  const databaseId =
-    process.env.FIRESTORE_DB ??
-    process.env.NEXT_PUBLIC_FIRESTORE_DB ??
-    (process.env.NODE_ENV === "development"
-      ? "westfieldbuzz-dev"
-      : "westfieldbuzz-prod");
+export function currentDatabaseName(): string {
+  return resolveFirebaseAdminEnvironment().databaseId;
+}
 
-  cachedDb = getFirestore(app, databaseId);
-  return cachedDb;
+export function getAdminDb(databaseId = currentDatabaseName()): Firestore {
+  const cached = databaseCache.get(databaseId);
+  if (cached) return cached;
+  const database = getFirestore(getAdminApp(), databaseId);
+  databaseCache.set(databaseId, database);
+  return database;
+}
+
+export function getAdminAuth(): Auth {
+  if (!cachedAuth) cachedAuth = getAuth(getAdminApp());
+  return cachedAuth;
 }

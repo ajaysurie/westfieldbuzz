@@ -87,4 +87,47 @@ describe("safeFetchText", () => {
     await assertion;
     vi.useRealTimers();
   });
+
+  it("shares one global deadline across redirects and body reads", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    const pending = safeFetchText({
+      url: "https://events.example.com/feed",
+      policy: { ...policy, timeoutMs: 100 },
+      deadlineAt: new Date(Date.now() + 10),
+      fetchImpl: (_url, init) => {
+        calls += 1;
+        if (calls === 1) {
+          return Promise.resolve(new Response(null, {
+            status: 302,
+            headers: { location: "/redirected" },
+          }));
+        }
+        return new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+        });
+      },
+    });
+    const assertion = expect(pending).rejects.toThrow("Global crawl deadline exceeded");
+    await vi.advanceTimersByTimeAsync(11);
+    await assertion;
+    expect(calls).toBe(2);
+    vi.useRealTimers();
+  });
+
+  it("applies the same deadline while a response body is still streaming", async () => {
+    vi.useFakeTimers();
+    const pending = safeFetchText({
+      url: "https://events.example.com/feed",
+      policy: { ...policy, timeoutMs: 100 },
+      deadlineAt: new Date(Date.now() + 10),
+      fetchImpl: async () => new Response(new ReadableStream<Uint8Array>({
+        pull() { return new Promise(() => undefined); },
+      }), { headers: { "content-type": "application/json" } }),
+    });
+    const assertion = expect(pending).rejects.toThrow("Global crawl deadline exceeded");
+    await vi.advanceTimersByTimeAsync(11);
+    await assertion;
+    vi.useRealTimers();
+  });
 });

@@ -34,9 +34,35 @@ function acceptedContentType(actual: string, expected: string[]): boolean {
   return expected.some((candidate) => mime === candidate.toLowerCase());
 }
 
+function abortableRead(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  signal: AbortSignal
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    reader.read().then(
+      (value) => {
+        cleanup();
+        resolve(value);
+      },
+      (error) => {
+        cleanup();
+        reject(error);
+      }
+    );
+  });
+}
+
 async function readBoundedBody(
   response: Response,
-  maxBytes: number
+  maxBytes: number,
+  signal: AbortSignal
 ): Promise<{ text: string; bytes: number }> {
   const declaredLength = Number(response.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
@@ -50,15 +76,20 @@ async function readBoundedBody(
   const chunks: Uint8Array[] = [];
   let bytes = 0;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    bytes += value.byteLength;
-    if (bytes > maxBytes) {
-      await reader.cancel();
-      throw new Error(`Source response exceeds ${maxBytes} byte limit`);
+  try {
+    while (true) {
+      if (signal.aborted) throw signal.reason;
+      const next = await abortableRead(reader, signal);
+      if (next.done) break;
+      bytes += next.value.byteLength;
+      if (bytes > maxBytes) {
+        throw new Error(`Source response exceeds ${maxBytes} byte limit`);
+      }
+      chunks.push(next.value);
     }
-    chunks.push(value);
+  } catch (error) {
+    await reader.cancel(error).catch(() => undefined);
+    throw error;
   }
 
   const body = new Uint8Array(bytes);
@@ -81,15 +112,37 @@ export async function safeFetchText(input: {
   >;
   fetchImpl?: FetchImplementation;
   maxRedirects?: number;
+  /** A job-wide upper bound shared by redirects and response body reads. */
+  deadlineAt?: Date;
 }): Promise<SafeFetchResponse> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const maxRedirects = input.maxRedirects ?? 3;
   let current = assertApprovedUrl(input.url, input.policy.allowedHosts);
+  const startedAt = Date.now();
+  const sourceDeadlineAt = startedAt + input.policy.timeoutMs;
+  const globalDeadlineAt = input.deadlineAt?.getTime();
+  const deadlineAt = Math.min(sourceDeadlineAt, globalDeadlineAt ?? Infinity);
+  const deadlineKind =
+    globalDeadlineAt != null && globalDeadlineAt <= sourceDeadlineAt
+      ? "global crawl deadline"
+      : "source timeout";
+  const remainingMs = deadlineAt - Date.now();
+  if (remainingMs <= 0) {
+    throw new Error(
+      deadlineKind === "global crawl deadline"
+        ? "Global crawl deadline exceeded before source request started"
+        : `Source request timed out after ${input.policy.timeoutMs}ms`
+    );
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(
+    () => controller.abort(new Error(deadlineKind)),
+    remainingMs
+  );
 
-  for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), input.policy.timeoutMs);
-    try {
+  try {
+    for (let redirectCount = 0; redirectCount <= maxRedirects; redirectCount++) {
+      if (controller.signal.aborted) throw controller.signal.reason;
       const response = await fetchImpl(current, {
         method: "GET",
         redirect: "manual",
@@ -106,6 +159,7 @@ export async function safeFetchText(input: {
         if (redirectCount === maxRedirects) {
           throw new Error(`Source exceeded ${maxRedirects} redirects`);
         }
+        await response.body?.cancel().catch(() => undefined);
         current = assertApprovedUrl(
           new URL(location, current).toString(),
           input.policy.allowedHosts
@@ -114,30 +168,40 @@ export async function safeFetchText(input: {
       }
 
       if (!response.ok) {
+        await response.body?.cancel().catch(() => undefined);
         throw new Error(`Source returned HTTP ${response.status}`);
       }
 
       const contentType = response.headers.get("content-type") ?? "";
       if (!acceptedContentType(contentType, input.policy.expectedContentTypes)) {
+        await response.body?.cancel().catch(() => undefined);
         throw new Error(
           `Unexpected source content type: ${contentType || "missing"}`
         );
       }
-      const body = await readBoundedBody(response, input.policy.maxResponseBytes);
+      const body = await readBoundedBody(
+        response,
+        input.policy.maxResponseBytes,
+        controller.signal
+      );
       return {
         ...body,
         contentType,
         finalUrl: current.toString(),
       };
-    } catch (error) {
-      if (controller.signal.aborted) {
-        throw new Error(`Source request timed out after ${input.policy.timeoutMs}ms`);
-      }
-      throw error;
-    } finally {
-      clearTimeout(timeout);
     }
-  }
 
-  throw new Error("Source redirect handling failed");
+    throw new Error("Source redirect handling failed");
+  } catch (error) {
+    if (controller.signal.aborted) {
+      throw new Error(
+        deadlineKind === "global crawl deadline"
+          ? "Global crawl deadline exceeded"
+          : `Source request timed out after ${input.policy.timeoutMs}ms`
+      );
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 }

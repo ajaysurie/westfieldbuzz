@@ -6,6 +6,8 @@ service cloud.firestore {
     // Helper: check if user is admin
     function isAdmin() {
       return request.auth != null &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email is string &&
         get(/databases/$(database)/documents/config/admin).data.allowlist.hasAny([request.auth.token.email]);
     }
 
@@ -22,9 +24,10 @@ service cloud.firestore {
       }
     }
 
-    // Events: public read, admin write
+    // Events: public callers can only read documents that the query proves are
+    // published; admins retain full operational visibility.
     match /events/{eventId} {
-      allow read: if true;
+      allow read: if isAdmin() || resource.data.publicationStatus == "published";
       allow create, update, delete: if isAdmin();
 
       // Interested subcollection: auth users write own doc
@@ -45,6 +48,22 @@ service cloud.firestore {
     }
 
     match /eventCandidates/{candidateId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Per-approved-source health and unapproved discovery candidates are
+    // operator-only. Ingestion jobs use Firebase Admin and bypass rules.
+    match /eventSourceHealth/{sourceId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /sourceCandidates/{candidateId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Server ingestion claims these to make cross-source publication atomic.
+    // Firebase Admin jobs bypass rules; browser operators need admin visibility.
+    match /eventFingerprintRegistry/{fingerprint} {
       allow read, write: if isAdmin();
     }
 
@@ -70,6 +89,15 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Bounded Friday invocations checkpoint only privacy-safe counters/cursors.
+    match /digestRuns/{runId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /confirmationDeliveries/{deliveryId} {
+      allow read, write: if isAdmin();
+    }
+
     match /resendWebhookEvents/{eventId} {
       allow read, write: if isAdmin();
     }
@@ -78,10 +106,28 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Lease mutation is exclusively a server concern; browser admins can use
+    // the run/health ledgers without changing an active automation claim.
+    match /automationLeases/{leaseId} {
+      allow read, write: if false;
+    }
+
     // Users: private, owner + admin read/write
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create, update: if request.auth != null && request.auth.uid == userId;
+      // Subscriber linkage is server-owned. Clients may continue to maintain
+      // their profile and preferences, but cannot smuggle linkage/status data
+      // into a user document.
+      allow create: if request.auth != null && request.auth.uid == userId &&
+        request.resource.data.keys().hasOnly([
+          "displayName", "photoURL", "email", "joinedDate", "lastActive",
+          "preferences", "preferenceSchemaVersion", "preferencesUpdatedAt"
+        ]);
+      allow update: if request.auth != null && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "displayName", "photoURL", "email", "joinedDate", "lastActive",
+          "preferences", "preferenceSchemaVersion", "preferencesUpdatedAt"
+        ]);
       allow delete: if isAdmin();
 
       match /savedEvents/{eventId} {

@@ -30,25 +30,55 @@ export interface EventSourcePolicy {
   junkTitlePatterns?: string[];
 }
 
-export type SourceObservation = EventFacts<Date>;
+export type SourceObservation = EventFacts<Date> & {
+  /** Previous stable source keys that identify this same upstream occurrence. */
+  sourceEventAliases?: string[];
+};
 
 export interface ExistingSourceEvent extends EventDocument<Date> {
   id: string;
+  identityFingerprint?: string;
 }
 
+export type CreateReconciliationAction = {
+  type: "create";
+  eventId: null;
+  observation: SourceObservation;
+  event: EventDocument<Date>;
+  changedFields: string[];
+};
+
+export type ExistingObservedReconciliationAction = {
+  type: "update" | "verify";
+  eventId: string;
+  observation: SourceObservation;
+  event: EventDocument<Date>;
+  changedFields: string[];
+  previousIdentityFingerprint?: string;
+};
+
+export type ObservedReconciliationAction =
+  | CreateReconciliationAction
+  | ExistingObservedReconciliationAction;
+
 export type ReconciliationAction =
-  | {
-      type: "create" | "update" | "verify";
-      eventId: string | null;
-      observation: SourceObservation;
-      event: EventDocument<Date>;
-      changedFields: string[];
-    }
+  | ObservedReconciliationAction
   | {
       type: "missing" | "stale";
       eventId: string;
       event: EventDocument<Date>;
       changedFields: string[];
+    }
+  | {
+      type: "safety-held";
+      observation: SourceObservation;
+      reason:
+        | "ambiguous-source-event-alias"
+        | "possible-cross-source-duplicate"
+        | "fingerprint-registry-inconsistency"
+        | "existing-event-conflict";
+      matchingEventIds: string[];
+      matchingSourceIds?: string[];
     };
 
 export interface ReconciliationPlan {
@@ -58,6 +88,7 @@ export interface ReconciliationPlan {
   verified: number;
   missing: number;
   stale: number;
+  safetyHeld: number;
 }
 
 export interface SourceFetchResult {
@@ -84,4 +115,6 @@ export interface SourceRunResult {
   errors: string[];
   warnings: string[];
   durationMs: number;
+  /** The runner stopped before all planned writes could safely start. */
+  incomplete?: boolean;
 }

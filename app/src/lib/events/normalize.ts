@@ -36,7 +36,7 @@ export function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
-export function normalizeCategory(value: string | undefined): EventCategory {
+export function normalizeCategory(value: string | undefined | null): EventCategory {
   if (!value) return "Community";
   const exact = EVENT_CATEGORIES.find(
     (category) => category.toLowerCase() === value.trim().toLowerCase()
@@ -56,4 +56,3 @@ export function normalizeEventFacts(input: EventFacts): EventFacts {
     sourceUrl: input.sourceUrl.trim(),
   };
 }
-

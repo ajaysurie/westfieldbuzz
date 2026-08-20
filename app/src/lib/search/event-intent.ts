@@ -302,6 +302,11 @@ const STOP_WORDS = new Set([
   "do", "event", "events", "find", "for", "from", "i", "in", "is", "it", "me",
   "my", "near", "of", "on", "or", "please", "something", "that", "the", "this",
   "to", "under", "want", "with", "within", "year", "years", "old",
+  // These are represented structurally above, never as literal event text.
+  "indoor", "indoors", "outdoor", "outdoors", "inside", "outside", "morning",
+  "afternoon", "evening", "tonight", "free", "registration", "required",
+  "minute", "minutes", "not", "westfield", "cranford", "scotch", "plains", "fanwood",
+  "summit", "garwood", "mountainside",
 ]);
 
 function extractKeywords(query: string): string[] {
@@ -310,7 +315,7 @@ function extractKeywords(query: string): string[] {
       .toLowerCase()
       .replace(/[^a-z0-9'-]+/g, " ")
       .split(" ")
-      .filter((word) => word.length > 2 && !STOP_WORDS.has(word) && !/^\d+$/.test(word))
+      .filter((word) => word.length > 2 && !STOP_WORDS.has(word) && !/^\d+(?:-?year-old|yo)?$/.test(word))
   )].slice(0, 10);
 }
 
@@ -407,6 +412,13 @@ export function fallbackParseIntent(input: {
       positiveCategories.push(category);
     }
   }
+  const isExplicitCorrection = /\b(actually|instead|rather than|change(?: it)? to|switch to|forget)\b/.test(lower);
+  if (isExplicitCorrection && (positiveCategories.length || excludedCategories.length)) {
+    // Refinements like “actually music, not sports” replace a prior category
+    // constraint. Ordinary additive phrasing continues to merge below.
+    intent.categories = [];
+    intent.exclusions.categories = [];
+  }
   if (positiveCategories.length) {
     intent.categories = mergeUnique(intent.categories, positiveCategories).filter(
       (category) => !excludedCategories.includes(category)
@@ -419,6 +431,13 @@ export function fallbackParseIntent(input: {
     );
     intent.categories = intent.categories.filter(
       (category) => !excludedCategories.includes(category)
+    );
+  }
+  // A direct positive correction wins over a contradictory older exclusion,
+  // and a direct negative correction wins over an older inclusion.
+  if (positiveCategories.length) {
+    intent.exclusions.categories = intent.exclusions.categories.filter(
+      (category) => !positiveCategories.includes(category)
     );
   }
 
@@ -440,9 +459,10 @@ export function fallbackParseIntent(input: {
   }
 
   const categoryWords = new Set(CATEGORY_TERMS.flatMap(([category]) => category.toLowerCase().split(/\W+/)));
-  intent.keywords = extractKeywords(query).filter(
+  const extractedKeywords = extractKeywords(query).filter(
     (word) => !categoryWords.has(word) && !weekdays.some(([day]) => day === word)
   );
+  intent.keywords = isExplicitCorrection ? extractedKeywords : mergeUnique(intent.keywords, extractedKeywords);
   return intent;
 }
 

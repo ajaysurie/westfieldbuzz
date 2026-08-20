@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeCron } from "@/lib/server/ingestion/cron-auth";
+import { authorizeCron, cronFeatureEnabled } from "@/lib/server/ingestion/cron-auth";
 import { serverFirestore } from "@/lib/server/ingestion/firebase-admin";
-import { acquireLease, releaseLease } from "@/lib/server/ingestion/lease";
+import {
+  acquireLease,
+  releaseLeaseBestEffort,
+} from "@/lib/server/ingestion/lease";
 import {
   isSourceGroup,
   sourcesForGroup,
@@ -33,12 +36,16 @@ export async function GET(request: NextRequest) {
       { status: authorization.status }
     );
   }
+  if (!cronFeatureEnabled("ingest")) {
+    return NextResponse.json({ error: "Event ingestion is disabled" }, { status: 503 });
+  }
   const group = request.nextUrl.searchParams.get("group") ?? "";
   if (!isSourceGroup(group)) {
     return NextResponse.json({ error: "A valid source group is required" }, { status: 400 });
   }
 
   const now = new Date();
+  const deadlineAt = new Date(now.getTime() + 50_000);
   const end = new Date(now);
   end.setDate(end.getDate() + 30);
   const db = serverFirestore();
@@ -60,11 +67,12 @@ export async function GET(request: NextRequest) {
       write: true,
       runId,
       checkedAt: now,
+      deadlineAt,
     });
     return NextResponse.json(result, {
       status: result.status === "failed" ? 500 : result.status === "partial" ? 207 : 200,
     });
   } finally {
-    await releaseLease({ db, key: leaseKey, owner: runId });
+    await releaseLeaseBestEffort({ db, key: leaseKey, owner: runId });
   }
 }

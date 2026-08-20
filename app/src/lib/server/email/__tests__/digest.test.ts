@@ -32,6 +32,16 @@ describe("Friday digest editions", () => {
     expect(edition.holdReason).toBe("stale-inventory");
   });
 
+  it("retains weather-dependent events in the digest inventory", () => {
+    const edition = buildDigestEdition({
+      now: FRIDAY,
+      events: [eventFixture({ id: "weather", status: "weather-dependent" })],
+    });
+
+    expect(edition.status).toBe("ready");
+    expect(edition.candidateEvents[0]?.status).toBe("weather-dependent");
+  });
+
   it("falls back to the frozen generic list when personalization has too few matches", () => {
     const events = [
       eventFixture({ id: "music", category: "Music", town: "Cranford" }),

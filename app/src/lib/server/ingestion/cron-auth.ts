@@ -24,3 +24,14 @@ export function authorizeCron(
   }
   return { ok: true };
 }
+
+export function cronFeatureEnabled(feature: "ingest" | "discover" | "friday" | "watchdog"): boolean {
+  const key = feature === "ingest"
+    ? "WESTFIELDBUZZ_ENABLE_INGEST"
+    : feature === "discover"
+      ? "WESTFIELDBUZZ_ENABLE_DISCOVER"
+      : feature === "friday"
+        ? "WESTFIELDBUZZ_ENABLE_FRIDAY_DIGEST"
+        : "WESTFIELDBUZZ_ENABLE_FRESHNESS_WATCHDOG";
+  return process.env[key] === "true";
+}

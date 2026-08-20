@@ -14,6 +14,10 @@ import {
 export const MAX_RETRIEVED_EVENTS = 250;
 export const DEFAULT_SEARCH_HORIZON_DAYS = 90;
 
+export type FactMatch = "known-match" | "known-mismatch" | "unknown";
+export type SearchFactName = "age" | "cost" | "environment" | "registration" | "accessibility" | "travelTime";
+export type SearchFactEvidence = Partial<Record<SearchFactName, "known" | "unknown">>;
+
 export interface SearchableEvent {
   id: string;
   title: string;
@@ -39,6 +43,8 @@ export interface SearchableEvent {
   registration: "required" | "drop-in" | null;
   accessibility: string[];
   driveMinutes: number | null;
+  /** Evidence-backed facts only; omitted fields are deliberately unknown. */
+  factEvidence: SearchFactEvidence;
 }
 export interface EventQueryWindow {
   from: Date;
@@ -129,6 +135,19 @@ function normalized(value: string): string {
   return value.trim().toLowerCase();
 }
 
+function evidenceKnown(event: SearchableEvent, fact: SearchFactName): boolean {
+  return event.factEvidence[fact] === "known";
+}
+
+export function factMatch(
+  event: SearchableEvent,
+  fact: SearchFactName,
+  matches: boolean
+): FactMatch {
+  if (!evidenceKnown(event, fact)) return "unknown";
+  return matches ? "known-match" : "known-mismatch";
+}
+
 export function eventMatchesIntent(
   event: SearchableEvent,
   intent: SearchIntent
@@ -136,7 +155,7 @@ export function eventMatchesIntent(
   if (
     event.publicationStatus !== "published" ||
     event.freshnessStatus !== "current" ||
-    !["scheduled", "rescheduled"].includes(event.status) ||
+    !["scheduled", "rescheduled", "weather-dependent"].includes(event.status) ||
     event.availability === "sold-out"
   ) {
     return false;
@@ -166,33 +185,37 @@ export function eventMatchesIntent(
   if (intent.exclusions.keywords.some((word) => haystack.includes(normalized(word)))) {
     return false;
   }
+  // When there is no structured category/town anchor, retain a keyword as a
+  // hard subject constraint. With an anchor it is a ranking signal, avoiding
+  // false negatives from generic phrasing such as “Friday night”.
+  if (intent.keywords.length && !intent.categories.length && !intent.towns.length && !intent.keywords.some((word) => haystack.includes(normalized(word)))) {
+    return false;
+  }
   if (intent.partyAges.length) {
-    if (event.minAge == null && event.maxAge == null) return false;
-    if (
-      intent.partyAges.some(
+    const ageMatches = event.minAge != null || event.maxAge != null
+      ? !intent.partyAges.some(
         (age) =>
           (event.minAge != null && age < event.minAge) ||
           (event.maxAge != null && age > event.maxAge)
       )
-    ) {
-      return false;
-    }
+      : false;
+    if (factMatch(event, "age", ageMatches) !== "known-match") return false;
   }
-  if (intent.environment && event.environment !== intent.environment) return false;
+  if (intent.environment && factMatch(event, "environment", event.environment === intent.environment) !== "known-match") return false;
   if (intent.maxDriveMinutes != null) {
-    if (event.driveMinutes == null || event.driveMinutes > intent.maxDriveMinutes) return false;
+    if (factMatch(event, "travelTime", event.driveMinutes != null && event.driveMinutes <= intent.maxDriveMinutes) !== "known-match") return false;
   }
-  if (intent.budget?.freeOnly && event.isFree !== true) return false;
+  if (intent.budget?.freeOnly && factMatch(event, "cost", event.isFree === true) !== "known-match") return false;
   if (intent.budget?.maxAmount != null && !intent.budget.freeOnly) {
-    if (event.costAmount == null || event.costAmount > intent.budget.maxAmount) return false;
+    if (factMatch(event, "cost", event.costAmount != null && event.costAmount <= intent.budget.maxAmount) !== "known-match") return false;
   }
-  if (intent.registration && event.registration !== intent.registration) return false;
+  if (intent.registration && factMatch(event, "registration", event.registration === intent.registration) !== "known-match") return false;
   if (intent.availability.length && !intent.availability.includes(event.availability as never)) {
     return false;
   }
   if (
     intent.accessibility.length &&
-    !intent.accessibility.every((need) => event.accessibility.includes(need))
+    factMatch(event, "accessibility", intent.accessibility.every((need) => event.accessibility.includes(need))) !== "known-match"
   ) {
     return false;
   }

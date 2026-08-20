@@ -72,6 +72,9 @@ interface MemoryDelivery {
   eventIds: string[];
   personalized: boolean;
   providerEmailId?: string;
+  subscriberEmail: string;
+  tokenVersion: number;
+  unsubscribeExpiresAt: Date;
 }
 
 export class MemoryDigestRepository implements DigestRepository {
@@ -94,7 +97,7 @@ export class MemoryDigestRepository implements DigestRepository {
   }
 
   async createEditionIfAbsent(edition: DigestEdition): Promise<DigestEdition> {
-    if (!this.edition) {
+    if (!this.edition || (this.edition.status === "held" && edition.status === "ready")) {
       this.edition = edition;
       this.editionCreates += 1;
     }
@@ -114,10 +117,13 @@ export class MemoryDigestRepository implements DigestRepository {
     editionId: string;
     subscriberId: string;
     selection: DigestSelection;
+    now: Date;
   }): Promise<DeliveryClaim | null> {
     const id = `${input.editionId}_${input.subscriberId}`;
     const key = `friday-digest/${input.editionId}/${input.subscriberId}`;
     const existing = this.deliveries.get(id);
+    const subscriber = this.subscribers.find((item) => item.id === input.subscriberId);
+    if (!subscriber) return null;
     if (existing && existing.status !== "failed") return null;
     const delivery: MemoryDelivery = existing
       ? { ...existing, status: "sending", attempt: existing.attempt + 1 }
@@ -128,6 +134,9 @@ export class MemoryDigestRepository implements DigestRepository {
           attempt: 1,
           eventIds: input.selection.eventIds,
           personalized: input.selection.personalized,
+          subscriberEmail: subscriber.email,
+          tokenVersion: subscriber.tokenVersion,
+          unsubscribeExpiresAt: new Date(input.now.getTime() + 395 * 24 * 60 * 60 * 1000),
         };
     this.deliveries.set(id, delivery);
     return {
@@ -136,6 +145,9 @@ export class MemoryDigestRepository implements DigestRepository {
       attempt: delivery.attempt,
       eventIds: delivery.eventIds,
       personalized: delivery.personalized,
+      subscriberEmail: delivery.subscriberEmail,
+      tokenVersion: delivery.tokenVersion,
+      unsubscribeExpiresAt: delivery.unsubscribeExpiresAt,
     };
   }
 

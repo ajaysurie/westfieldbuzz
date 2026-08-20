@@ -9,6 +9,16 @@ import IntentChips from "./IntentChips";
 import SearchNotice from "./SearchNotice";
 import SearchResults from "./SearchResults";
 import RefinementForm from "./RefinementForm";
+import { useAuth } from "@/lib/auth";
+import {
+  clearAuthContinuation,
+  continuationLoginHref,
+  createAuthContinuation,
+  readAuthContinuation,
+  stripAuthContinuationParams,
+} from "@/lib/auth-continuation";
+import { isSearchSaved, saveSearch, savedSearchLabel, stableSearchId, unsaveSearch } from "@/lib/personalization";
+import { consumeSearchHandoff } from "./HomeSearch";
 
 function removeIntentValue(intent: SearchIntent, field: string, label: string): SearchIntent {
   const next = structuredClone(intent);
@@ -25,38 +35,74 @@ function removeIntentValue(intent: SearchIntent, field: string, label: string): 
   return next;
 }
 export default function SearchExperience({ initialQuery = "" }: { initialQuery?: string }) {
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?.uid;
   const [query, setQuery] = useState(initialQuery);
   const [result, setResult] = useState<EventSearchSuccess | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const nextRequestId = useRef(0);
+  const activeRequest = useRef<{ id: number; controller: AbortController } | null>(null);
+  const savedRequest = useRef(0);
+  const processingContinuation = useRef<string | null>(null);
+  const [continuationRetry, setContinuationRetry] = useState(0);
+  const [searchSaved, setSearchSaved] = useState(false);
+  const [savePending, setSavePending] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
 
-  const search = useCallback(async (sentence: string, priorIntent: SearchIntent | null = null) => {
+  const search = useCallback(async (
+    sentence: string,
+    priorIntent: SearchIntent | null = null,
+    structuredIntent: SearchIntent | null = null
+  ): Promise<EventSearchSuccess | null> => {
+    const requestId = ++nextRequestId.current;
+    activeRequest.current?.controller.abort();
+    const controller = new AbortController();
+    activeRequest.current = { id: requestId, controller };
     setLoading(true);
     setError(null);
     try {
       const response = await fetch("/api/event-search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: sentence, ...(priorIntent ? { intent: priorIntent } : {}) }),
+        body: JSON.stringify(
+          structuredIntent
+            ? { mode: "structured", intent: structuredIntent }
+            : { query: sentence, ...(priorIntent ? { intent: priorIntent } : {}) }
+        ),
+        signal: controller.signal,
       });
       const payload = (await response.json()) as EventSearchResponse;
+      if (activeRequest.current?.id !== requestId) return null;
       if (!payload.ok) {
         setError(payload.error.message);
-        return;
+        return null;
       }
       setResult(payload);
+      return payload;
     } catch {
+      if (activeRequest.current?.id !== requestId) return null;
       setError("Search could not connect. Please try again or browse the calendar.");
+      return null;
     } finally {
-      setLoading(false);
+      if (activeRequest.current?.id === requestId) {
+        activeRequest.current = null;
+        setLoading(false);
+      }
     }
   }, []);
 
   const initialSearchStarted = useRef(false);
   useEffect(() => {
-    if (initialSearchStarted.current || !initialQuery.trim()) return;
+    if (initialSearchStarted.current) return;
     initialSearchStarted.current = true;
-    void search(initialQuery);
+    const handoff = typeof window === "undefined" ? "" : consumeSearchHandoff();
+    const firstQuery = handoff || initialQuery;
+    if (firstQuery.trim()) {
+      setQuery(firstQuery);
+      void search(firstQuery);
+    }
   }, [initialQuery, search]);
 
   const submitInitial = (event: FormEvent<HTMLFormElement>) => {
@@ -70,8 +116,139 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
   const removeChip = (field: string, label: string) => {
     if (!result) return;
     const nextIntent = removeIntentValue(result.intent, field, label);
-    void search("Keep the remaining filters", nextIntent);
+    void search("", null, nextIntent);
   };
+
+  const currentSearch = result
+    ? { id: stableSearchId(result.intent), label: savedSearchLabel(result.intent), intent: result.intent }
+    : null;
+  const currentSearchId = currentSearch?.id;
+
+  useEffect(() => {
+    const request = ++savedRequest.current;
+    if (!userId || !currentSearchId || processingContinuation.current) {
+      setSearchSaved(false);
+      return;
+    }
+    void isSearchSaved(userId, currentSearchId)
+      .then((value) => {
+        if (savedRequest.current === request) setSearchSaved(value);
+      })
+      .catch(() => {
+        if (savedRequest.current === request) setSaveError("We could not check this saved search.");
+      });
+  }, [currentSearchId, userId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("continuation");
+    const mode = params.get("mode");
+    if (!id || (mode !== "resume" && mode !== "cancel") || processingContinuation.current === id) return;
+    const continuation = readAuthContinuation(id);
+    if (continuation?.action.kind !== "save-search") {
+      // The local payload may be missing/expired after switching devices. Keep
+      // unrelated filters/hash but remove unusable auth transport state.
+      window.history.replaceState({}, "", stripAuthContinuationParams(`${window.location.pathname}${window.location.search}${window.location.hash}`));
+      setSaveError("That save request expired. Search again, then choose Save this search.");
+      return;
+    }
+    if (mode === "resume" && !userId) return;
+    const action = continuation.action;
+    let cancelled = false;
+    processingContinuation.current = id;
+    setQuery(action.label);
+    setSavePending(mode === "resume");
+    setSaveError(null);
+    setSaveNotice(null);
+    void (async () => {
+      const restored = await search(action.label, null, action.intent);
+      if (cancelled) return;
+      if (!restored || processingContinuation.current !== id) {
+        processingContinuation.current = null;
+        setSavePending(false);
+        setSaveError("We could not restore this search. Try again.");
+        return;
+      }
+      if (mode === "cancel") {
+        clearAuthContinuation(id);
+        window.history.replaceState(
+          {},
+          "",
+          stripAuthContinuationParams(`${window.location.pathname}${window.location.search}${window.location.hash}`)
+        );
+        processingContinuation.current = null;
+        setSaveNotice("Search restored without saving.");
+        return;
+      }
+      try {
+        await saveSearch(userId!, action.searchId, action.label, action.intent);
+        if (cancelled || processingContinuation.current !== id) return;
+        setSearchSaved(true);
+        clearAuthContinuation(id);
+        window.history.replaceState(
+          {},
+          "",
+          stripAuthContinuationParams(`${window.location.pathname}${window.location.search}${window.location.hash}`)
+        );
+        setSaveNotice("Search saved.");
+      } catch {
+        if (!cancelled) setSaveError("We could not save this search. Try again.");
+      } finally {
+        if (!cancelled) {
+          if (processingContinuation.current === id) processingContinuation.current = null;
+          setSavePending(false);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (processingContinuation.current === id) processingContinuation.current = null;
+    };
+  }, [continuationRetry, search, userId]);
+
+  async function toggleSaveSearch() {
+    if (!currentSearch) return;
+    if (!user) {
+      // The continuation holds the normalized intent; the return URL never
+      // needs the raw `q` search text.
+      const returnTo = window.location.pathname;
+      const id = createAuthContinuation(
+        { kind: "save-search", searchId: currentSearch.id, label: currentSearch.label, intent: currentSearch.intent },
+        returnTo
+      );
+      if (id) window.location.assign(continuationLoginHref(id, returnTo));
+      else setSaveError("We could not prepare sign-in. Please try again.");
+      return;
+    }
+    const request = ++savedRequest.current;
+    const nextSaved = !searchSaved;
+    setSavePending(true);
+    setSaveError(null);
+    setSaveNotice(null);
+    try {
+      if (nextSaved) await saveSearch(user.uid, currentSearch.id, currentSearch.label, currentSearch.intent);
+      else await unsaveSearch(user.uid, currentSearch.id);
+      if (savedRequest.current !== request) return;
+      setSearchSaved(nextSaved);
+      if (nextSaved) {
+        const id = new URLSearchParams(window.location.search).get("continuation");
+        const continuation = readAuthContinuation(id);
+        if (id && continuation?.action.kind === "save-search" && continuation.action.searchId === currentSearch.id) {
+          clearAuthContinuation(id);
+          window.history.replaceState(
+            {},
+            "",
+            stripAuthContinuationParams(`${window.location.pathname}${window.location.search}${window.location.hash}`)
+          );
+        }
+      }
+    } catch {
+      if (savedRequest.current === request) setSaveError(`We could not ${nextSaved ? "save" : "remove"} this search. Try again.`);
+    } finally {
+      if (savedRequest.current === request) setSavePending(false);
+    }
+  }
 
   return (
     <>
@@ -90,6 +267,16 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
           <div role="alert" className="rounded-xl border border-sienna/20 bg-white p-4 text-sm text-ink-light">
             {error} <Link href="/events" className="font-bold text-accent">Browse the calendar</Link>
           </div>
+        )}
+        {(saveError || saveNotice) && (
+          <p role={saveError ? "alert" : "status"} className="mb-4 rounded-xl border border-black/8 bg-white p-4 text-sm text-ink-light">
+            {saveError || saveNotice}
+            {saveError && new URLSearchParams(typeof window === "undefined" ? "" : window.location.search).get("continuation") && (
+              <button type="button" onClick={() => setContinuationRetry((value) => value + 1)} className="ml-2 font-bold text-accent underline">
+                Try again
+              </button>
+            )}
+          </p>
         )}
         {!result && !error && (
           <div className="rounded-2xl border border-black/8 bg-white px-6 py-12 text-center">
@@ -110,6 +297,12 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
                 <p className="mt-1 text-sm text-ink-light">Results are filtered and ranked from the current event inventory.</p>
               </div>
               <span className="text-xs text-ink-muted max-sm:hidden">{result.meta.candidateCount} events checked</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button type="button" onClick={() => void toggleSaveSearch()} disabled={authLoading || savePending} aria-pressed={searchSaved} className="min-h-10 rounded-lg border border-accent/25 bg-white px-3 text-xs font-bold text-accent disabled:opacity-50">
+                {savePending ? "Saving…" : searchSaved ? "Saved search" : "Save this search"}
+              </button>
+              <span className="text-xs text-ink-muted">Saves the filters, not your search wording.</span>
             </div>
             <div className="grid grid-cols-[minmax(0,1fr)_276px] items-start gap-7 max-md:grid-cols-1">
               <SearchResults result={result} />

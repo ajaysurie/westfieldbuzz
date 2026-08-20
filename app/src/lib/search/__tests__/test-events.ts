@@ -28,6 +28,14 @@ export function eventFixture(
     registration: null,
     accessibility: [],
     driveMinutes: null,
+    factEvidence: {
+      age: "known",
+      cost: "known",
+      environment: "known",
+      registration: "known",
+      accessibility: "known",
+      travelTime: "known",
+    },
   };
   return { ...base, ...overrides };
 }

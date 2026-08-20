@@ -8,7 +8,7 @@
  *   npx tsx scripts/ingest-events.ts --source westfield-schools-ical
  *   npx tsx scripts/ingest-events.ts --write --prod --group nearby-venues
  */
-import { currentDatabaseName, serverFirestore } from "../src/lib/server/ingestion/firebase-admin";
+import { serverFirestore } from "../src/lib/server/ingestion/firebase-admin";
 import {
   EVENT_SOURCES,
   isSourceGroup,
@@ -62,7 +62,9 @@ async function main() {
   if (prod && !write) {
     throw new Error("--prod is only valid with --write");
   }
-  const database = prod ? "westfieldbuzz-prod" : currentDatabaseName();
+  // CLIs never inherit a production target from ambient deployment env. A
+  // human must name --prod alongside --write to mutate production.
+  const database = prod ? "westfieldbuzz-prod" : "westfieldbuzz-dev";
   const sources = selectedSources();
   const result = await runIngestion({
     db: serverFirestore(database),

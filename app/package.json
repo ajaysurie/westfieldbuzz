@@ -8,7 +8,12 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "ingest-events": "tsx scripts/ingest-events.ts"
+    "test:rules": "firebase emulators:exec --only firestore --project westfieldbuzz-dev \"vitest run src/rules/firestore.rules.test.ts\"",
+    "verify": "npm run lint && npm test && npx tsc --noEmit && git diff --check",
+    "verify:pr": "npm run verify && npm run build",
+    "ingest-events": "tsx scripts/ingest-events.ts",
+    "backfill-event-identities": "tsx scripts/backfill-event-identities.ts",
+    "normalize-legacy-events": "tsx scripts/normalize-legacy-events.ts"
   },
   "dependencies": {
     "@react-email/render": "^2.1.0",
@@ -22,6 +27,7 @@
     "resend": "^6.20.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -33,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "firebase-admin": "^13.10.0",
+    "firebase-tools": "^15.28.1",
     "jsdom": "^28.1.0",
     "playwright": "^1.58.2",
     "tailwindcss": "^4",

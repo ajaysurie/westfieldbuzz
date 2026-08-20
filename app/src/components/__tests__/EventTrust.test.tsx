@@ -10,6 +10,7 @@ describe("event trust presentation", () => {
   it("prioritizes cancellation and sold-out states", () => {
     expect(getEventStatusPresentation({ status: "cancelled", availability: "sold-out" }).label).toBe("Cancelled");
     expect(getEventStatusPresentation({ status: "scheduled", availability: "sold-out" }).label).toBe("Sold out");
+    expect(getEventStatusPresentation({ status: "weather-dependent" }).label).toBe("Weather dependent");
   });
 
   it("builds a timezone-aware calendar export with source provenance", () => {

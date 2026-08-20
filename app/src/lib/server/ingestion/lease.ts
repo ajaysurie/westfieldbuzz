@@ -75,3 +75,25 @@ export async function releaseLease(input: {
     );
   });
 }
+
+/** Cleanup must never replace the result of an otherwise completed cron run. */
+export async function releaseLeaseBestEffort(input: {
+  db: Firestore;
+  key: string;
+  owner: string;
+  now?: Date;
+}): Promise<{ released: boolean; error?: string }> {
+  try {
+    await releaseLease(input);
+    return { released: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error({
+      event: "automation.lease_release_failed",
+      leaseKey: input.key,
+      runId: input.owner,
+      error: message,
+    });
+    return { released: false, error: message };
+  }
+}

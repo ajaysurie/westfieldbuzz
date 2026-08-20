@@ -7,6 +7,7 @@ describe("event normalization", () => {
     expect(normalizeCategory("Arts")).toBe("Arts & Culture");
     expect(normalizeCategory("Sports")).toBe("Sports & Recreation");
     expect(normalizeCategory("Food")).toBe("Food & Drink");
+    expect(normalizeCategory("Unknown legacy label")).toBe("Community");
   });
 
   it("normalizes whitespace without changing content", () => {
@@ -15,4 +16,3 @@ describe("event normalization", () => {
     );
   });
 });
-

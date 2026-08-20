@@ -4,6 +4,7 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -21,6 +22,12 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db, facebookProvider, googleProvider } from "./firebase";
+import {
+  authResumeDestination,
+  isAuthContinuationId,
+  readAuthContinuation,
+  safeLocalReturnPath,
+} from "./auth-continuation";
 
 interface AuthContextType {
   user: User | null;
@@ -30,9 +37,9 @@ interface AuthContextType {
   authError: string;
   emailLinkSent: boolean;
   loginWithFacebook: () => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
-  sendEmailLink: (email: string, returnTo?: string) => Promise<void>;
-  completeEmailLink: (email: string) => Promise<string>;
+  loginWithGoogle: (returnTo?: string, continuation?: string | null) => Promise<void>;
+  sendEmailLink: (email: string, returnTo?: string, continuation?: string | null) => Promise<void>;
+  completeEmailLink: (email: string) => Promise<{ destination: string; continuationMissing: boolean }>;
   linkFacebook: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -47,7 +54,7 @@ const AuthContext = createContext<AuthContextType>({
   loginWithFacebook: async () => {},
   loginWithGoogle: async () => {},
   sendEmailLink: async () => {},
-  completeEmailLink: async () => "/",
+  completeEmailLink: async () => ({ destination: "/", continuationMissing: false }),
   linkFacebook: async () => {},
   logout: async () => {},
 });
@@ -58,10 +65,34 @@ const isMobile =
 
 const EMAIL_STORAGE_KEY = "westfieldbuzz:emailForSignIn";
 const RETURN_TO_STORAGE_KEY = "westfieldbuzz:returnTo";
+const CONTINUATION_STORAGE_KEY = "westfieldbuzz:authContinuation";
 
-export function safeReturnTo(value: string | null | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/";
-  return value;
+export const safeReturnTo = safeLocalReturnPath;
+
+export function readStoredAuthResume(): { returnTo: string; continuation: string | null } {
+  if (typeof window === "undefined") return { returnTo: "/", continuation: null };
+  const continuationId = window.localStorage.getItem(CONTINUATION_STORAGE_KEY);
+  const continuation = isAuthContinuationId(continuationId) && readAuthContinuation(continuationId)
+    ? continuationId
+    : null;
+  if (!continuation) window.localStorage.removeItem(CONTINUATION_STORAGE_KEY);
+  return {
+    returnTo: safeReturnTo(window.localStorage.getItem(RETURN_TO_STORAGE_KEY)),
+    continuation,
+  };
+}
+
+export function clearStoredAuthResume(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(RETURN_TO_STORAGE_KEY);
+  window.localStorage.removeItem(CONTINUATION_STORAGE_KEY);
+}
+
+function storeAuthResume(returnTo: string, continuation: string | null | undefined): void {
+  const safeDestination = safeReturnTo(returnTo);
+  window.localStorage.setItem(RETURN_TO_STORAGE_KEY, safeDestination);
+  if (isAuthContinuationId(continuation)) window.localStorage.setItem(CONTINUATION_STORAGE_KEY, continuation);
+  else window.localStorage.removeItem(CONTINUATION_STORAGE_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -71,6 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loggingIn, setLoggingIn] = useState(false);
   const [authError, setAuthError] = useState("");
   const [emailLinkSent, setEmailLinkSent] = useState(false);
+  const reconciledUserId = useRef<string | null>(null);
 
   // Handle redirect result when returning from OAuth provider (mobile flow)
   useEffect(() => {
@@ -83,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .catch((err) => {
         console.error("[AUTH] Redirect result error:", err);
         const code = (err as { code?: string }).code || "";
+        clearStoredAuthResume();
         if (code === "auth/account-exists-with-different-credential") {
           setAuthError("An account already exists with that email. Try the other sign-in method, then link accounts from your account page.");
         } else if (code !== "auth/redirect-cancelled-by-user") {
@@ -131,6 +164,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch (err) {
           console.error("[AUTH] Failed to sync user profile:", err);
         }
+
+        // Link only an already-consented subscriber through the authenticated
+        // server boundary. A failed reconciliation never blocks sign-in.
+        if (firebaseUser.emailVerified && firebaseUser.email && reconciledUserId.current !== firebaseUser.uid) {
+          reconciledUserId.current = firebaseUser.uid;
+          void firebaseUser.getIdToken().then((token) => fetch("/api/account/preferences", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ reconcile: true }),
+          })).catch(() => undefined);
+        }
+      } else {
+        reconciledUserId.current = null;
       }
     });
 
@@ -170,14 +216,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (returnTo = "/", continuation: string | null = null) => {
     if (loggingIn) return;
     setLoggingIn(true);
     setAuthError("");
+    storeAuthResume(returnTo, continuation);
 
     if (isMobile) {
       signInWithRedirect(auth, googleProvider).catch((err) => {
         console.error("[AUTH] Google redirect error:", err);
+        clearStoredAuthResume();
         setLoggingIn(false);
         setAuthError("Sign-in failed. Please try again.");
       });
@@ -185,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         await signInWithPopup(auth, googleProvider);
       } catch (err) {
+        clearStoredAuthResume();
         const code = (err as { code?: string }).code || "";
         if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
           // User closed the popup — not an error
@@ -201,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const sendEmailLink = async (email: string, returnTo = "/") => {
+  const sendEmailLink = async (email: string, returnTo = "/", continuation: string | null = null) => {
     if (loggingIn) return;
     setLoggingIn(true);
     setEmailLinkSent(false);
@@ -211,12 +260,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const safeDestination = safeReturnTo(returnTo);
       const finishUrl = new URL("/auth/finish", window.location.origin);
       finishUrl.searchParams.set("returnTo", safeDestination);
+      if (isAuthContinuationId(continuation)) finishUrl.searchParams.set("continuation", continuation);
       await sendSignInLinkToEmail(auth, email.trim(), {
         url: finishUrl.toString(),
         handleCodeInApp: true,
       });
       window.localStorage.setItem(EMAIL_STORAGE_KEY, email.trim());
-      window.localStorage.setItem(RETURN_TO_STORAGE_KEY, safeDestination);
+      storeAuthResume(safeDestination, continuation);
       setEmailLinkSent(true);
     } catch (err) {
       const code = (err as { code?: string }).code || "";
@@ -238,13 +288,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthError("");
     try {
       await signInWithEmailLink(auth, email.trim(), window.location.href);
-      const destination = safeReturnTo(
-        window.localStorage.getItem(RETURN_TO_STORAGE_KEY) ||
-          new URL(window.location.href).searchParams.get("returnTo")
-      );
+      const url = new URL(window.location.href);
+      const storedResume = readStoredAuthResume();
+      const returnTo = safeReturnTo(url.searchParams.get("returnTo") || storedResume.returnTo);
+      const requestedContinuation = url.searchParams.get("continuation");
+      const continuationId = isAuthContinuationId(requestedContinuation)
+        ? requestedContinuation
+        : storedResume.continuation;
+      const continuation = readAuthContinuation(continuationId);
+      const continuationMissing = Boolean(continuationId && !continuation);
+      const destination = authResumeDestination(returnTo, continuation ? continuationId : null);
       window.localStorage.removeItem(EMAIL_STORAGE_KEY);
-      window.localStorage.removeItem(RETURN_TO_STORAGE_KEY);
-      return destination;
+      clearStoredAuthResume();
+      return { destination, continuationMissing };
     } finally {
       setLoggingIn(false);
     }

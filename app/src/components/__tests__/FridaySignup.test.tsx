@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FridaySignup } from "../FridaySignup";
 
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null }) }));
+
 afterEach(() => vi.restoreAllMocks());
 
 describe("FridaySignup", () => {

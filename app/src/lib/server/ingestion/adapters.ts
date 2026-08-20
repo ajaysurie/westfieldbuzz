@@ -94,6 +94,7 @@ function eventStatus(value: unknown): SourceObservation["status"] {
   if (normalized.includes("cancel")) return "cancelled";
   if (normalized.includes("postpon")) return "postponed";
   if (normalized.includes("reschedul")) return "rescheduled";
+  if (normalized.includes("weather")) return "weather-dependent";
   return "scheduled";
 }
 
@@ -238,9 +239,18 @@ export function parseICalPayload(
     const event = component as VEvent;
     try {
       for (const instance of icalInstances(event, window)) {
-        const start = instance.start ? new Date(instance.start) : new Date(Number.NaN);
-        const end = instance.end ? new Date(instance.end) : null;
-        const title = text(instance.summary ?? event.summary);
+        // `instance.event` is the effective VEVENT, including a RECURRENCE-ID
+        // override. Its start may have moved, but recurrenceid is the immutable
+        // slot that identifies the occurrence across updates.
+        const effectiveEvent = instance.event;
+        // Expanded instance times are authoritative for an RRULE occurrence.
+        // For a generated instance, instance.event can be the base VEVENT
+        // whose DTSTART is the series origin rather than this occurrence.
+        const startValue = instance.start ?? effectiveEvent.start;
+        const endValue = instance.end ?? effectiveEvent.end;
+        const start = startValue ? new Date(startValue) : new Date(Number.NaN);
+        const end = endValue ? new Date(endValue) : null;
+        const title = text(effectiveEvent.summary ?? instance.summary ?? event.summary);
         if (invalidDate(start)) {
           errors.push(`Invalid start date for ${title || "untitled iCal event"}`);
           continue;
@@ -251,21 +261,36 @@ export function parseICalPayload(
         }
         if (!withinWindow(start, end, window)) continue;
         const baseId = text(event.uid) || key;
+        const originalSlot = instance.isRecurring
+          ? new Date(effectiveEvent.recurrenceid ?? instance.start)
+          : null;
+        const sourceEventId = originalSlot
+          ? `${baseId}:${originalSlot.toISOString()}`
+          : baseId;
+        const legacySourceEventId = instance.isRecurring
+          ? `${baseId}:${start.toISOString()}`
+          : null;
         events.push({
           title,
-          description: text(event.description),
+          description: text(effectiveEvent.description ?? event.description),
           date: start,
           endDate: end,
-          location: text(event.location) || source.name,
+          location: text(effectiveEvent.location ?? event.location) || source.name,
           town: source.town,
-          category: mapCategory([source.name, text(event.categories)]),
-          status: eventStatus(event.status),
+          category: mapCategory([
+            ...(effectiveEvent.categories?.length
+              ? effectiveEvent.categories
+              : event.categories ?? []),
+            source.name,
+          ]),
+          status: eventStatus(effectiveEvent.status ?? event.status),
           availability: "unknown",
           sourceId: source.id,
-          sourceEventId: instance.isRecurring
-            ? `${baseId}:${start.toISOString()}`
-            : baseId,
-          sourceUrl: text(event.url) || source.publicUrl || source.url,
+          sourceEventId,
+          ...(legacySourceEventId && legacySourceEventId !== sourceEventId
+            ? { sourceEventAliases: [legacySourceEventId] }
+            : {}),
+          sourceUrl: text(effectiveEvent.url ?? event.url) || source.publicUrl || source.url,
         });
       }
     } catch (error) {
@@ -514,9 +539,10 @@ function parseJson(body: string): unknown {
 async function fetchOne(
   source: EventSourcePolicy,
   url: string,
-  fetchImpl?: FetchImplementation
+  fetchImpl?: FetchImplementation,
+  deadlineAt?: Date
 ) {
-  return safeFetchText({ url, policy: source, fetchImpl });
+  return safeFetchText({ url, policy: source, fetchImpl, deadlineAt });
 }
 
 function finalize(
@@ -550,8 +576,9 @@ export async function fetchSourceEvents(input: {
   source: EventSourcePolicy;
   window: DateWindow;
   fetchImpl?: FetchImplementation;
+  deadlineAt?: Date;
 }): Promise<SourceFetchResult> {
-  const { source, window, fetchImpl } = input;
+  const { source, window, fetchImpl, deadlineAt } = input;
   if (source.type === "libcal") {
     const all: SourceObservation[] = [];
     const errors: string[] = [];
@@ -564,7 +591,7 @@ export async function fetchSourceEvents(input: {
       url.searchParams.set("date", window.fromLocalDate);
       url.searchParams.set("perpage", "50");
       url.searchParams.set("page", String(page));
-      const response = await fetchOne(source, url.toString(), fetchImpl);
+      const response = await fetchOne(source, url.toString(), fetchImpl, deadlineAt);
       bytes += response.bytes;
       fetchedUrl = response.finalUrl;
       const payload = parseJson(response.text);
@@ -602,7 +629,7 @@ export async function fetchSourceEvents(input: {
     let fetchedUrl = source.url;
     for (const url of urls) {
       try {
-        const response = await fetchOne(source, url, fetchImpl);
+        const response = await fetchOne(source, url, fetchImpl, deadlineAt);
         bytes += response.bytes;
         fetchedUrl = response.finalUrl;
         const parsed = parseICalPayload(source, response.text, window);
@@ -623,7 +650,7 @@ export async function fetchSourceEvents(input: {
   }
 
   if (source.type === "squarespace-json") {
-    const response = await fetchOne(source, source.url, fetchImpl);
+    const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
     return finalize(
       source,
       parseSquarespacePayload(source, parseJson(response.text), window),
@@ -633,7 +660,7 @@ export async function fetchSourceEvents(input: {
   }
 
   if (source.type === "wordpress-mec-html") {
-    const response = await fetchOne(source, source.url, fetchImpl);
+    const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
     return finalize(
       source,
       parseMecHtml(source, response.text, window),
@@ -646,7 +673,7 @@ export async function fetchSourceEvents(input: {
   url.searchParams.set("start_date", window.fromLocalDate);
   url.searchParams.set("end_date", window.toLocalDate);
   url.searchParams.set("per_page", "50");
-  const response = await fetchOne(source, url.toString(), fetchImpl);
+  const response = await fetchOne(source, url.toString(), fetchImpl, deadlineAt);
   return finalize(
     source,
     parseTribePayload(source, parseJson(response.text), window),

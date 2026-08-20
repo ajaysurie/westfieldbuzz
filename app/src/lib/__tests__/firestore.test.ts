@@ -9,7 +9,7 @@ const mockBatchCommit = vi.fn().mockResolvedValue(undefined);
 
 vi.mock("firebase/firestore", () => ({
   collection: vi.fn((_db, name) => name),
-  doc: vi.fn((_db, ...path) => path.join("/")),
+  doc: vi.fn((_db, ...path) => path.length ? path.join("/") : { id: "generated-document-id" }),
   getDoc: (...args: unknown[]) => mockGetDoc(...args),
   getDocs: (...args: unknown[]) => mockGetDocs(...args),
   setDoc: vi.fn(),
@@ -20,6 +20,8 @@ vi.mock("firebase/firestore", () => ({
   query: vi.fn((...args) => args),
   orderBy: vi.fn(),
   where: vi.fn(),
+  documentId: vi.fn(() => "__name__"),
+  limit: vi.fn((value) => ({ limit: value })),
   arrayUnion: vi.fn(),
   arrayRemove: vi.fn(),
   writeBatch: vi.fn(() => ({
@@ -47,8 +49,8 @@ vi.mock("firebase/auth", () => {
   };
 });
 
-import { getCommunityStats, getServices, getServiceById, recommendService, unrecommendService, getSuggestions, submitSuggestion, approveSuggestion, rejectSuggestion } from "../firestore";
-import { setDoc, updateDoc, deleteDoc, arrayUnion, type Timestamp } from "firebase/firestore";
+import { createEvent, getCommunityStats, getServices, getServiceById, getPublicEvents, getPublishedEventById, MAX_PUBLIC_EVENT_LIMIT, recommendService, unrecommendService, getSuggestions, getSourceHealth, getPendingEventCandidates, submitSuggestion, approveSuggestion, rejectSuggestion } from "../firestore";
+import { setDoc, updateDoc, deleteDoc, arrayUnion, documentId, limit, orderBy, where, type Timestamp } from "firebase/firestore";
 
 const mockSetDoc = vi.mocked(setDoc);
 const mockUpdateDoc = vi.mocked(updateDoc);
@@ -156,6 +158,45 @@ describe("getServiceById", () => {
   });
 });
 
+describe("public event reads", () => {
+  it("queries only published events within the requested category/date range and cap", async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [{ id: "event-1", data: () => ({
+        title: "Storytime",
+        category: "Family",
+        status: "weather-dependent",
+        availability: "unknown",
+        freshnessStatus: "current",
+        lastVerifiedAt: { toDate: () => new Date() },
+      }) }],
+    });
+    const from = new Date("2026-08-20T00:00:00.000Z");
+    const to = new Date("2026-08-28T23:59:59.999Z");
+
+    const events = await getPublicEvents({ from, to, category: "Family", limit: 9999 });
+
+    expect(where).toHaveBeenCalledWith("publicationStatus", "==", "published");
+    expect(where).toHaveBeenCalledWith("date", ">=", from);
+    expect(where).toHaveBeenCalledWith("date", "<=", to);
+    expect(where).toHaveBeenCalledWith("category", "==", "Family & Kids");
+    expect(orderBy).toHaveBeenCalledWith("date", "asc");
+    expect(limit).toHaveBeenCalledWith(MAX_PUBLIC_EVENT_LIMIT);
+    expect(events[0]).toMatchObject({
+      category: "Family & Kids",
+      status: "weather-dependent",
+    });
+  });
+
+  it("returns null for a missing or unpublished detail without a direct document read", async () => {
+    mockGetDocs.mockResolvedValue({ docs: [] });
+
+    await expect(getPublishedEventById("draft")).resolves.toBeNull();
+    expect(documentId).toHaveBeenCalled();
+    expect(where).toHaveBeenCalledWith("__name__", "==", "draft");
+    expect(where).toHaveBeenCalledWith("publicationStatus", "==", "published");
+  });
+});
+
 describe("recommendService", () => {
   it("stores displayName when provided", async () => {
     await recommendService("svc-1", "user-1", "Alice Smith");
@@ -206,6 +247,37 @@ describe("getSuggestions", () => {
   });
 });
 
+describe("admin operational reads", () => {
+  it("returns source health sorted by source name", async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [
+        { id: "z", data: () => ({ sourceId: "z", sourceName: "Zebra source" }) },
+        { id: "a", data: () => ({ sourceId: "a", sourceName: "Alpha source" }) },
+      ],
+    });
+
+    await expect(getSourceHealth()).resolves.toMatchObject([
+      { id: "a", sourceName: "Alpha source" },
+      { id: "z", sourceName: "Zebra source" },
+    ]);
+  });
+
+  it("limits review queue reads to pending candidates and orders by event date", async () => {
+    mockGetDocs.mockResolvedValue({
+      docs: [
+        { id: "later", data: () => ({ title: "Later", date: { seconds: 20 }, reviewStatus: "pending" }) },
+        { id: "first", data: () => ({ title: "First", date: { seconds: 10 }, reviewStatus: "pending" }) },
+      ],
+    });
+
+    await expect(getPendingEventCandidates()).resolves.toMatchObject([
+      { id: "first", title: "First" },
+      { id: "later", title: "Later" },
+    ]);
+    expect(where).toHaveBeenCalledWith("reviewStatus", "==", "pending");
+  });
+});
+
 describe("submitSuggestion", () => {
   it("stores address field", async () => {
     await submitSuggestion({
@@ -220,6 +292,27 @@ describe("submitSuggestion", () => {
     expect(mockSetDoc).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ address: "123 Elm St", businessName: "Test Biz" })
+    );
+  });
+});
+
+describe("createEvent", () => {
+  it("creates a published manual projection with explicit manual provenance", async () => {
+    await createEvent({
+      title: "Town Hall", description: "", date: new Date(), endDate: null,
+      location: "Town Hall", category: "Community", createdBy: "admin-1",
+    });
+
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        publicationStatus: "published",
+        freshnessStatus: "current",
+        status: "scheduled",
+        availability: "unknown",
+        sourceId: "manual-admin",
+        sourceEventId: expect.any(String),
+      })
     );
   });
 });

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import EventDetailActions from "@/components/EventDetailActions";
 import EventStatusBadge from "@/components/EventStatusBadge";
 import { formatEventDate, formatEventTime } from "@/components/EventCard";
-import { getEventById, type Event } from "@/lib/firestore";
+import { getPublishedEventById, type Event } from "@/lib/firestore";
 
 function dateValue(value: Event["lastVerifiedAt"]): Date | null {
   if (!value) return null;
@@ -43,8 +43,7 @@ export default function EventDetailPage() {
     setLoading(true);
     setError(false);
     try {
-      const result = await getEventById(id);
-      setEvent(result?.publicationStatus === "published" ? result : null);
+      setEvent(await getPublishedEventById(id));
     } catch {
       setError(true);
     } finally {
