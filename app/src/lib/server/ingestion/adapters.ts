@@ -1,0 +1,656 @@
+import { expandRecurringEvent, sync as icalSync, type VEvent } from "node-ical";
+import { normalizeWhitespace } from "../../events/normalize";
+import { parseSourceDateTime } from "./time";
+import { mapCategory } from "./source-registry";
+import type {
+  EventSourcePolicy,
+  SourceFetchResult,
+  SourceObservation,
+} from "./types";
+import { safeFetchText, type FetchImplementation } from "./safe-fetch";
+
+interface DateWindow {
+  from: Date;
+  to: Date;
+  fromLocalDate: string;
+  toLocalDate: string;
+}
+
+interface ParsedPayload {
+  events: SourceObservation[];
+  errors: string[];
+  warnings?: string[];
+  layoutValid: boolean;
+}
+
+type UnknownRecord = Record<string, unknown>;
+
+function record(value: unknown): UnknownRecord {
+  return value && typeof value === "object" ? (value as UnknownRecord) : {};
+}
+
+function array(value: unknown): unknown[] {
+  return Array.isArray(value) ? value : [];
+}
+
+export function decodeHtmlEntities(value: string): string {
+  const named: Record<string, string> = {
+    amp: "&",
+    apos: "'",
+    gt: ">",
+    hellip: "…",
+    lt: "<",
+    nbsp: " ",
+    quot: '"',
+  };
+  return value.replace(
+    /&(#x?[0-9a-f]+|[a-z]+);/gi,
+    (match, entity: string) => {
+      if (entity.startsWith("#x")) {
+        return String.fromCodePoint(Number.parseInt(entity.slice(2), 16));
+      }
+      if (entity.startsWith("#")) {
+        return String.fromCodePoint(Number.parseInt(entity.slice(1), 10));
+      }
+      return named[entity.toLowerCase()] ?? match;
+    }
+  );
+}
+
+export function stripHtml(value: unknown): string {
+  return normalizeWhitespace(
+    decodeHtmlEntities(
+      String(value ?? "")
+        .replace(/<br\s*\/?>/gi, " ")
+        .replace(/<\/p>/gi, " ")
+        .replace(/<[^>]+>/g, " ")
+    )
+  );
+}
+
+function text(value: unknown): string {
+  if (typeof value === "string" || typeof value === "number") {
+    return stripHtml(value);
+  }
+  const data = record(value);
+  return stripHtml(data.val ?? data.value ?? data.name ?? "");
+}
+
+function withinWindow(
+  start: Date,
+  end: Date | null,
+  window: DateWindow
+): boolean {
+  if (start > window.to) return false;
+  return (end ?? start) >= window.from;
+}
+
+function invalidDate(value: Date): boolean {
+  return Number.isNaN(value.getTime());
+}
+
+function eventStatus(value: unknown): SourceObservation["status"] {
+  const normalized = String(value ?? "").toLowerCase();
+  if (normalized.includes("cancel")) return "cancelled";
+  if (normalized.includes("postpon")) return "postponed";
+  if (normalized.includes("reschedul")) return "rescheduled";
+  return "scheduled";
+}
+
+export function isJunkEvent(
+  source: EventSourcePolicy,
+  event: Pick<SourceObservation, "title" | "location">
+): boolean {
+  if (!event.title.trim()) return true;
+  return (source.junkTitlePatterns ?? []).some((pattern) =>
+    new RegExp(pattern, "i").test(event.title.trim())
+  );
+}
+
+export function deduplicateObservations(
+  source: EventSourcePolicy,
+  events: SourceObservation[]
+): { events: SourceObservation[]; warnings: string[] } {
+  const byId = new Map<string, SourceObservation>();
+  const warnings: string[] = [];
+  for (const event of events) {
+    if (isJunkEvent(source, event)) {
+      warnings.push(`Filtered junk event: ${event.title || "(untitled)"}`);
+      continue;
+    }
+    if (byId.has(event.sourceEventId)) {
+      warnings.push(`Ignored duplicate source event ID: ${event.sourceEventId}`);
+      continue;
+    }
+    byId.set(event.sourceEventId, event);
+  }
+  return { events: [...byId.values()], warnings };
+}
+
+function libCalCategories(event: UnknownRecord): string[] {
+  const values = [
+    ...array(event.categories_arr),
+    ...array(event.audiences),
+    ...array(event.categories),
+  ];
+  if (typeof event.categories === "string") values.push(event.categories);
+  return values.map(text).filter(Boolean);
+}
+
+export function parseLibCalPayload(
+  source: EventSourcePolicy,
+  payload: unknown,
+  window: DateWindow
+): ParsedPayload {
+  const data = record(payload);
+  const rawEvents = array(data.events ?? data.results);
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+
+  for (const raw of rawEvents) {
+    const event = record(raw);
+    const title = text(event.title);
+    const startRaw = event.startdt ?? event.start_date ?? event.start;
+    const endRaw = event.enddt ?? event.end_date ?? event.end;
+    const start = parseSourceDateTime(startRaw, source.timezone);
+    const end = endRaw ? parseSourceDateTime(endRaw, source.timezone) : null;
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled LibCal event"}`);
+      continue;
+    }
+    if (end && invalidDate(end)) {
+      errors.push(`Invalid end date for ${title || "untitled LibCal event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    const locationValue = record(event.location);
+    const location = text(locationValue.name ?? event.location) || source.name;
+    events.push({
+      title,
+      description: stripHtml(event.description ?? event.shortdesc),
+      date: start,
+      endDate: end,
+      location,
+      town: source.town,
+      category: mapCategory(libCalCategories(event)),
+      status: eventStatus(event.status),
+      availability: "unknown",
+      sourceId: source.id,
+      sourceEventId:
+        event.id != null
+          ? String(event.id)
+          : `fallback:${start.toISOString()}:${title}:${location}`,
+      sourceUrl:
+        text(record(event.url).public ?? event.url) ||
+        source.publicUrl ||
+        source.url,
+    });
+  }
+
+  return {
+    events,
+    errors,
+    layoutValid: Array.isArray(data.events) || Array.isArray(data.results),
+  };
+}
+
+function icalInstances(event: VEvent, window: DateWindow) {
+  if (event.rrule) {
+    return expandRecurringEvent(event, {
+      from: window.from,
+      to: window.to,
+      includeOverrides: true,
+      excludeExdates: true,
+      expandOngoing: true,
+    });
+  }
+  return [
+    {
+      start: event.start,
+      end: event.end,
+      summary: event.summary,
+      isRecurring: false,
+      event,
+    },
+  ];
+}
+
+export function parseICalPayload(
+  source: EventSourcePolicy,
+  payload: string,
+  window: DateWindow
+): ParsedPayload {
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+  let calendar: ReturnType<typeof icalSync.parseICS>;
+  try {
+    calendar = icalSync.parseICS(payload);
+  } catch (error) {
+    return {
+      events: [],
+      errors: [error instanceof Error ? error.message : String(error)],
+      layoutValid: false,
+    };
+  }
+
+  for (const [key, component] of Object.entries(calendar)) {
+    if (!component || component.type !== "VEVENT") continue;
+    const event = component as VEvent;
+    try {
+      for (const instance of icalInstances(event, window)) {
+        const start = instance.start ? new Date(instance.start) : new Date(Number.NaN);
+        const end = instance.end ? new Date(instance.end) : null;
+        const title = text(instance.summary ?? event.summary);
+        if (invalidDate(start)) {
+          errors.push(`Invalid start date for ${title || "untitled iCal event"}`);
+          continue;
+        }
+        if (end && invalidDate(end)) {
+          errors.push(`Invalid end date for ${title || "untitled iCal event"}`);
+          continue;
+        }
+        if (!withinWindow(start, end, window)) continue;
+        const baseId = text(event.uid) || key;
+        events.push({
+          title,
+          description: text(event.description),
+          date: start,
+          endDate: end,
+          location: text(event.location) || source.name,
+          town: source.town,
+          category: mapCategory([source.name, text(event.categories)]),
+          status: eventStatus(event.status),
+          availability: "unknown",
+          sourceId: source.id,
+          sourceEventId: instance.isRecurring
+            ? `${baseId}:${start.toISOString()}`
+            : baseId,
+          sourceUrl: text(event.url) || source.publicUrl || source.url,
+        });
+      }
+    } catch (error) {
+      errors.push(
+        `Failed to expand ${text(event.summary) || key}: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  return {
+    events,
+    errors,
+    layoutValid: /BEGIN:VCALENDAR/i.test(payload),
+  };
+}
+
+function dateFromSquarespace(value: unknown): Date {
+  if (typeof value === "number") return new Date(value);
+  const numeric = Number(value);
+  if (String(value ?? "").trim() && Number.isFinite(numeric) && numeric > 10_000) {
+    return new Date(numeric);
+  }
+  return new Date(String(value ?? ""));
+}
+
+function squarespaceLocation(value: unknown, fallback: string): string {
+  const location = record(value);
+  return (
+    [
+      location.addressTitle,
+      location.addressLine1,
+      location.addressLine2,
+    ]
+      .map(text)
+      .filter(Boolean)
+      .join(", ") || fallback
+  );
+}
+
+export function parseSquarespacePayload(
+  source: EventSourcePolicy,
+  payload: unknown,
+  window: DateWindow
+): ParsedPayload {
+  const data = record(payload);
+  const items = array(data.items);
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+
+  for (const raw of items) {
+    const item = record(raw);
+    const title = text(item.title);
+    const start = dateFromSquarespace(
+      item.startDate ?? item.eventStartDate ?? item.eventDate
+    );
+    const endValue = item.endDate ?? item.eventEndDate;
+    const end = endValue ? dateFromSquarespace(endValue) : null;
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled Squarespace event"}`);
+      continue;
+    }
+    if (end && invalidDate(end)) {
+      errors.push(`Invalid end date for ${title || "untitled Squarespace event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    const urlPath = text(item.fullUrl ?? item.urlId);
+    events.push({
+      title,
+      description: stripHtml(item.excerpt ?? item.body),
+      date: start,
+      endDate: end,
+      location: squarespaceLocation(item.location, source.name),
+      town: source.town,
+      category: mapCategory([source.name, ...array(item.categories).map(text)]),
+      status: eventStatus(item.status),
+      availability: "unknown",
+      sourceId: source.id,
+      sourceEventId: text(item.id) || `fallback:${start.toISOString()}:${title}`,
+      sourceUrl: urlPath
+        ? new URL(urlPath, source.url).toString()
+        : source.publicUrl ?? source.url.replace(/[?&]format=json/, ""),
+    });
+  }
+
+  return {
+    events,
+    errors,
+    layoutValid: Array.isArray(data.items) && Boolean(data.collection),
+  };
+}
+
+function classText(block: string, className: string): string {
+  const expression = new RegExp(
+    `<([a-z0-9]+)[^>]+class=["'][^"']*${className}[^"']*["'][^>]*>([\\s\\S]*?)<\\/\\1>`,
+    "i"
+  );
+  return stripHtml(block.match(expression)?.[2] ?? "");
+}
+
+function mecDate(block: string, source: EventSourcePolicy): { start: Date; end: Date | null } {
+  const yearMonth = block.match(/mec-toggle-(\d{4})(\d{2})/i);
+  const dayMonth = classText(block, "mec-start-date-label").match(/(\d{1,2})\s+([A-Za-z]{3})/);
+  if (!yearMonth || !dayMonth) {
+    return { start: new Date(Number.NaN), end: null };
+  }
+  const months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const month = months.indexOf(dayMonth[2].toLowerCase()) + 1;
+  const startTime = classText(block, "mec-start-time") || "12:00 am";
+  const endTime = classText(block, "mec-end-time");
+  const timeParts = (value: string) => {
+    const match = value.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)/i);
+    if (!match) return null;
+    let hour = Number(match[1]) % 12;
+    if (match[3].toLowerCase() === "pm") hour += 12;
+    return `${String(hour).padStart(2, "0")}:${match[2] ?? "00"}:00`;
+  };
+  const date = `${yearMonth[1]}-${String(month).padStart(2, "0")}-${String(Number(dayMonth[1])).padStart(2, "0")}`;
+  const startClock = timeParts(startTime);
+  const endClock = endTime ? timeParts(endTime) : null;
+  return {
+    start: startClock
+      ? parseSourceDateTime(`${date} ${startClock}`, source.timezone)
+      : new Date(Number.NaN),
+    end: endClock
+      ? parseSourceDateTime(`${date} ${endClock}`, source.timezone)
+      : null,
+  };
+}
+
+export function parseMecHtml(
+  source: EventSourcePolicy,
+  html: string,
+  window: DateWindow
+): ParsedPayload {
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+  const articles = html.match(
+    /<article\b[^>]*class=["'][^"']*mec-event-article[^"']*["'][^>]*>[\s\S]*?<\/article>/gi
+  ) ?? [];
+
+  for (const article of articles) {
+    const title = classText(article, "mec-event-title");
+    const id = article.match(/data-event-id=["'](\d+)["']/i)?.[1];
+    const href = article.match(
+      /class=["'][^"']*mec-color-hover[^"']*["'][^>]*href=["']([^"']+)["']/i
+    )?.[1];
+    const { start, end } = mecDate(article, source);
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled MEC event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    events.push({
+      title,
+      description: classText(article, "mec-event-description"),
+      date: start,
+      endDate: end,
+      location: classText(article, "mec-venue-details") || source.name,
+      town: source.town,
+      category: mapCategory([source.name]),
+      status: eventStatus(classText(article, "mec-event-status")),
+      availability: "unknown",
+      sourceId: source.id,
+      sourceEventId: id || `fallback:${start.toISOString()}:${title}`,
+      sourceUrl: href
+        ? decodeHtmlEntities(href)
+        : source.publicUrl ?? source.url,
+    });
+  }
+
+  return {
+    events,
+    errors,
+    layoutValid: html.includes(source.expectedLayoutMarker ?? "mec-event-article"),
+  };
+}
+
+export function parseTribePayload(
+  source: EventSourcePolicy,
+  payload: unknown,
+  window: DateWindow
+): ParsedPayload {
+  const data = record(payload);
+  const rawEvents = array(data.events);
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+
+  for (const raw of rawEvents) {
+    const event = record(raw);
+    const title = text(event.title);
+    const start = parseSourceDateTime(event.start_date, source.timezone);
+    const end = event.end_date
+      ? parseSourceDateTime(event.end_date, source.timezone)
+      : null;
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled Tribe event"}`);
+      continue;
+    }
+    if (end && invalidDate(end)) {
+      errors.push(`Invalid end date for ${title || "untitled Tribe event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    const venue = record(event.venue);
+    const categories = array(event.categories).map((value) => text(record(value).name));
+    events.push({
+      title,
+      description: stripHtml(event.description ?? event.excerpt),
+      date: start,
+      endDate: end,
+      location: text(venue.venue ?? venue.name) || source.name,
+      town: source.town,
+      category: mapCategory([...categories, source.name]),
+      status: eventStatus(event.status),
+      availability: text(event.cost).toLowerCase().includes("sold out")
+        ? "sold-out"
+        : "unknown",
+      sourceId: source.id,
+      sourceEventId: text(event.id ?? event.global_id),
+      sourceUrl: text(event.url) || source.publicUrl || source.url,
+    });
+  }
+
+  return {
+    events,
+    errors,
+    layoutValid: Array.isArray(data.events),
+  };
+}
+
+function parseJson(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch (error) {
+    throw new Error(
+      `Source returned malformed JSON: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
+}
+
+async function fetchOne(
+  source: EventSourcePolicy,
+  url: string,
+  fetchImpl?: FetchImplementation
+) {
+  return safeFetchText({ url, policy: source, fetchImpl });
+}
+
+function finalize(
+  source: EventSourcePolicy,
+  parsed: ParsedPayload,
+  responseBytes: number,
+  fetchedUrl: string
+): SourceFetchResult {
+  const unique = deduplicateObservations(source, parsed.events);
+  const errors = [...parsed.errors];
+  if (!parsed.layoutValid) errors.push("Expected source layout marker was missing");
+  if (
+    source.minimumExpectedEvents != null &&
+    unique.events.length < source.minimumExpectedEvents
+  ) {
+    errors.push(
+      `Event count ${unique.events.length} is below minimum ${source.minimumExpectedEvents}`
+    );
+  }
+  return {
+    events: unique.events,
+    complete: errors.length === 0,
+    errors,
+    warnings: [...(parsed.warnings ?? []), ...unique.warnings],
+    responseBytes,
+    fetchedUrl,
+  };
+}
+
+export async function fetchSourceEvents(input: {
+  source: EventSourcePolicy;
+  window: DateWindow;
+  fetchImpl?: FetchImplementation;
+}): Promise<SourceFetchResult> {
+  const { source, window, fetchImpl } = input;
+  if (source.type === "libcal") {
+    const all: SourceObservation[] = [];
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let bytes = 0;
+    let fetchedUrl = source.url;
+    for (let page = 1; page <= 20; page++) {
+      const url = new URL(source.url);
+      url.searchParams.set("c", source.calendarId ?? "");
+      url.searchParams.set("date", window.fromLocalDate);
+      url.searchParams.set("perpage", "50");
+      url.searchParams.set("page", String(page));
+      const response = await fetchOne(source, url.toString(), fetchImpl);
+      bytes += response.bytes;
+      fetchedUrl = response.finalUrl;
+      const payload = parseJson(response.text);
+      const parsed = parseLibCalPayload(source, payload, window);
+      all.push(...parsed.events);
+      errors.push(...parsed.errors);
+      warnings.push(...(parsed.warnings ?? []));
+      if (!parsed.layoutValid) errors.push("Expected LibCal events array was missing");
+      const payloadRecord = record(payload);
+      const rawCount = array(payloadRecord.events ?? payloadRecord.results).length;
+      if (rawCount < 50) break;
+      if (page === 20) errors.push("LibCal pagination exceeded 20 pages");
+    }
+    return finalize(
+      source,
+      { events: all, errors, warnings, layoutValid: true },
+      bytes,
+      fetchedUrl
+    );
+  }
+
+  if (source.type === "ical" || source.type === "civicplus-ical") {
+    const urls = source.calendarIds?.length
+      ? source.calendarIds.map((calendarId) => {
+          const url = new URL(source.url);
+          url.searchParams.set("catID", String(calendarId));
+          url.searchParams.set("feed", "calendar");
+          return url.toString();
+        })
+      : [source.url];
+    const all: SourceObservation[] = [];
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let bytes = 0;
+    let fetchedUrl = source.url;
+    for (const url of urls) {
+      try {
+        const response = await fetchOne(source, url, fetchImpl);
+        bytes += response.bytes;
+        fetchedUrl = response.finalUrl;
+        const parsed = parseICalPayload(source, response.text, window);
+        all.push(...parsed.events);
+        errors.push(...parsed.errors);
+        warnings.push(...(parsed.warnings ?? []));
+        if (!parsed.layoutValid) errors.push("Expected iCalendar envelope was missing");
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error));
+      }
+    }
+    return finalize(
+      source,
+      { events: all, errors, warnings, layoutValid: urls.length > 0 },
+      bytes,
+      fetchedUrl
+    );
+  }
+
+  if (source.type === "squarespace-json") {
+    const response = await fetchOne(source, source.url, fetchImpl);
+    return finalize(
+      source,
+      parseSquarespacePayload(source, parseJson(response.text), window),
+      response.bytes,
+      response.finalUrl
+    );
+  }
+
+  if (source.type === "wordpress-mec-html") {
+    const response = await fetchOne(source, source.url, fetchImpl);
+    return finalize(
+      source,
+      parseMecHtml(source, response.text, window),
+      response.bytes,
+      response.finalUrl
+    );
+  }
+
+  const url = new URL(source.url);
+  url.searchParams.set("start_date", window.fromLocalDate);
+  url.searchParams.set("end_date", window.toLocalDate);
+  url.searchParams.set("per_page", "50");
+  const response = await fetchOne(source, url.toString(), fetchImpl);
+  return finalize(
+    source,
+    parseTribePayload(source, parseJson(response.text), window),
+    response.bytes,
+    response.finalUrl
+  );
+}

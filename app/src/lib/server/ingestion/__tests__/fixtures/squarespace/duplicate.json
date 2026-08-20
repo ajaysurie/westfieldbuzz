@@ -1,0 +1,7 @@
+{
+  "collection": { "id": "events", "title": "Events" },
+  "items": [
+    { "id": "duplicate-1", "title": "Open Studio", "startDate": "2026-08-23T13:00:00-04:00" },
+    { "id": "duplicate-1", "title": "Open Studio", "startDate": "2026-08-23T13:00:00-04:00" }
+  ]
+}

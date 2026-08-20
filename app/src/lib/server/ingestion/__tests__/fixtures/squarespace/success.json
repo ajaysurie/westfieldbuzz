@@ -1,0 +1,15 @@
+{
+  "collection": { "id": "events", "title": "Events" },
+  "items": [
+    {
+      "id": "rialto-123",
+      "title": "Community Film Night",
+      "startDate": "2026-08-22T19:00:00-04:00",
+      "endDate": "2026-08-22T21:00:00-04:00",
+      "excerpt": "<p>A neighborhood screening.</p>",
+      "fullUrl": "/events/community-film-night",
+      "location": { "addressTitle": "Rialto Center" },
+      "categories": ["Film"]
+    }
+  ]
+}
