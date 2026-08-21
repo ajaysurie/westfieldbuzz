@@ -228,6 +228,13 @@ function geminiSchema(node: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
     if (key === "additionalProperties" || key === "$schema" || key === "strict") continue;
+    // Gemini's dialect has no "const". A string const becomes a one-value enum
+    // (same constraint); a non-string const is dropped, because Gemini enums are
+    // string-only and validateSearchIntent re-checks every field server-side.
+    if (key === "const") {
+      if (typeof value === "string") out.enum = [value];
+      continue;
+    }
     out[key] = geminiSchema(value);
   }
   return out;
