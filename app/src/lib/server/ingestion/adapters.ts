@@ -2,6 +2,7 @@ import { expandRecurringEvent, sync as icalSync, type VEvent } from "node-ical";
 import { normalizeWhitespace } from "../../events/normalize";
 import { parseSourceDateTime } from "./time";
 import { mapCategory } from "./source-registry";
+import { extractEventsWithLlm } from "./llm-extractor";
 import type {
   EventSourcePolicy,
   SourceFetchResult,
@@ -811,6 +812,28 @@ export async function fetchSourceEvents(input: {
     return finalize(
       source,
       parseSquarespacePayload(source, parseJson(response.text), window),
+      response.bytes,
+      response.finalUrl
+    );
+  }
+
+  if (source.type === "llm-extract") {
+    const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
+    const extraction = await extractEventsWithLlm({
+      source,
+      pageText: stripHtml(response.text),
+      window,
+    });
+    return finalize(
+      source,
+      {
+        events: extraction.events,
+        errors: extraction.errors,
+        warnings: extraction.warnings,
+        // The failure mode here is the model erroring, which surfaces above; an
+        // empty page is a real possibility for JS-rendered sites, not a layout break.
+        layoutValid: response.text.length > 0,
+      },
       response.bytes,
       response.finalUrl
     );

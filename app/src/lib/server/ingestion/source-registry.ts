@@ -177,6 +177,38 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     expectedLayoutMarker: "events",
     minimumExpectedEvents: 1,
   },
+  {
+    ...STANDARD_FETCH,
+    id: "patch-westfield-llm",
+    name: "Westfield Patch Calendar",
+    type: "llm-extract",
+    url: "https://patch.com/new-jersey/westfield/calendar",
+    publicUrl: "https://patch.com/new-jersey/westfield/calendar",
+    town: "Westfield",
+    // LLM-extracted output starts untrusted; an operator flips this in
+    // config/sources once the source has earned it.
+    autoApprove: false,
+    group: "nearby-venues",
+    allowedHosts: ["patch.com"],
+    expectedContentTypes: ["text/html"],
+    minimumExpectedEvents: 0,
+    maxResponseBytes: 4_000_000,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "tapinto-westfield-llm",
+    name: "TAPinto Westfield Events",
+    type: "llm-extract",
+    url: "https://www.tapinto.net/towns/westfield/events",
+    publicUrl: "https://www.tapinto.net/towns/westfield/events",
+    town: "Westfield",
+    autoApprove: false,
+    group: "nearby-venues",
+    allowedHosts: ["www.tapinto.net", "tapinto.net"],
+    expectedContentTypes: ["text/html"],
+    minimumExpectedEvents: 0,
+    maxResponseBytes: 4_000_000,
+  },
 ];
 
 export const SOURCE_GROUPS = [
