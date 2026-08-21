@@ -209,6 +209,21 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     minimumExpectedEvents: 0,
     maxResponseBytes: 4_000_000,
   },
+  {
+    ...STANDARD_FETCH,
+    id: "westfield-llm-search",
+    name: "Web Search Discovery",
+    type: "llm-search",
+    // No page is fetched for this source; the URL is identity/attribution only.
+    url: "https://westfieldbuzz.com/sources/web-search",
+    publicUrl: "https://westfieldbuzz.com",
+    town: "Westfield",
+    autoApprove: false,
+    group: "nearby-venues",
+    allowedHosts: [],
+    expectedContentTypes: [],
+    minimumExpectedEvents: 0,
+  },
 ];
 
 export const SOURCE_GROUPS = [

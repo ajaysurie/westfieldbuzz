@@ -9,6 +9,7 @@ export interface EventSourcePolicy {
     | "civicplus-ical"
     | "jsonld"
     | "llm-extract"
+    | "llm-search"
     | "squarespace-json"
     | "wordpress-mec-html"
     | "wordpress-tribe-json";

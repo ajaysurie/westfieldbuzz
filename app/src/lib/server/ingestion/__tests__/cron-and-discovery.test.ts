@@ -50,8 +50,20 @@ describe("source registry and discovery boundary", () => {
       "core-town-school",
       "nearby-venues",
     ]);
-    expect(EVENT_SOURCES).toHaveLength(12);
-    expect(EVENT_SOURCES.every((source) => source.allowedHosts.length > 0)).toBe(true);
+    // Structural invariants instead of a magic count, which broke on every
+    // legitimate addition without protecting anything.
+    const ids = EVENT_SOURCES.map((source) => source.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Every source that fetches a page must pin its hosts; llm-search fetches
+    // nothing (search grounding is the fetch), so it is exempt by construction.
+    expect(EVENT_SOURCES
+      .filter((source) => source.type !== "llm-search")
+      .every((source) => source.allowedHosts.length > 0)).toBe(true);
+    // Model-backed sources always start untrusted; publishing requires the
+    // operator toggle in config/sources.
+    expect(EVENT_SOURCES
+      .filter((source) => source.type === "llm-extract" || source.type === "llm-search")
+      .every((source) => source.autoApprove === false)).toBe(true);
     expect(EVENT_SOURCES.find((source) => source.id === "westfield-schools-ical")?.autoApprove).toBe(true);
     expect(EVENT_SOURCES.find((source) => source.id === "ucpac-tribe")?.autoApprove).toBe(false);
   });

@@ -817,6 +817,18 @@ export async function fetchSourceEvents(input: {
     );
   }
 
+  if (source.type === "llm-search") {
+    // No page fetch: the model's search grounding is the fetch. Every result
+    // must carry its own citation URL or the extractor drops it.
+    const extraction = await extractEventsWithLlm({ source, pageText: "", window });
+    return finalize(
+      source,
+      { events: extraction.events, errors: extraction.errors, warnings: extraction.warnings, layoutValid: true },
+      0,
+      source.url
+    );
+  }
+
   if (source.type === "llm-extract") {
     const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
     const extraction = await extractEventsWithLlm({

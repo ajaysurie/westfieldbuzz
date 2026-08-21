@@ -125,3 +125,46 @@ describe("extractEventsWithLlm", () => {
     expect(result.errors.length).toBeGreaterThan(0);
   });
 });
+
+describe("llm-search mode", () => {
+  const searchSource = {
+    ...source,
+    id: "westfield-llm-search",
+    type: "llm-search",
+    url: "https://westfieldbuzz.com/sources/web-search",
+    publicUrl: "https://westfieldbuzz.com",
+  } as unknown as EventSourcePolicy;
+
+  it("keeps cited results and drops uncited ones", async () => {
+    // The street-fair case: search surfaces a real event with a citation, and a
+    // hallucinated one without. Only the cited event survives.
+    const body = {
+      candidates: [{ content: { parts: [{ text: JSON.stringify({
+        events: [
+          { title: "Westfield Street Fair & Craft Show", startIso: "2026-08-22T11:00:00",
+            locationText: "South Avenue West & Boulevard, Westfield",
+            eventUrl: "https://allevents.in/westfield-nj/street-fair" },
+          { title: "Made Up Gala", startIso: "2026-08-22T19:00:00", locationText: "Somewhere, Westfield" },
+        ],
+      }) }] } }],
+    };
+    const fetchImpl = (async () => new Response(JSON.stringify(body), { status: 200 })) as unknown as typeof fetch;
+    const result = await extractEventsWithLlm({ source: searchSource, pageText: "", window, apiKey: "k", fetchImpl });
+
+    expect(result.events.map((event) => event.title)).toEqual(["Westfield Street Fair & Craft Show"]);
+    expect(result.events[0].sourceUrl).toBe("https://allevents.in/westfield-nj/street-fair");
+    expect(result.errors.join(" ")).toContain("uncited");
+  });
+
+  it("requests search grounding from the model", async () => {
+    let sentBody = "";
+    const fetchImpl = (async (_url: unknown, init?: { body?: string }) => {
+      sentBody = init?.body ?? "";
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"events":[]}' }] } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    await extractEventsWithLlm({ source: searchSource, pageText: "", window, apiKey: "k", fetchImpl });
+
+    expect(sentBody).toContain("google_search");
+    expect(sentBody).toContain("Westfield");
+  });
+});

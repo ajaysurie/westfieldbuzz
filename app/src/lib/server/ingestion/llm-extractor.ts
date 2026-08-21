@@ -50,6 +50,18 @@ const RESPONSE_SCHEMA = {
   required: ["events"],
 } as const;
 
+function searchPrompt(town: string, fromLocalDate: string, toLocalDate: string): string {
+  return [
+    `Use web search to find public events in and around ${town}, New Jersey between ${fromLocalDate} and ${toLocalDate}.`,
+    "Include street fairs, festivals, concerts, markets, fundraisers, and family events.",
+    "Rules:",
+    "- Report ONLY events you found in search results, with the date the source states. Never infer or invent an event, date, or URL.",
+    "- eventUrl is REQUIRED: the absolute http(s) URL of the page that describes the event. An event you cannot cite must be omitted.",
+    "- locationText must include the venue or street plus the town name.",
+    "- Skip anything without an explicit date, and skip government/board meetings, school administration, and closures.",
+  ].join("\n");
+}
+
 function prompt(pageText: string, fromLocalDate: string, toLocalDate: string): string {
   return [
     "You extract local event listings from a web page's text.",
@@ -87,7 +99,11 @@ export async function extractEventsWithLlm(input: {
   }
   const model = input.model ?? process.env.WESTFIELDBUZZ_LLM_MODEL ?? DEFAULT_MODEL;
   const fetchImpl = input.fetchImpl ?? fetch;
+  const searchMode = input.source.type === "llm-search";
   const text = input.pageText.slice(0, MAX_PAGE_CHARS);
+  const userPrompt = searchMode
+    ? searchPrompt(input.source.town, input.window.fromLocalDate, input.window.toLocalDate)
+    : prompt(text, input.window.fromLocalDate, input.window.toLocalDate);
 
   let payload: unknown;
   try {
@@ -97,7 +113,10 @@ export async function extractEventsWithLlm(input: {
         method: "POST",
         headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt(text, input.window.fromLocalDate, input.window.toLocalDate) }] }],
+          contents: [{ parts: [{ text: userPrompt }] }],
+          // Search grounding turns "just ask an LLM what's on" into a source the
+          // pipeline can verify, instead of a chat answer nobody can audit.
+          ...(searchMode ? { tools: [{ google_search: {} }] } : {}),
           generationConfig: {
             temperature: 0,
             responseMimeType: "application/json",
@@ -125,7 +144,17 @@ export async function extractEventsWithLlm(input: {
     };
   }
 
-  return validateExtraction(input.source, payload, input.window);
+  const result = validateExtraction(input.source, payload, input.window);
+  if (searchMode) {
+    // A search-sourced event has no crawled page behind it, so the citation IS
+    // the provenance. Anything the model could not cite gets dropped here even
+    // though page-mode would have fallen back to the source URL.
+    const cited = result.events.filter((event) => !event.sourceEventId.startsWith("fallback:"));
+    const dropped = result.events.length - cited.length;
+    if (dropped > 0) result.errors.push(`Dropped ${dropped} uncited search result(s)`);
+    result.events = cited;
+  }
+  return result;
 }
 
 /** Structural validation of model output. Exported for tests. */
