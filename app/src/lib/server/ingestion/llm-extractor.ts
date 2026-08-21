@@ -63,6 +63,11 @@ function searchAngles(town: string): string[] {
     `${town} NJ street fair, festival, carnival, or fireworks`,
     `things to do in ${town} NJ this weekend`,
     `${town} NJ farmers market, craft show, or holiday event`,
+    // Venue angles replace the per-site HTML scrapers those venues used to
+    // have. A scraper breaks when a layout changes; a search angle cannot.
+    `events and shows at the Rialto Theatre in ${town} NJ`,
+    `${town} Historical Society upcoming events and programs`,
+    `${town} NJ events listed on TAPinto or Patch this month`,
   ];
 }
 
@@ -112,6 +117,7 @@ export async function extractEventsWithLlm(input: {
   if (!apiKey) {
     return { events: [], errors: ["GEMINI_API_KEY is not configured; llm-extract source skipped"], warnings: [] };
   }
+  const key: string = apiKey;
   const model = input.model ?? process.env.WESTFIELDBUZZ_LLM_MODEL ?? DEFAULT_MODEL;
   const fetchImpl = input.fetchImpl ?? fetch;
   const searchMode = input.source.type === "llm-search";
@@ -123,14 +129,29 @@ export async function extractEventsWithLlm(input: {
 
   const merged: LlmExtractionResult = { events: [], errors: [], warnings: [] };
   const seen = new Set<string>();
-  for (const userPrompt of prompts) {
+  // Angles run concurrently: seven sequential grounded calls would crowd the
+  // cron route's 60 second ceiling, and no angle depends on another.
+  const settled = await Promise.all(prompts.map((userPrompt) => runPrompt(userPrompt)));
+  for (const result of settled) {
+    for (const event of result.events) {
+      const key = `${event.date.toISOString().slice(0, 10)}|${event.title.toLowerCase().trim()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.events.push(event);
+    }
+    merged.errors.push(...result.errors);
+    merged.warnings.push(...result.warnings);
+  }
+  return merged;
+
+  async function runPrompt(userPrompt: string): Promise<LlmExtractionResult> {
   let payload: unknown;
   try {
     const response = await fetchImpl(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        headers: { "content-type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({
           contents: [{ parts: [{ text: userPrompt }] }],
           // Search grounding turns "just ask an LLM what's on" into a source the
@@ -147,18 +168,16 @@ export async function extractEventsWithLlm(input: {
     );
     if (!response.ok) {
       const body = (await response.text()).slice(0, 200);
-      merged.errors.push(`LLM extraction failed: HTTP ${response.status} ${body}`);
-      continue;
+      return { events: [], errors: [`LLM extraction failed: HTTP ${response.status} ${body}`], warnings: [] };
     }
     const data = await response.json() as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) { merged.errors.push("LLM extraction returned no content"); continue; }
+    if (!raw) return { events: [], errors: ["LLM extraction returned no content"], warnings: [] };
     payload = JSON.parse(raw);
   } catch (error) {
-    merged.errors.push(`LLM extraction failed: ${error instanceof Error ? error.message : String(error)}`);
-    continue;
+    return { events: [], errors: [`LLM extraction failed: ${error instanceof Error ? error.message : String(error)}`], warnings: [] };
   }
 
   const result = validateExtraction(input.source, payload, input.window);
@@ -171,18 +190,8 @@ export async function extractEventsWithLlm(input: {
     if (dropped > 0) result.errors.push(`Dropped ${dropped} uncited search result(s)`);
     result.events = cited;
   }
-  // Merge across angles; the same event found twice keeps its first appearance.
-  // Keyed on date+title rather than URL because two angles cite different pages.
-  for (const event of result.events) {
-    const key = `${event.date.toISOString().slice(0, 10)}|${event.title.toLowerCase().trim()}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    merged.events.push(event);
+  return result;
   }
-  merged.errors.push(...result.errors);
-  merged.warnings.push(...result.warnings);
-  }
-  return merged;
 }
 
 /** Structural validation of model output. Exported for tests. */
