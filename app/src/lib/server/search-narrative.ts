@@ -12,7 +12,7 @@ import type { SearchResultItem } from "@/lib/search/search-contract";
  * falls back to cards alone.
  */
 
-const NARRATIVE_TIMEOUT_MS = 4_000;
+const NARRATIVE_TIMEOUT_MS = 7_000;
 const DEFAULT_MODEL = "gemini-3.7-flash";
 const MAX_EVENTS_IN_PROMPT = 8;
 

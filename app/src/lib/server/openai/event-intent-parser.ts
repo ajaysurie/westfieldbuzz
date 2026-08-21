@@ -14,6 +14,16 @@ const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const GEMINI_DEFAULT_MODEL = "gemini-3.7-flash";
 const DEFAULT_TIMEOUT_MS = 2_500;
+// Gemini needs more room than OpenAI's minimal-reasoning path: a schema-bound
+// flash call measures ~2-3s on its own, so the OpenAI budget guarantees a
+// timeout and permanent silent fallback.
+const GEMINI_DEFAULT_TIMEOUT_MS = 7_000;
+
+function geminiTimeoutMs(): number {
+  const configured = Number(process.env.WESTFIELDBUZZ_LLM_TIMEOUT_MS);
+  if (!Number.isFinite(configured)) return GEMINI_DEFAULT_TIMEOUT_MS;
+  return Math.min(15_000, Math.max(1_000, configured));
+}
 
 export class IntentParserError extends Error {
   constructor(
@@ -241,7 +251,7 @@ export function createGeminiIntentParser(fetcher: FetchLike = fetch): IntentPars
       if (!apiKey) throw new IntentParserError("model-unavailable");
       const model = process.env.WESTFIELDBUZZ_LLM_MODEL || GEMINI_DEFAULT_MODEL;
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), timeoutMsFromEnv());
+      const timeout = setTimeout(() => controller.abort(), geminiTimeoutMs());
       try {
         const response = await fetcher(
           `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
