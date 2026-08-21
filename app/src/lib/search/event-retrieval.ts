@@ -32,6 +32,8 @@ export interface SearchableEvent {
   publicationStatus: "published";
   freshnessStatus: EventFreshness;
   sourceUrl: string;
+  /** Real photo from the source, when it supplied one. */
+  imageUrl?: string;
   sourceId: string;
   lastVerifiedAt: string;
   tags: string[];

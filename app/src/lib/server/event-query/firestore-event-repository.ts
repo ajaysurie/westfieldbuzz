@@ -97,6 +97,7 @@ function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | 
     freshnessStatus: data.freshnessStatus === "stale" || data.freshnessStatus === "missing" ? data.freshnessStatus : "current",
     // Manual events have operator verification instead of an invented source URL.
     sourceUrl: typeof data.sourceUrl === "string" ? data.sourceUrl : "",
+    ...(typeof data.imageUrl === "string" && /^https?:\/\//i.test(data.imageUrl) ? { imageUrl: data.imageUrl } : {}),
     sourceId: typeof data.sourceId === "string" ? data.sourceId : "",
     lastVerifiedAt: verified.toISOString(),
     tags: strings(data.tags),

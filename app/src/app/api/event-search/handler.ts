@@ -25,6 +25,7 @@ import {
 import { createFirestoreEventRepository } from "@/lib/server/event-query/firestore-event-repository";
 import { applyPreferenceDefaults } from "@/lib/preference-defaults";
 import { validatePreferences } from "@/lib/server/account/preferences";
+import { composeNarrative } from "@/lib/server/search-narrative";
 import {
   allowEventSearchIngress,
   consumeEventSearchQuota,
@@ -37,6 +38,8 @@ interface SearchDependencies {
   parser?: IntentParser;
   now?: Date;
   skipRateLimit?: boolean;
+  /** Test seam for the narrative model call. */
+  narrativeFetch?: typeof fetch;
   ingressLimiter?: (request: Request, now: Date) => Promise<boolean>;
   quotaLimiter?: (request: Request, now: Date) => Promise<boolean>;
 }
@@ -239,19 +242,27 @@ export async function handleEventSearch(
   const eligible = filterEvents(events, intent);
   const ranked = rankEvents(eligible, intent, now);
   const unresolved = unresolvedConstraints(intent, events);
+  const rankedItems = ranked.slice(0, 50).map((item, index) => ({
+    event: item.event,
+    rank: index + 1,
+    label: resultLabel(index),
+    reason: explainMatch(item, intent),
+  }));
+  const narrative = structuredExecution ? null : await composeNarrative({
+    query,
+    intent,
+    results: rankedItems,
+    ...(dependencies.narrativeFetch ? { fetchImpl: dependencies.narrativeFetch } : {}),
+  });
   const response: EventSearchSuccess = {
     ok: true,
     query,
     intent,
-    results: ranked.slice(0, 50).map((item, index) => ({
-      event: item.event,
-      rank: index + 1,
-      label: resultLabel(index),
-      reason: explainMatch(item, intent),
-    })),
+    results: rankedItems,
     fallbackUsed,
     ...(parserWarning ? { parserWarning } : {}),
     ...(appliedPreferenceFields.length ? { appliedPreferenceFields } : {}),
+    ...(narrative ? { narrative } : {}),
     ambiguities: intent.ambiguities,
     suggestions: ranked.length ? [] : [...unresolved, ...noMatchSuggestions(intent)].slice(0, 3),
     unresolvedConstraints: unresolved,

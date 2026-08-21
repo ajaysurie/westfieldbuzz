@@ -1,5 +1,6 @@
 import type { ParsedIntent, SearchIntent } from "./event-intent";
 import type { SearchableEvent } from "./event-retrieval";
+import type { NarrativeSegment } from "@/lib/server/search-narrative";
 
 export interface SearchResultItem {
   event: SearchableEvent;
@@ -17,6 +18,8 @@ export interface EventSearchSuccess {
   parserWarning?: ParsedIntent["parserWarning"];
   /** Constraint fields filled from the household's saved preferences. */
   appliedPreferenceFields?: string[];
+  /** Composed one-to-two-sentence answer; segments with eventId link to results. Absent when unavailable. */
+  narrative?: NarrativeSegment[];
   ambiguities: SearchIntent["ambiguities"];
   /** Requested hard facts that inventory cannot currently verify. */
   unresolvedConstraints?: string[];
