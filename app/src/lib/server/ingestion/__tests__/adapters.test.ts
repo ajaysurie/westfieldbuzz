@@ -15,7 +15,9 @@ import { sourceById } from "../source-registry";
 // moved to search-angle coverage), so its tests carry their own policy.
 const SQUARESPACE_FIXTURE = {
   id: "squarespace-fixture",
-  name: "Fixture Center for the Arts",
+  // The exact name matters: the assertion covers CATEGORY_MAP's
+  // source-name lookup, which keeps this entry even without the source.
+  name: "Rialto Center for Creativity",
   type: "squarespace-json",
   url: "https://venue.example.com/api/open/GetItemsByMonth?collectionId=abc",
   publicUrl: "https://venue.example.com/events",
