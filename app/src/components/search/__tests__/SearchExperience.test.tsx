@@ -121,7 +121,7 @@ describe("SearchExperience", () => {
       expect.objectContaining({ method: "POST" })
     ));
     expect(screen.getByDisplayValue("Free this weekend")).toBeInTheDocument();
-    expect(await screen.findByText("No exact matches")).toBeInTheDocument();
+    expect(await screen.findByText("No exact matches yet")).toBeInTheDocument();
   });
 
   it("keeps the latest result when overlapping requests finish in reverse order", async () => {
@@ -145,7 +145,7 @@ describe("SearchExperience", () => {
     await act(async () => {
       second.resolve(new Response(JSON.stringify(successPayload("latest search")), { status: 200 }));
     });
-    expect(await screen.findByText("No exact matches")).toBeInTheDocument();
+    expect(await screen.findByText("No exact matches yet")).toBeInTheDocument();
 
     await act(async () => {
       first.resolve(new Response(JSON.stringify({

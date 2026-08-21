@@ -284,7 +284,19 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
           <p className="mt-2 max-w-2xl text-sm text-ink-light">Dates, ages, budget, location, or just a mood. We interpret the request, then match only stored event facts.</p>
         </div>
         <SearchForm value={query} onChange={setQuery} onSubmit={submitInitial} loading={loading} />
-        {result && <IntentChips intent={result.intent} onRemove={removeChip} disabled={loading} />}
+        {result && (
+          <div className="mx-auto mt-3 flex max-w-[920px] flex-wrap items-center gap-2">
+            <IntentChips
+              intent={result.intent}
+              onRemove={removeChip}
+              disabled={loading}
+              appliedPreferenceFields={result.appliedPreferenceFields}
+            />
+            <span className="search-provenance ml-auto" title={`${result.meta.matchedCount} matched`}>
+              ✓ {result.meta.candidateCount} events checked · verified today
+            </span>
+          </div>
+        )}
       </header>
 
       <section className="mx-auto min-h-[55vh] w-[min(1040px,calc(100%-48px))] py-9 max-sm:w-[calc(100%-32px)] max-sm:py-6" aria-busy={loading}>
@@ -322,23 +334,14 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
               </p>
             ) : null}
             <SearchNotice result={result} onRefine={refine} loading={loading} />
-            <div className="flex items-end justify-between gap-6">
-              <div>
-                <h2 className="font-[family-name:var(--font-display)] text-4xl leading-tight text-ink max-sm:text-3xl">{result.meta.matchedCount === 0 ? "No exact matches" : `${result.meta.matchedCount} ${result.meta.matchedCount === 1 ? "good match" : "good matches"}`}</h2>
-                <p className="mt-1 text-sm text-ink-light">Results are filtered and ranked from the current event inventory.</p>
-              </div>
-              <span className="text-xs text-ink-muted max-sm:hidden">{result.meta.candidateCount} events checked</span>
-            </div>
             <div className="flex items-center gap-3">
-              <button type="button" onClick={() => void toggleSaveSearch()} disabled={authLoading || savePending} aria-pressed={searchSaved} className="min-h-10 rounded-lg border border-accent/25 bg-white px-3 text-xs font-bold text-accent disabled:opacity-50">
+              <button type="button" onClick={() => void toggleSaveSearch()} disabled={authLoading || savePending} aria-pressed={searchSaved} className="min-h-10 rounded-lg border border-accent/25 bg-paper-pure px-3 text-xs font-bold text-accent disabled:opacity-50">
                 {savePending ? "Saving…" : searchSaved ? "Saved search" : "Save this search"}
               </button>
               <span className="text-xs text-ink-muted">Saves the filters, not your search wording.</span>
             </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_276px] items-start gap-7 max-md:grid-cols-1">
-              <SearchResults result={result} />
-              <RefinementForm onSubmit={refine} loading={loading} />
-            </div>
+            <SearchResults result={result} />
+            <RefinementForm onSubmit={refine} loading={loading} suggestions={result.suggestions} />
           </div>
         )}
       </section>

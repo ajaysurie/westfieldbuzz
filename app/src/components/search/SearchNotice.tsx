@@ -17,7 +17,7 @@ export default function SearchNotice({
         </div>
       )}
       {result.ambiguities.map((ambiguity) => (
-        <div key={`${ambiguity.field}-${ambiguity.message}`} className="rounded-xl border border-gold/30 bg-white px-4 py-3">
+        <div key={`${ambiguity.field}-${ambiguity.message}`} className="rounded-xl border border-gold/30 bg-paper-pure px-4 py-3">
           <p className="text-sm font-semibold text-ink">{ambiguity.message}</p>
           {ambiguity.options.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">

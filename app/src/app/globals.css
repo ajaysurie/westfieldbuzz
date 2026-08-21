@@ -1288,3 +1288,200 @@ a {
 .search-personalized-note a {
   text-decoration: underline;
 }
+
+/* Event-search results: narrative answer, provenance line, result cards,
+   the "top picks" row with its expandable overflow tile, and the follow-up
+   suggestion bar. Mobile turns the top-picks row into a CSS-only scroll-snap
+   carousel — no JS carousel logic. */
+.search-narrative {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1.45;
+  color: var(--ink);
+  max-width: 780px;
+  margin: 0;
+}
+.search-narrative a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.search-provenance {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.search-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+
+.search-toppicks {
+  display: flex;
+  gap: 18px;
+  margin-top: 4px;
+}
+
+.search-card {
+  display: flex;
+  flex-direction: column;
+  width: 300px;
+  flex-shrink: 0;
+  background: var(--paper-pure);
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  color: inherit;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.search-card:hover,
+.search-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.search-card__photo-wrap {
+  position: relative;
+  height: 140px;
+  overflow: hidden;
+  background: var(--paper-dark);
+}
+.search-card__photo {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  filter: saturate(0.72) contrast(0.96);
+  display: block;
+}
+.search-card__badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--paper-pure);
+  color: var(--sage);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+.search-card__free {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--sage);
+  color: var(--paper-pure);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+}
+
+.search-card__body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+.search-card__title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--ink);
+}
+.search-card__meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+}
+.search-card__reason {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-light);
+  margin: 0;
+}
+
+.search-more-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 120px;
+  flex-shrink: 0;
+  padding: 12px;
+  border: 1.5px dashed rgba(27, 58, 92, 0.25);
+  border-radius: 15px;
+  background: transparent;
+  color: var(--ink-light);
+  font: inherit;
+  cursor: pointer;
+}
+.search-more-tile__count {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--ink);
+}
+.search-more-tile__label {
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.search-expanded-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 4px;
+}
+
+.search-followup-chip {
+  background: var(--paper-pure);
+  border: 1px solid rgba(27, 58, 92, 0.22);
+  color: var(--accent);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.search-followup-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--paper-pure);
+  border: 1px solid rgba(27, 58, 92, 0.18);
+  border-radius: 999px;
+  padding: 12px 20px;
+  box-shadow: var(--shadow-md);
+}
+
+@media (max-width: 760px) {
+  .search-narrative {
+    font-size: 1.1rem;
+  }
+  .search-toppicks {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+    margin-right: -16px;
+  }
+  .search-card {
+    width: 250px;
+    scroll-snap-align: start;
+  }
+  .search-more-tile {
+    scroll-snap-align: start;
+  }
+  .search-expanded-grid {
+    grid-template-columns: 1fr;
+  }
+}
