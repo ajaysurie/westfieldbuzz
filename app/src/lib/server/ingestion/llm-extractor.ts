@@ -50,10 +50,25 @@ const RESPONSE_SCHEMA = {
   required: ["events"],
 } as const;
 
-function searchPrompt(town: string, fromLocalDate: string, toLocalDate: string): string {
+/**
+ * One broad query misses what a promoter markets under its own name: the first
+ * live run found real events but not the town's street fair, which a manual
+ * search surfaced immediately. Each angle runs as its own grounded request and
+ * results are merged and de-duplicated by citation, the multi-modal-sweep
+ * pattern: every angle is blind to the others.
+ */
+function searchAngles(town: string): string[] {
   return [
-    `Use web search to find public events in and around ${town}, New Jersey between ${fromLocalDate} and ${toLocalDate}.`,
-    "Include street fairs, festivals, concerts, markets, fundraisers, and family events.",
+    `public events, concerts, and things to do in and around ${town}, New Jersey`,
+    `${town} NJ street fair, festival, carnival, or fireworks`,
+    `things to do in ${town} NJ this weekend`,
+    `${town} NJ farmers market, craft show, or holiday event`,
+  ];
+}
+
+function searchPrompt(angle: string, fromLocalDate: string, toLocalDate: string): string {
+  return [
+    `Use web search to find: ${angle}, happening between ${fromLocalDate} and ${toLocalDate}.`,
     "Rules:",
     "- Report ONLY events you found in search results, with the date the source states. Never infer or invent an event, date, or URL.",
     "- eventUrl is REQUIRED: the absolute http(s) URL of the page that describes the event. An event you cannot cite must be omitted.",
@@ -101,10 +116,14 @@ export async function extractEventsWithLlm(input: {
   const fetchImpl = input.fetchImpl ?? fetch;
   const searchMode = input.source.type === "llm-search";
   const text = input.pageText.slice(0, MAX_PAGE_CHARS);
-  const userPrompt = searchMode
-    ? searchPrompt(input.source.town, input.window.fromLocalDate, input.window.toLocalDate)
-    : prompt(text, input.window.fromLocalDate, input.window.toLocalDate);
+  const prompts = searchMode
+    ? searchAngles(input.source.town).map((angle) =>
+        searchPrompt(angle, input.window.fromLocalDate, input.window.toLocalDate))
+    : [prompt(text, input.window.fromLocalDate, input.window.toLocalDate)];
 
+  const merged: LlmExtractionResult = { events: [], errors: [], warnings: [] };
+  const seen = new Set<string>();
+  for (const userPrompt of prompts) {
   let payload: unknown;
   try {
     const response = await fetchImpl(
@@ -128,20 +147,18 @@ export async function extractEventsWithLlm(input: {
     );
     if (!response.ok) {
       const body = (await response.text()).slice(0, 200);
-      return { events: [], errors: [`LLM extraction failed: HTTP ${response.status} ${body}`], warnings: [] };
+      merged.errors.push(`LLM extraction failed: HTTP ${response.status} ${body}`);
+      continue;
     }
     const data = await response.json() as {
       candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
     };
     const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) return { events: [], errors: ["LLM extraction returned no content"], warnings: [] };
+    if (!raw) { merged.errors.push("LLM extraction returned no content"); continue; }
     payload = JSON.parse(raw);
   } catch (error) {
-    return {
-      events: [],
-      errors: [`LLM extraction failed: ${error instanceof Error ? error.message : String(error)}`],
-      warnings: [],
-    };
+    merged.errors.push(`LLM extraction failed: ${error instanceof Error ? error.message : String(error)}`);
+    continue;
   }
 
   const result = validateExtraction(input.source, payload, input.window);
@@ -154,7 +171,18 @@ export async function extractEventsWithLlm(input: {
     if (dropped > 0) result.errors.push(`Dropped ${dropped} uncited search result(s)`);
     result.events = cited;
   }
-  return result;
+  // Merge across angles; the same event found twice keeps its first appearance.
+  // Keyed on date+title rather than URL because two angles cite different pages.
+  for (const event of result.events) {
+    const key = `${event.date.toISOString().slice(0, 10)}|${event.title.toLowerCase().trim()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.events.push(event);
+  }
+  merged.errors.push(...result.errors);
+  merged.warnings.push(...result.warnings);
+  }
+  return merged;
 }
 
 /** Structural validation of model output. Exported for tests. */
