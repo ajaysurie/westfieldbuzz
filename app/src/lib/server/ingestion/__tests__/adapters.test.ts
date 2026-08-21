@@ -10,6 +10,30 @@ import {
   parseTribePayload,
 } from "../adapters";
 import { sourceById } from "../source-registry";
+
+// The Squarespace adapter outlived its registry entries (the venues it read
+// moved to search-angle coverage), so its tests carry their own policy.
+const SQUARESPACE_FIXTURE = {
+  id: "squarespace-fixture",
+  name: "Fixture Center for the Arts",
+  type: "squarespace-json",
+  url: "https://venue.example.com/api/open/GetItemsByMonth?collectionId=abc",
+  publicUrl: "https://venue.example.com/events",
+  town: "Westfield",
+  timezone: "America/New_York",
+  autoApprove: false,
+  group: "nearby-venues",
+  allowedHosts: ["venue.example.com"],
+  expectedContentTypes: ["application/json"],
+  expectedLayoutMarker: "upcoming",
+  minimumExpectedEvents: 0,
+  missingGraceRuns: 2,
+  timeoutMs: 12_000,
+  maxResponseBytes: 2_000_000,
+  anomalyFloorRatio: 0.25,
+  freshnessThresholdHours: 36,
+} as unknown as ReturnType<typeof source>;
+
 import { makeIngestionWindow } from "../runner";
 
 const fixtures = join(__dirname, "fixtures");
@@ -124,7 +148,7 @@ describe("approved source adapters", () => {
   });
 
   it("parses Squarespace success and accepts a known empty collection", () => {
-    const policy = source("rialto-squarespace");
+    const policy = SQUARESPACE_FIXTURE;
     const success = parseSquarespacePayload(
       policy,
       JSON.parse(fixture("squarespace/success.json")),
@@ -144,7 +168,7 @@ describe("approved source adapters", () => {
   });
 
   it("fails Squarespace layout and malformed-date fixtures", () => {
-    const policy = source("rialto-squarespace");
+    const policy = SQUARESPACE_FIXTURE;
     const layout = parseSquarespacePayload(
       policy,
       JSON.parse(fixture("squarespace/layout-break.json")),
@@ -160,7 +184,7 @@ describe("approved source adapters", () => {
   });
 
   it("deduplicates a Squarespace duplicate fixture by source ID", () => {
-    const policy = source("rialto-squarespace");
+    const policy = SQUARESPACE_FIXTURE;
     const parsed = parseSquarespacePayload(
       policy,
       JSON.parse(fixture("squarespace/duplicate.json")),
@@ -229,7 +253,7 @@ describe("approved source adapters", () => {
   });
 
   it("marks a layout break incomplete before reconciliation can age events", async () => {
-    const policy = source("rialto-squarespace");
+    const policy = SQUARESPACE_FIXTURE;
     const result = await fetchSourceEvents({
       source: policy,
       window,
