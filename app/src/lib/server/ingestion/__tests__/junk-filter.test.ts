@@ -25,6 +25,20 @@ describe("default junk filter", () => {
       "Municipal Offices Closed - Thanksgiving",
       "Zone 1 Recycling",
       "Bulk Pickup Ward 4",
+      // Bare holidays and observances from the live school feed
+      "Labor Day",
+      "Columbus Day",
+      "Thanksgiving Day",
+      "Rosh Hashanah",
+      "Rosh Hashanah (begins sundown)",
+      "Yom Kippur (begins at sundown)",
+      "Sukkot",
+      "Diwali",
+      "Hanukkah",
+      "Election Day",
+      "Veterans Day",
+      "Indigenous People's Day",
+      "First Day for Students",
     ]) {
       expect(isJunk(title), title).toBe(true);
     }
@@ -38,6 +52,15 @@ describe("default junk filter", () => {
       "Sweet Sounds Downtown Music Series",
       "Community Blood Drive",
       "Downtown Farmers Market",
+      // Real events from the school feed that mention a holiday or look civic
+      "Christmas Tree Lighting",
+      "Hanukkah Menorah Lighting",
+      "WPD Easter Egg Hunt",
+      "WHS Wind Ensemble Children's Concert",
+      "EIS Fall Play",
+      "WHS Back to School Night",
+      "SpEd Parent Social",
+      "Franklin 5th Grade Band, Orchestra & Chorus Concert",
       "Toddler Storytime",
       "Historic District Walking Tour",
       "September 11 Remembrance Ceremony",

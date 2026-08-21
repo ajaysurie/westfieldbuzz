@@ -44,6 +44,19 @@ export const DEFAULT_JUNK_TITLE_PATTERNS: string[] = [
   "\\b(recycling|garbage|trash|bulk|leaf|brush) (pickup|collection|drop)\\b",
   "\\bzone \\d+\\b",
   "\\bstreet sweeping\\b",
+  // Holidays and observances published by school/municipal calendars. Anchored to
+  // the WHOLE title so a real event that merely mentions the holiday survives:
+  // "Rosh Hashanah" is filtered, "Hanukkah Menorah Lighting" and "Easter Egg
+  // Hunt" are not. The optional trailing clause absorbs "(begins sundown)" etc.
+  "^(labor day|columbus day|veterans day|election day|memorial day|presidents'? day|independence day|indigenous people'?s'? day|juneteenth|flag day|patriot day|mlk day|martin luther king,? jr\\.? day)( ?\\((observed|begins[^)]*)\\))?$",
+  "^(thanksgiving( day)?|christmas( day| eve)?|new year'?s?( day| eve)?)( ?\\((observed|begins[^)]*)\\))?$",
+  "^(rosh hashanah|yom kippur|sukkot|shavuot|passover|hanukkah|chanukah|diwali|eid[^)]*|ramadan|kwanzaa|lunar new year|good friday|ash wednesday|orthodox easter)( ?\\((observed|begins[^)]*|at sundown[^)]*)\\))?$",
+  // School operations (not events a family attends)
+  "^first day (for|of) (students|school)",
+  "^last day (for|of) (students|school)",
+  "\\bspring break\\b",
+  "\\bwinter (recess|break)\\b",
+  "\\bsummer (recess|break)\\b",
 ];
 
 export interface JunkFilterConfig {
