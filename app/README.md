@@ -38,7 +38,10 @@ Required server configuration: `CRON_SECRET`, `EMAIL_TOKEN_SECRET`,
 Set `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `RESEND_WEBHOOK_SECRET` before enabling
 Friday delivery or webhook processing. Set `OPENAI_API_KEY` only to enable model-backed
 natural-language interpretation; the structured search endpoint otherwise returns a
-controlled unavailable response.
+controlled unavailable response. Set `GEMINI_API_KEY` to enable the `llm-extract`
+ingestion sources (Patch, TAPinto); without it those sources skip with a clear error
+and every feed-based source still runs. `WESTFIELDBUZZ_LLM_MODEL` overrides the
+default extraction model (`gemini-3.7-flash`).
 
 The independent freshness watchdog is scheduled separately from ingestion and is
 default-off via `WESTFIELDBUZZ_ENABLE_FRESHNESS_WATCHDOG`. It records durable overdue

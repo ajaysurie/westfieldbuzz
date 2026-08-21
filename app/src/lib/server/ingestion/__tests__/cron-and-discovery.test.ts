@@ -50,7 +50,7 @@ describe("source registry and discovery boundary", () => {
       "core-town-school",
       "nearby-venues",
     ]);
-    expect(EVENT_SOURCES).toHaveLength(10);
+    expect(EVENT_SOURCES).toHaveLength(12);
     expect(EVENT_SOURCES.every((source) => source.allowedHosts.length > 0)).toBe(true);
     expect(EVENT_SOURCES.find((source) => source.id === "westfield-schools-ical")?.autoApprove).toBe(true);
     expect(EVENT_SOURCES.find((source) => source.id === "ucpac-tribe")?.autoApprove).toBe(false);
