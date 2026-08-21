@@ -23,6 +23,8 @@ import {
   type IntentParser,
 } from "@/lib/server/openai/event-intent-parser";
 import { createFirestoreEventRepository } from "@/lib/server/event-query/firestore-event-repository";
+import { applyPreferenceDefaults } from "@/lib/preference-defaults";
+import { validatePreferences } from "@/lib/server/account/preferences";
 import {
   allowEventSearchIngress,
   consumeEventSearchQuota,
@@ -151,6 +153,7 @@ export async function handleEventSearch(
   const structuredExecution = body.mode === "structured";
   let query = "";
   let intent: SearchIntent;
+  let appliedPreferenceFields: string[] = [];
   let fallbackUsed = false;
   let parserWarning: EventSearchSuccess["parserWarning"];
 
@@ -208,6 +211,16 @@ export async function handleEventSearch(
     intent = parsed.intent;
     fallbackUsed = parsed.fallbackUsed;
     parserWarning = parsed.parserWarning;
+
+    // Saved household preferences fill only the constraints the sentence left
+    // unstated. Sent by the signed-in client; malformed input is ignored, not
+    // fatal, because personalization is never worth failing a search over.
+    if (body.preferences != null) {
+      const preferences = validatePreferences(body.preferences);
+      const personalized = applyPreferenceDefaults(intent, preferences);
+      intent = personalized.intent;
+      appliedPreferenceFields = personalized.appliedFields;
+    }
   }
 
   const repository = dependencies.repository ?? createFirestoreEventRepository();
@@ -238,6 +251,7 @@ export async function handleEventSearch(
     })),
     fallbackUsed,
     ...(parserWarning ? { parserWarning } : {}),
+    ...(appliedPreferenceFields.length ? { appliedPreferenceFields } : {}),
     ambiguities: intent.ambiguities,
     suggestions: ranked.length ? [] : [...unresolved, ...noMatchSuggestions(intent)].slice(0, 3),
     unresolvedConstraints: unresolved,

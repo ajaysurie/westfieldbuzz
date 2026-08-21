@@ -1277,3 +1277,14 @@ a {
   .site-footer__inner { display: block; }
   .site-footer nav { margin-top: 20px; gap: 34px; }
 }
+
+/* One quiet line when saved household preferences shaped the results. */
+.search-personalized-note {
+  font-size: 0.85rem;
+  color: var(--ink, #1d3557);
+  opacity: 0.75;
+  margin: 0.25rem 0 0.75rem;
+}
+.search-personalized-note a {
+  text-decoration: underline;
+}

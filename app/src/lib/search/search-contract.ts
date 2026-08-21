@@ -15,6 +15,8 @@ export interface EventSearchSuccess {
   results: SearchResultItem[];
   fallbackUsed: boolean;
   parserWarning?: ParsedIntent["parserWarning"];
+  /** Constraint fields filled from the household's saved preferences. */
+  appliedPreferenceFields?: string[];
   ambiguities: SearchIntent["ambiguities"];
   /** Requested hard facts that inventory cannot currently verify. */
   unresolvedConstraints?: string[];

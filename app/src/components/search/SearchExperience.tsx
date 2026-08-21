@@ -17,7 +17,15 @@ import {
   readAuthContinuation,
   stripAuthContinuationParams,
 } from "@/lib/auth-continuation";
-import { isSearchSaved, saveSearch, savedSearchLabel, stableSearchId, unsaveSearch } from "@/lib/personalization";
+import {
+  getPreferences,
+  isSearchSaved,
+  saveSearch,
+  savedSearchLabel,
+  stableSearchId,
+  unsaveSearch,
+  type HouseholdPreferences,
+} from "@/lib/personalization";
 import { consumeSearchHandoff } from "./HomeSearch";
 
 function removeIntentValue(intent: SearchIntent, field: string, label: string): SearchIntent {
@@ -69,7 +77,11 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
         body: JSON.stringify(
           structuredIntent
             ? { mode: "structured", intent: structuredIntent }
-            : { query: sentence, ...(priorIntent ? { intent: priorIntent } : {}) }
+            : {
+                query: sentence,
+                ...(priorIntent ? { intent: priorIntent } : {}),
+                ...(householdPreferences.current ? { preferences: householdPreferences.current } : {}),
+              }
         ),
         signal: controller.signal,
       });
@@ -92,6 +104,19 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
       }
     }
   }, []);
+
+  // Saved household preferences ride along on searches so unstated constraints
+  // (kids' ages, towns, drive time, budget) default to what this family always
+  // means. Loaded once per sign-in; searches never wait on it.
+  const householdPreferences = useRef<HouseholdPreferences | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) { householdPreferences.current = null; return; }
+    getPreferences(user.uid)
+      .then((value) => { if (!cancelled) householdPreferences.current = value; })
+      .catch(() => { /* personalization is never worth failing a search over */ });
+    return () => { cancelled = true; };
+  }, [user]);
 
   const initialSearchStarted = useRef(false);
   useEffect(() => {
@@ -290,6 +315,12 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
         )}
         {result && (
           <div className="grid gap-5">
+            {result.appliedPreferenceFields?.length ? (
+              <p className="search-personalized-note">
+                Using your saved {result.appliedPreferenceFields.join(", ")}.{" "}
+                <Link href="/account">Edit preferences</Link>
+              </p>
+            ) : null}
             <SearchNotice result={result} onRefine={refine} loading={loading} />
             <div className="flex items-end justify-between gap-6">
               <div>

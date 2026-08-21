@@ -27,6 +27,7 @@ vi.mock("@/lib/auth-continuation", () => ({
   },
 }));
 vi.mock("@/lib/personalization", () => ({
+  getPreferences: vi.fn(async () => null),
   stableSearchId: () => "search_test",
   savedSearchLabel: () => "Saved event search",
   isSearchSaved: mocks.isSearchSaved,
