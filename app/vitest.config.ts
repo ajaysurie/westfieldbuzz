@@ -7,6 +7,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./src/test-setup.ts",
+    // e2e/ is the Playwright post-deploy suite; vitest must not collect it.
+    exclude: ["**/node_modules/**", "e2e/**"],
   },
   resolve: {
     alias: {
