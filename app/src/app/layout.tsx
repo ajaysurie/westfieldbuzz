@@ -22,15 +22,15 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL("https://westfieldbuzz.com"),
   title: {
-    default: "Westfield Buzz — The neighbors' guide to everything local",
+    default: "Westfield Buzz — What's on around Westfield",
     template: "%s | Westfield Buzz",
   },
   description:
-    "A community-curated directory of Westfield's most trusted service providers. Real recommendations from the people who live here.",
+    "A freshly checked guide to events in Westfield, New Jersey and nearby towns.",
   openGraph: {
     title: "Westfield Buzz",
     description:
-      "A community-curated directory of Westfield's most trusted service providers. Real recommendations from real neighbors.",
+      "Freshly checked events in Westfield, New Jersey and nearby towns.",
     type: "website",
     locale: "en_US",
     siteName: "Westfield Buzz",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Westfield Buzz",
     description:
-      "A community-curated directory of Westfield's most trusted service providers.",
+      "Freshly checked events in Westfield, New Jersey and nearby towns.",
   },
 };
 
@@ -51,7 +51,7 @@ const jsonLd = {
       name: "Westfield Buzz",
       url: "https://westfieldbuzz.com",
       description:
-        "A community-curated directory of Westfield's most trusted service providers.",
+        "A freshly checked guide to events in Westfield, New Jersey and nearby towns.",
     },
     {
       "@type": "Organization",
@@ -83,7 +83,7 @@ export default function RootLayout({
       <body>
         <Providers>
           <Nav />
-          <main className="pt-[60px]">{children}</main>
+          <main className="site-main">{children}</main>
           <Footer />
         </Providers>
         <Analytics />

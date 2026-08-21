@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  serverExternalPackages: ["firebase-admin", "node-ical"],
   async rewrites() {
     return [
       {

@@ -1,0 +1,4 @@
+{
+  "collection": { "id": "events", "title": "Events" },
+  "items": [{ "id": "bad-date", "title": "Broken event", "startDate": "next someday" }]
+}

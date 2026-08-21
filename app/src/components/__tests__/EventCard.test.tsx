@@ -1,108 +1,58 @@
-import { describe, it, expect, afterEach, vi } from "vitest";
-import { render, cleanup } from "@testing-library/react";
-import type { Event } from "@/lib/firestore";
+import { afterEach, describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
 import type { Timestamp } from "firebase/firestore";
-
-// Mock firebase before importing EventCard (which imports InterestedButton → auth → firebase)
-vi.mock("@/lib/firebase", () => ({
-  auth: {},
-  db: {},
-  facebookProvider: {},
-}));
-
-vi.mock("@/lib/auth", () => ({
-  useAuth: () => ({ user: null, loading: false, loggingIn: false, authError: "", loginWithFacebook: vi.fn(), logout: vi.fn() }),
-}));
-
-vi.mock("@/lib/firestore", () => ({
-  hasUserInterested: vi.fn().mockResolvedValue(false),
-  markInterested: vi.fn().mockResolvedValue(undefined),
-  unmarkInterested: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("firebase/auth", () => ({
-  onAuthStateChanged: vi.fn(),
-  signInWithPopup: vi.fn(),
-  signInWithRedirect: vi.fn(),
-  getRedirectResult: vi.fn().mockResolvedValue(null),
-  signOut: vi.fn(),
-  getAuth: vi.fn(() => ({})),
-  FacebookAuthProvider: vi.fn(),
-}));
-
-// Import after mocks
+import type { Event } from "@/lib/firestore";
 import EventCard from "../EventCard";
 
 afterEach(cleanup);
 
-const makeTimestamp = (dateStr: string): Timestamp =>
-  ({
-    toDate: () => new Date(dateStr),
-  } as unknown as Timestamp);
+const timestamp = (date: string) => ({ toDate: () => new Date(date) } as Timestamp);
 
-const makeEvent = (overrides: Partial<Event> = {}): Event => ({
+const event = (overrides: Partial<Event> = {}): Event => ({
   id: "evt-1",
   title: "Downtown Jazz Night",
   description: "Live jazz in the town center",
-  date: makeTimestamp("2025-07-15T19:00:00"),
-  endDate: makeTimestamp("2025-07-15T22:00:00"),
-  location: "Town Center, Westfield",
+  date: timestamp("2026-08-21T23:00:00Z"),
+  endDate: timestamp("2026-08-22T01:00:00Z"),
+  location: "Town Center",
+  town: "Westfield",
   category: "Arts & Culture",
-  interestedCount: 12,
+  interestedCount: 0,
   createdBy: "admin",
-  createdAt: makeTimestamp("2025-06-01T10:00:00"),
+  createdAt: timestamp("2026-08-01T10:00:00Z"),
+  publicationStatus: "published",
+  status: "scheduled",
+  availability: "available",
+  freshnessStatus: "current",
+  lastVerifiedAt: timestamp("2026-08-19T14:00:00Z"),
+  sourceUrl: "https://example.com/event",
   ...overrides,
 });
 
 describe("EventCard", () => {
-  it("renders title and location", () => {
-    const { container } = render(<EventCard event={makeEvent()} />);
-    expect(container).toHaveTextContent("Downtown Jazz Night");
-    expect(container).toHaveTextContent("Town Center, Westfield");
+  it("links the title and image to the canonical event route", () => {
+    render(<EventCard event={event()} />);
+    const links = screen.getAllByRole("link", { name: /Downtown Jazz Night|View Downtown Jazz Night/ });
+    expect(links).toHaveLength(2);
+    expect(links.every((link) => link.getAttribute("href") === "/events/evt-1")).toBe(true);
   });
 
-  it("renders category badge in light mode", () => {
-    const { container } = render(<EventCard event={makeEvent()} />);
-    const badge = container.querySelector("span.rounded-full");
-    expect(badge).toHaveTextContent("Arts & Culture");
+  it("renders source-backed date, venue, category, and verification", () => {
+    render(<EventCard event={event()} />);
+    expect(screen.getByText("Arts & Culture")).toBeInTheDocument();
+    expect(screen.getByText(/Friday, August 21/)).toBeInTheDocument();
+    expect(screen.getByText(/Town Center/)).toBeInTheDocument();
+    expect(screen.getByText("Verified Aug 19")).toBeInTheDocument();
+    expect(screen.getByText("Live jazz in the town center")).toBeInTheDocument();
   });
 
-  it("renders interested count when > 0", () => {
-    const { container } = render(<EventCard event={makeEvent({ interestedCount: 12 })} />);
-    expect(container).toHaveTextContent("12 interested");
+  it("shows cancelled status before the detail action", () => {
+    render(<EventCard event={event({ status: "cancelled" })} />);
+    expect(screen.getByText("Cancelled")).toBeInTheDocument();
   });
 
-  it("hides interested count when 0", () => {
-    const { container } = render(<EventCard event={makeEvent({ interestedCount: 0 })} />);
-    expect(container.textContent).not.toContain("interested");
-  });
-
-  it("renders description in light mode", () => {
-    const { container } = render(<EventCard event={makeEvent()} />);
-    expect(container.querySelector("p")).toHaveTextContent("Live jazz in the town center");
-  });
-
-  it("renders dark variant without category badge", () => {
-    const { container } = render(<EventCard event={makeEvent()} dark />);
-    expect(container).toHaveTextContent("Downtown Jazz Night");
-    const badge = container.querySelector("span.rounded-full");
-    expect(badge).toBeNull();
-  });
-
-  it("handles null endDate", () => {
-    const { container } = render(<EventCard event={makeEvent({ endDate: null })} />);
-    expect(container).toHaveTextContent("Downtown Jazz Night");
-  });
-
-  it("renders colored top border on light card", () => {
-    const { container } = render(<EventCard event={makeEvent({ category: "Sports" })} />);
-    const card = container.firstElementChild as HTMLElement;
-    expect(card.style.borderTop).toContain("3px solid");
-  });
-
-  it("uses accent fallback for unknown category border", () => {
-    const { container } = render(<EventCard event={makeEvent({ category: "Unknown" })} />);
-    const card = container.firstElementChild as HTMLElement;
-    expect(card.style.borderTop).toContain("var(--accent)");
+  it("handles an event without an end time", () => {
+    render(<EventCard event={event({ endDate: null })} />);
+    expect(screen.getByText(/7:00 PM/)).toBeInTheDocument();
   });
 });

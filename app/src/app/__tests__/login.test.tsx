@@ -16,21 +16,29 @@ vi.mock("next/link", () => ({
 }));
 
 // Mock auth context
-const mockLoginWithFacebook = vi.fn();
 const mockLoginWithGoogle = vi.fn();
+const mockSendEmailLink = vi.fn();
+const mockClearStoredAuthResume = vi.hoisted(() => vi.fn());
+let store: Record<string, string>;
+let mockStoredAuthResume = { returnTo: "/", continuation: null as string | null };
 let mockAuthState = {
   user: null as unknown,
   loading: false,
   loggingIn: false,
   authError: "",
-  loginWithFacebook: mockLoginWithFacebook,
   loginWithGoogle: mockLoginWithGoogle,
+  sendEmailLink: mockSendEmailLink,
+  emailLinkSent: false,
   logout: vi.fn(),
   photoURL: "",
 };
 
 vi.mock("@/lib/auth", () => ({
   useAuth: () => mockAuthState,
+  safeReturnTo: (value: string | null | undefined) =>
+    value && value.startsWith("/") && !value.startsWith("//") ? value : "/",
+  readStoredAuthResume: () => mockStoredAuthResume,
+  clearStoredAuthResume: mockClearStoredAuthResume,
 }));
 
 import LoginPage from "../login/page";
@@ -38,51 +46,65 @@ import LoginPage from "../login/page";
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
+  mockStoredAuthResume = { returnTo: "/", continuation: null };
+  store = {};
+  Object.defineProperty(window, "localStorage", {
+    configurable: true,
+    value: {
+      clear: () => { store = {}; },
+      getItem: (key: string) => store[key] ?? null,
+      removeItem: (key: string) => { delete store[key]; },
+      setItem: (key: string, value: string) => { store[key] = value; },
+    },
+  });
+  window.history.replaceState({}, "", "/login");
   mockAuthState = {
     user: null,
     loading: false,
     loggingIn: false,
     authError: "",
-    loginWithFacebook: mockLoginWithFacebook,
     loginWithGoogle: mockLoginWithGoogle,
+    sendEmailLink: mockSendEmailLink,
+    emailLinkSent: false,
     logout: vi.fn(),
     photoURL: "",
   };
 });
 
 describe("LoginPage", () => {
-  it("renders both Google and Facebook sign-in buttons", () => {
+  it("renders Google and email-link sign-in without Facebook", () => {
     const { container } = render(<LoginPage />);
     const buttons = container.querySelectorAll("button");
     expect(buttons).toHaveLength(2);
     expect(container).toHaveTextContent("Continue with Google");
-    expect(container).toHaveTextContent("Continue with Facebook");
+    expect(container).toHaveTextContent("Email me a sign-in link");
+    expect(container).not.toHaveTextContent("Continue with Facebook");
   });
 
-  it("renders 'or' divider between buttons", () => {
+  it("renders 'or' divider between sign-in methods", () => {
     const { container } = render(<LoginPage />);
     expect(container).toHaveTextContent("or");
   });
 
-  it("renders Google button before Facebook button", () => {
+  it("renders Google button before the email form", () => {
     const { container } = render(<LoginPage />);
     const buttons = container.querySelectorAll("button");
     expect(buttons[0]).toHaveTextContent("Continue with Google");
-    expect(buttons[1]).toHaveTextContent("Continue with Facebook");
+    expect(buttons[1]).toHaveTextContent("Email me a sign-in link");
   });
 
   it("calls loginWithGoogle when Google button is clicked", () => {
     const { container } = render(<LoginPage />);
     const googleButton = container.querySelectorAll("button")[0];
     fireEvent.click(googleButton);
-    expect(mockLoginWithGoogle).toHaveBeenCalledTimes(1);
+    expect(mockLoginWithGoogle).toHaveBeenCalledWith("/", null);
   });
 
-  it("calls loginWithFacebook when Facebook button is clicked", () => {
+  it("sends an email link with the entered address", () => {
     const { container } = render(<LoginPage />);
-    const facebookButton = container.querySelectorAll("button")[1];
-    fireEvent.click(facebookButton);
-    expect(mockLoginWithFacebook).toHaveBeenCalledTimes(1);
+    fireEvent.change(container.querySelector("input[type=email]")!, { target: { value: "ajay@example.com" } });
+    fireEvent.submit(container.querySelector("form")!);
+    expect(mockSendEmailLink).toHaveBeenCalledWith("ajay@example.com", "/");
   });
 
   it("disables both buttons when loggingIn is true", () => {
@@ -93,12 +115,12 @@ describe("LoginPage", () => {
     expect(buttons[1]).toBeDisabled();
   });
 
-  it("shows 'Signing in...' on both buttons when loggingIn", () => {
+  it("shows progress on both sign-in methods when loggingIn", () => {
     mockAuthState.loggingIn = true;
     const { container } = render(<LoginPage />);
     const buttons = container.querySelectorAll("button");
     expect(buttons[0]).toHaveTextContent("Signing in...");
-    expect(buttons[1]).toHaveTextContent("Signing in...");
+    expect(buttons[1]).toHaveTextContent("Sending link...");
   });
 
   it("displays auth error when present", () => {
@@ -119,23 +141,55 @@ describe("LoginPage", () => {
     expect(container.querySelectorAll("button")).toHaveLength(0);
   });
 
-  it("redirects to /directory when user is already logged in", () => {
+  it("redirects to home when user is already logged in without returnTo", () => {
     mockAuthState.user = { uid: "u1", displayName: "Test" };
     render(<LoginPage />);
-    expect(mockPush).toHaveBeenCalledWith("/directory");
+    expect(mockPush).toHaveBeenCalledWith("/");
   });
 
-  it("renders provider-neutral copy (no Facebook-specific language)", () => {
+  it("resumes an already signed-in user with the opaque continuation", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    window.history.replaceState({}, "", `/login?returnTo=%2Fevents%2Fa%3Fview%3Dcalendar&continuation=${id}`);
+    mockAuthState.user = { uid: "u1", displayName: "Test" };
+    render(<LoginPage />);
+    expect(mockPush).toHaveBeenCalledWith(`/events/a?view=calendar&continuation=${id}&mode=resume`);
+    expect(mockClearStoredAuthResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the stored opaque continuation after a mobile redirect loses the login query", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    mockStoredAuthResume = { returnTo: "/events/a", continuation: id };
+    mockAuthState.user = { uid: "u1", displayName: "Test" };
+    render(<LoginPage />);
+    expect(mockPush).toHaveBeenCalledWith(`/events/a?continuation=${id}&mode=resume`);
+  });
+
+  it("passes the opaque continuation into Google sign-in", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    window.history.replaceState({}, "", `/login?returnTo=%2Fevents%2Fa&continuation=${id}`);
+    const { container } = render(<LoginPage />);
+    fireEvent.click(container.querySelectorAll("button")[1]);
+    expect(mockLoginWithGoogle).toHaveBeenCalledWith("/events/a", id);
+  });
+
+  it("cancels by preserving the opaque continuation for the target", () => {
+    const id = "9f5eb2e2-2c50-41c8-8c8a-a23d7fac2a12";
+    window.history.replaceState({}, "", `/login?returnTo=%2Fevents%2Fa&continuation=${id}`);
+    const { container } = render(<LoginPage />);
+    fireEvent.click(container.querySelectorAll("button")[0]);
+    expect(mockPush).toHaveBeenCalledWith(`/events/a?continuation=${id}&mode=cancel`);
+    expect(mockClearStoredAuthResume).toHaveBeenCalledTimes(1);
+  });
+
+  it("explains that sign-in is optional", () => {
     const { container } = render(<LoginPage />);
     const subtitle = container.querySelector("p");
-    expect(subtitle?.textContent).toContain("Sign in to recommend");
-    expect(subtitle?.textContent).not.toContain("Facebook");
+    expect(subtitle?.textContent).toContain("Sign in only if you want to save");
   });
 
   it("shows helpful message for duplicate-email credential conflict", () => {
-    mockAuthState.authError = "An account already exists with that email. Try signing in with Google instead, then link Facebook from your account page.";
+    mockAuthState.authError = "An account already exists with that email. Use the same sign-in method you used before, or request an email sign-in link.";
     const { container } = render(<LoginPage />);
-    expect(container).toHaveTextContent("Try signing in with Google");
-    expect(container).toHaveTextContent("link Facebook from your account page");
+    expect(container).toHaveTextContent("request an email sign-in link");
   });
 });

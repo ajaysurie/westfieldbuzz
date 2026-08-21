@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AdminGate from "@/components/AdminGate";
 import {
   getSuggestions,
@@ -22,25 +22,26 @@ function SuggestionsContent() {
   const [filter, setFilter] = useState<string>("pending");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    loadSuggestions();
-  }, [filter]);
-
-  async function loadSuggestions() {
-    setLoading(true);
+  const loadSuggestions = useCallback(async () => {
     const data = await getSuggestions(filter || undefined);
     setSuggestions(data);
     setLoading(false);
-  }
+  }, [filter]);
+
+  useEffect(() => {
+    // Firestore is an external system; this effect syncs the selected queue.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadSuggestions();
+  }, [loadSuggestions]);
 
   async function handleApprove(suggestion: SuggestedService) {
     await approveSuggestion(suggestion);
-    loadSuggestions();
+    void loadSuggestions();
   }
 
   async function handleReject(id: string) {
     await rejectSuggestion(id);
-    loadSuggestions();
+    void loadSuggestions();
   }
 
   return (
@@ -67,7 +68,11 @@ function SuggestionsContent() {
         {["pending", "approved", "rejected"].map((s) => (
           <button
             key={s}
-            onClick={() => setFilter(s)}
+            onClick={() => {
+              if (s === filter) return;
+              setLoading(true);
+              setFilter(s);
+            }}
             className={`rounded-full border px-4 py-1.5 text-[0.8rem] font-medium capitalize transition-all ${
               filter === s
                 ? "border-accent bg-accent/10 text-accent"

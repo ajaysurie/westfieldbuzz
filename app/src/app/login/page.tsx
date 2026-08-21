@@ -1,19 +1,53 @@
 "use client";
 
-import { useAuth } from "@/lib/auth";
+import { clearStoredAuthResume, readStoredAuthResume, safeReturnTo, useAuth } from "@/lib/auth";
+import { authResumeDestination, isAuthContinuationId } from "@/lib/auth-continuation";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 export default function LoginPage() {
-  const { user, loading, loggingIn, authError, loginWithFacebook, loginWithGoogle } = useAuth();
+  const {
+    user,
+    loading,
+    loggingIn,
+    authError,
+    emailLinkSent,
+    loginWithGoogle,
+    sendEmailLink,
+  } = useAuth();
   const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [returnTo, setReturnTo] = useState<string | null>(null);
+  const [continuation, setContinuation] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && user) {
-      router.push("/directory");
+    // The return path is browser-owned URL state and must be captured after hydration.
+    const params = new URLSearchParams(window.location.search);
+    const storedResume = readStoredAuthResume();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- browser URL/storage are unavailable during SSR
+    setReturnTo(safeReturnTo(params.get("returnTo") || storedResume.returnTo));
+    const id = params.get("continuation");
+    setContinuation(isAuthContinuationId(id) ? id : storedResume.continuation);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && user && returnTo !== null) {
+      router.push(authResumeDestination(returnTo, continuation));
+      clearStoredAuthResume();
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, returnTo, continuation]);
+
+  const handleEmailLink = async (event: FormEvent) => {
+    event.preventDefault();
+    if (continuation) await sendEmailLink(email, returnTo ?? "/", continuation);
+    else await sendEmailLink(email, returnTo ?? "/");
+  };
+
+  const cancelContinuation = () => {
+    clearStoredAuthResume();
+    router.push(authResumeDestination(returnTo, continuation, "cancel"));
+  };
 
   if (loading) {
     return (
@@ -41,15 +75,21 @@ export default function LoginPage() {
             color: "var(--ink)",
           }}
         >
-          Join Westfield Buzz
+          Save your Westfield Buzz
         </h1>
         <p className="mb-8 text-[0.95rem] leading-relaxed text-ink-light">
-          Sign in to recommend local businesses, save your favorites, and
-          join the community.
+          Sign in only if you want to save events, searches, or household
+          preferences. Browsing and the full calendar stay open to everyone.
         </p>
 
+        {continuation && (
+          <button type="button" onClick={cancelContinuation} className="mb-5 text-sm font-semibold text-accent underline">
+            Cancel saving and return
+          </button>
+        )}
+
         <button
-          onClick={loginWithGoogle}
+          onClick={() => loginWithGoogle(returnTo ?? "/", continuation)}
           disabled={loggingIn}
           className={`flex w-full items-center justify-center gap-3 rounded-lg px-6 py-3.5 text-[0.95rem] font-semibold transition-all hover:-translate-y-0.5 hover:shadow-md ${loggingIn ? "opacity-60 cursor-not-allowed" : ""}`}
           style={{ background: "#fff", color: "#3c4043", border: "1px solid #dadce0" }}
@@ -69,24 +109,42 @@ export default function LoginPage() {
           <div className="h-px flex-1" style={{ background: "var(--border)" }} />
         </div>
 
-        <button
-          onClick={loginWithFacebook}
-          disabled={loggingIn}
-          className={`flex w-full items-center justify-center gap-3 rounded-lg px-6 py-3.5 text-[0.95rem] font-semibold text-white transition-all hover:-translate-y-0.5 hover:shadow-md ${loggingIn ? "opacity-60 cursor-not-allowed" : ""}`}
-          style={{ background: "#1877F2" }}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-          </svg>
-          {loggingIn ? "Signing in..." : "Continue with Facebook"}
-        </button>
+        <form onSubmit={handleEmailLink} className="space-y-3 text-left">
+          <label htmlFor="email" className="block text-[0.78rem] font-semibold text-ink-light">
+            Email address
+          </label>
+          <input
+            id="email"
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            className="min-h-11 w-full rounded-lg border border-black/12 bg-paper-pure px-4 text-base text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20"
+            placeholder="you@example.com"
+          />
+          <button
+            type="submit"
+            disabled={loggingIn || !email.trim()}
+            className={`min-h-11 w-full rounded-lg border border-ink bg-ink px-6 text-[0.92rem] font-semibold text-paper-pure transition hover:-translate-y-0.5 hover:shadow-md ${loggingIn || !email.trim() ? "cursor-not-allowed opacity-60" : ""}`}
+          >
+            {loggingIn ? "Sending link..." : "Email me a sign-in link"}
+          </button>
+        </form>
+
+        {emailLinkSent && (
+          <p role="status" className="mt-4 rounded-lg bg-mist px-4 py-3 text-[0.85rem] text-ink">
+            Check your inbox. The link will return you to what you were doing.
+          </p>
+        )}
 
         {authError && (
           <p className="mt-4 text-[0.85rem] text-sienna">{authError}</p>
         )}
 
         <p className="mt-6 text-[0.8rem] text-ink-muted">
-          We only access your public profile. Your data stays private.
+          No password and no Facebook required. We only use saved preferences
+          when you ask us to personalize your Friday email.
         </p>
       </div>
     </div>

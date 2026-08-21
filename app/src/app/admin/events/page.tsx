@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import { useAuth } from "@/lib/auth";
-import { getEvents, createEvent, deleteEvent, type Event } from "@/lib/firestore";
+import { getEvents, createEvent, suppressEvent, restoreEvent, type Event } from "@/lib/firestore";
+import { EVENT_CATEGORIES, type EventCategory } from "@/lib/events/types";
 
 export default function AdminEventsPage() {
   return (
@@ -13,32 +15,42 @@ export default function AdminEventsPage() {
   );
 }
 
-const EVENT_CATEGORIES = ["Market", "Music", "Festival", "Community", "Sports", "Arts", "Food", "Other"];
-
 function EventsAdmin() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    title: string;
+    description: string;
+    date: string;
+    endDate: string;
+    location: string;
+    town: string;
+    verificationEvidenceUrl: string;
+    category: EventCategory;
+  }>({
     title: "",
     description: "",
     date: "",
     endDate: "",
     location: "",
+    town: "Westfield",
+    verificationEvidenceUrl: "",
     category: "Community",
   });
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  async function loadEvents() {
-    setLoading(true);
+  const loadEvents = useCallback(async () => {
     const data = await getEvents();
     setEvents(data);
     setLoading(false);
-  }
+  }, []);
+
+  useEffect(() => {
+    // Firestore is an external system; this effect performs the initial sync.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadEvents();
+  }, [loadEvents]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -50,19 +62,27 @@ function EventsAdmin() {
       date: new Date(form.date),
       endDate: form.endDate ? new Date(form.endDate) : null,
       location: form.location,
+      town: form.town,
       category: form.category,
       createdBy: user.uid,
+      verificationEvidenceUrl: form.verificationEvidenceUrl,
     });
 
-    setForm({ title: "", description: "", date: "", endDate: "", location: "", category: "Community" });
+    setForm({ title: "", description: "", date: "", endDate: "", location: "", town: "Westfield", verificationEvidenceUrl: "", category: "Community" });
     setShowForm(false);
-    loadEvents();
+    void loadEvents();
   }
 
-  async function handleDelete(eventId: string) {
-    if (!confirm("Delete this event?")) return;
-    await deleteEvent(eventId);
-    loadEvents();
+  async function handleSuppress(eventId: string) {
+    if (!user || !confirm("Suppress this event? It can be restored later and source evidence will be retained.")) return;
+    await suppressEvent(eventId, { by: user.uid });
+    void loadEvents();
+  }
+
+  async function handleRestore(eventId: string) {
+    if (!confirm("Restore this event to the public calendar?")) return;
+    await restoreEvent(eventId);
+    void loadEvents();
   }
 
   const inputClass =
@@ -87,13 +107,21 @@ function EventsAdmin() {
         >
           Manage Events
         </h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-lg px-4 py-2 text-[0.85rem] font-semibold text-white"
-          style={{ background: "var(--accent)" }}
-        >
-          {showForm ? "Cancel" : "+ Add Event"}
-        </button>
+        <div className="flex items-center gap-3 max-sm:flex-col max-sm:items-end">
+          <Link
+            href="/admin/sources"
+            className="rounded-lg border border-black/12 px-4 py-2 text-[0.85rem] font-semibold text-ink no-underline"
+          >
+            Source health
+          </Link>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="rounded-lg px-4 py-2 text-[0.85rem] font-semibold text-white"
+            style={{ background: "var(--accent)" }}
+          >
+            {showForm ? "Cancel" : "+ Add Event"}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -107,6 +135,21 @@ function EventsAdmin() {
             placeholder="Event title"
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className={inputClass}
+          />
+          <input
+            type="text"
+            required
+            placeholder="Town (for example, Westfield)"
+            value={form.town}
+            onChange={(e) => setForm({ ...form, town: e.target.value })}
+            className={inputClass}
+          />
+          <input
+            type="url"
+            placeholder="Verification evidence URL (optional)"
+            value={form.verificationEvidenceUrl}
+            onChange={(e) => setForm({ ...form, verificationEvidenceUrl: e.target.value })}
             className={inputClass}
           />
           <textarea
@@ -150,7 +193,7 @@ function EventsAdmin() {
           />
           <select
             value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            onChange={(e) => setForm({ ...form, category: e.target.value as EventCategory })}
             className={inputClass}
           >
             {EVENT_CATEGORIES.map((cat) => (
@@ -194,12 +237,11 @@ function EventsAdmin() {
                   {evt.interestedCount} interested
                 </p>
               </div>
-              <button
-                onClick={() => handleDelete(evt.id)}
-                className="text-[0.82rem] font-medium text-ink-muted transition-colors hover:text-sienna"
-              >
-                Delete
-              </button>
+              {evt.publicationStatus === "suppressed" ? (
+                <button onClick={() => handleRestore(evt.id)} className="text-[0.82rem] font-medium text-ink-muted transition-colors hover:text-sienna">Restore</button>
+              ) : (
+                <button onClick={() => handleSuppress(evt.id)} className="text-[0.82rem] font-medium text-ink-muted transition-colors hover:text-sienna">Suppress</button>
+              )}
             </div>
           ))}
         </div>

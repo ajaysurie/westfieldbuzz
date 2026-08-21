@@ -8,7 +8,7 @@
  * Auth: Uses Application Default Credentials (run `firebase login` first)
  */
 
-import { initializeApp, cert, applicationDefault } from "firebase-admin/app";
+import { initializeApp, applicationDefault } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import businesses from "../src/data/scraped-businesses.json";
 
@@ -38,7 +38,10 @@ async function seed() {
       address: biz.address,
       website: biz.website,
       recommendations: biz.recommendations,
-      recentRecommenders: (biz as any).recommendedBy || [],
+      recentRecommenders:
+        "recommendedBy" in biz && Array.isArray(biz.recommendedBy)
+          ? biz.recommendedBy
+          : [],
       lastRecommended: null,
       seeded: true,
       createdAt: FieldValue.serverTimestamp(),

@@ -1,0 +1,15 @@
+{
+  "events": [
+    {
+      "id": 22285,
+      "status": "publish",
+      "url": "https://ucpac.org/event/summer-concert/",
+      "title": "Summer Concert",
+      "description": "<p>Live music in Rahway.</p>",
+      "start_date": "2026-08-22 19:00:00",
+      "end_date": "2026-08-22 21:00:00",
+      "venue": { "venue": "UCPAC Main Stage" },
+      "categories": [{ "name": "Music" }]
+    }
+  ]
+}
