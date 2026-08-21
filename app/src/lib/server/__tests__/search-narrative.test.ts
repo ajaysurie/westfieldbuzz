@@ -11,7 +11,8 @@ function item(id: string, title: string): SearchResultItem {
       freshnessStatus: "current", sourceUrl: "https://example.com", sourceId: "src",
       lastVerifiedAt: "2026-08-20T12:00:00.000Z", tags: [], minAge: null, maxAge: null,
       costAmount: null, isFree: true, environment: null, registration: null,
-    } as SearchResultItem["event"],
+      accessibility: [], driveMinutes: null, factEvidence: {},
+    } as unknown as SearchResultItem["event"],
     rank: 1, label: "", reason: "",
   };
 }
