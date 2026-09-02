@@ -160,7 +160,7 @@ function EventsContent() {
       <header className="events-header">
         <div className="events-shell events-header__inner">
           <div>
-            <p className="eyebrow">Freshly checked around town</p>
+            <p className="eyebrow">Events around town</p>
             <h1>Plan what&apos;s next.</h1>
             <p>Browse the local agenda or choose a day on the full calendar.</p>
           </div>

@@ -32,15 +32,23 @@ export function canonicalIdentityText(value: string): string {
   return value.normalize("NFKC").replace(/\s+/gu, " ").trim().toLowerCase();
 }
 
+function isVirtualEvent(observation: Pick<SourceObservation, "title" | "location">): boolean {
+  return /\b(virtual|online|zoom)\b/i.test(`${observation.title} ${observation.location}`);
+}
+
 export function eventIdentityFingerprint(
   observation: Pick<SourceObservation, "title" | "date" | "location" | "town">
 ): EventIdentityFingerprint {
+  // A syndicated online talk has no meaningful venue. Library feeds commonly
+  // substitute their own branch name, which previously let the same talk claim
+  // a different fingerprint in every feed.
+  const virtual = isVirtualEvent(observation);
   const evidence: EventIdentityEvidence = {
     version: EVENT_IDENTITY_FINGERPRINT_VERSION,
     title: canonicalIdentityText(observation.title),
     startAt: observation.date.toISOString(),
-    venue: canonicalIdentityText(observation.location),
-    town: canonicalIdentityText(observation.town),
+    venue: virtual ? "virtual" : canonicalIdentityText(observation.location),
+    town: virtual ? "" : canonicalIdentityText(observation.town),
   };
   return {
     version: EVENT_IDENTITY_FINGERPRINT_VERSION,

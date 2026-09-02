@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   deduplicateObservations,
   fetchSourceEvents,
+  humanVenue,
   parseICalPayload,
   parseMecHtml,
   parseSquarespacePayload,
@@ -55,6 +56,14 @@ function source(id: string) {
 }
 
 describe("approved source adapters", () => {
+  it("replaces calendar URLs in venue fields with the official source name", () => {
+    expect(humanVenue(
+      "https://www.westfieldnj.gov/calendar.aspx?EID=123",
+      "Westfield Municipal Events"
+    )).toBe("Westfield Municipal Events");
+    expect(humanVenue("Town Hall", "Westfield Municipal Events")).toBe("Town Hall");
+  });
+
   it("parses the school iCal fixture with local time and attribution", () => {
     const parsed = parseICalPayload(
       source("westfield-schools-ical"),

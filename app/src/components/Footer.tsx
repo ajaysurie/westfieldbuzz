@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="site-footer__inner">
         <div>
           <p className="site-footer__brand">Westfield Buzz</p>
-          <p>Freshly checked events around Westfield and nearby towns.</p>
+          <p>Local events around Westfield and nearby towns.</p>
           <p className="site-footer__credit">
             Built by <a href="https://www.ajaysurie.com" target="_blank" rel="noopener noreferrer">Ajay Surie</a>, Westfield dad &amp; resident.
           </p>

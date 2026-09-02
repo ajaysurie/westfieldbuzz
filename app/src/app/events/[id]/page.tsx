@@ -115,7 +115,7 @@ export default function EventDetailPage() {
           <aside className="detail-side" aria-label="Event source and location">
             <section className="detail-side-card">
               <p className="eyebrow">Source & freshness</p>
-              <h2>Checked, not guessed.</h2>
+              <h2>Event source</h2>
               <p>
                 {verified
                   ? `Last verified ${verified.toLocaleString("en-US", { timeZone: "America/New_York", month: "long", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })}.`
