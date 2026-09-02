@@ -26,11 +26,11 @@ export const metadata: Metadata = {
     template: "%s | Westfield Buzz",
   },
   description:
-    "A freshly checked guide to events in Westfield, New Jersey and nearby towns.",
+    "A guide to events in Westfield, New Jersey and nearby towns.",
   openGraph: {
     title: "Westfield Buzz",
     description:
-      "Freshly checked events in Westfield, New Jersey and nearby towns.",
+      "Events in Westfield, New Jersey and nearby towns.",
     type: "website",
     locale: "en_US",
     siteName: "Westfield Buzz",
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Westfield Buzz",
     description:
-      "Freshly checked events in Westfield, New Jersey and nearby towns.",
+      "Events in Westfield, New Jersey and nearby towns.",
   },
 };
 
@@ -51,7 +51,7 @@ const jsonLd = {
       name: "Westfield Buzz",
       url: "https://westfieldbuzz.com",
       description:
-        "A freshly checked guide to events in Westfield, New Jersey and nearby towns.",
+        "A guide to events in Westfield, New Jersey and nearby towns.",
     },
     {
       "@type": "Organization",

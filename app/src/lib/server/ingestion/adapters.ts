@@ -77,6 +77,13 @@ function text(value: unknown): string {
   return stripHtml(data.val ?? data.value ?? data.name ?? "");
 }
 
+export function humanVenue(value: unknown, fallback: string): string {
+  const venue = text(value);
+  return /^https?:\/\//i.test(venue) || /\b[a-z0-9.-]+\.[a-z]{2,}\/\S*/i.test(venue)
+    ? fallback
+    : venue || fallback;
+}
+
 function withinWindow(
   start: Date,
   end: Date | null,
@@ -166,7 +173,7 @@ export function parseLibCalPayload(
     }
     if (!withinWindow(start, end, window)) continue;
     const locationValue = record(event.location);
-    const location = text(locationValue.name ?? event.location) || source.name;
+    const location = humanVenue(locationValue.name ?? event.location, source.name);
     events.push({
       title,
       description: stripHtml(event.description ?? event.shortdesc),
@@ -276,7 +283,7 @@ export function parseICalPayload(
           description: text(effectiveEvent.description ?? event.description),
           date: start,
           endDate: end,
-          location: text(effectiveEvent.location ?? event.location) || source.name,
+          location: humanVenue(effectiveEvent.location ?? event.location, source.name),
           town: source.town,
           category: mapCategory([
             ...(effectiveEvent.categories?.length

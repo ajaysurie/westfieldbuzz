@@ -101,6 +101,31 @@ async function reconcile(db: FakeFirestore, policy: EventSourcePolicy, event = o
 }
 
 describe("Firestore identity claims", () => {
+  it("safety-holds the same virtual author talk syndicated by two libraries", async () => {
+    const db = new FakeFirestore();
+    const summit = observation({
+      title: "Virtual Author Talk with David O. Stewart",
+      location: "Summit Free Public Library",
+      town: "Summit",
+      sourceId: "summit-libcal",
+    });
+    const westfield = observation({
+      title: summit.title,
+      location: "Westfield Memorial Library",
+      sourceId: "wml-libcal",
+    });
+    const fingerprint = eventIdentityFingerprint(summit);
+    db.seed("events/summit-talk", { ...summit, identityFingerprint: fingerprint.hash });
+
+    const result = await reconcile(db, source("wml-libcal"), westfield);
+
+    expect(result).toMatchObject({ created: 0, candidates: 1, safetyHeld: true });
+    expect(db.documentsIn("eventCandidates")[0]?.[1]).toMatchObject({
+      reason: "possible-cross-source-duplicate",
+      matchingEventIds: ["summit-talk"],
+    });
+  });
+
   it("holds a different-source fingerprint match as an admin candidate", async () => {
     const db = new FakeFirestore();
     const event = observation({ sourceId: "source-b" });
