@@ -1,0 +1,68 @@
+/**
+ * Real locators from this repo. Not examples.
+ * Sources: app/src/components/Nav.tsx, HomeSearch.tsx, FridaySignup.tsx,
+ * SearchForm.tsx, app/src/app/page.tsx, events/page.tsx, directory/page.tsx.
+ */
+export const SELECTORS = {
+  primaryNav: 'nav[aria-label="Primary navigation"]',
+  brand: 'nav[aria-label="Primary navigation"] a.site-nav__brand',
+  navThisWeek: 'nav[aria-label="Primary navigation"] a[href="/"]',
+  navCalendar: 'nav[aria-label="Primary navigation"] a[href="/events"]',
+  navFridayList: 'nav[aria-label="Primary navigation"] a[href="/#friday-list"]',
+  mobileMenu: 'button[aria-label="Toggle navigation menu"]',
+  homeSearch: "#home-search",
+  homeSearchForm: "form.event-search-form",
+  homeSearchSubmit: 'form.event-search-form button[aria-label="Search local events"]',
+  searchStarters: '[aria-label="Suggested searches"]',
+  weekHeading: "#week-heading",
+  weekSection: 'section[aria-labelledby="week-heading"]',
+  fridayHeading: "#friday-heading",
+  fridaySection: "#friday-list",
+  fridayForm: 'form[aria-label="Friday email signup"]',
+  fridayEmail: "#friday-email",
+  eventCard: "article.event-card",
+  eventCardTitle: "a.event-card__title",
+  eventDetailsLink: 'article.event-card a:has-text("Event details")',
+  eventsHeader: "header.events-header",
+  eventsViewGroup: 'div.view-switch[role="group"][aria-label="Event view"]',
+  eventsToolbar: 'section[aria-label="Calendar controls"]',
+  weekStrip: 'section[aria-label="Next seven days"]',
+  categoryFilters: 'section[aria-label="Filter by category"]',
+  monthCalendar: 'section.event-calendar[aria-label="Month calendar"]',
+  eventsResults: 'section[aria-labelledby="events-results-heading"]',
+  eventSearch: "#event-search",
+  searchFilters: '[aria-label="Interpreted search filters"]',
+  searchProvenance: ".search-provenance",
+  directorySearchPlaceholder: "Search providers by name, category...",
+};
+
+export const ROUTES = {
+  home: "/",
+  events: "/events",
+  eventsCalendar: "/events?view=calendar",
+  search: "/search",
+  directory: "/directory",
+  login: "/login",
+  account: "/account",
+  admin: "/admin",
+  suggest: "/suggest",
+  privacy: "/privacy",
+  dataDeletion: "/data-deletion",
+  unsubscribe: "/unsubscribe",
+  subscribeConfirm: "/subscribe/confirm",
+  cronIngest: "/api/cron/ingest?group=core-libraries",
+  cronDiscover: "/api/cron/discover",
+  cronWatchdog: "/api/cron/freshness-watchdog",
+  cronFriday: "/api/cron/friday-digest",
+};
+
+export const COPY = {
+  homeH1: /What's on around Westfield/i,
+  eventsH1: /Plan what's next/i,
+  searchH1: /Describe the outing you have in mind/i,
+  directoryTitle: /All Providers/,
+  loginH1: /Save your Westfield Buzz/,
+  fridayCta: /Get the list/,
+  parserUnavailable: "parser was unavailable",
+  eventsChecked: /events checked/i,
+};

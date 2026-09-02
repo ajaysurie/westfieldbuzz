@@ -6,3 +6,5 @@ node_modules/
 serviceAccountKey.json
 .worktrees
 .gstack/
+.cursor/skills/verify-westfieldbuzz/.run/*.log
+.cursor/skills/verify-westfieldbuzz/.run/*.json
