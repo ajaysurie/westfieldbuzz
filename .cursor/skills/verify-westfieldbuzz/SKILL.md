@@ -78,6 +78,8 @@ Ready: helper prints JSON `ok: true` with `baseUrl` and `pid`. HTTP to that orig
 
 If `firebasePublic` is `false`, do not pretend local agenda is production data. Set `VERIFY_BASE_URL=https://westfieldbuzz.com` for data-dependent drives.
 
+Without `NEXT_PUBLIC_FIREBASE_API_KEY`, `next dev` still binds the port, but `GET /` is **500**: `firebase.ts` calls `getAuth(app)` at import time (`auth/invalid-api-key`). That is missing env, not a broken checkout. Doctor local will be `ok: false`. Do not stub Firebase in the app to make doctor green.
+
 If JSON `isolation: refuse-shared-instance` or `refuse-double-drive`: stop. Doctor/drive that URL is forbidden.
 
 Teardown: `node .cursor/skills/verify-westfieldbuzz/helpers/cleanup.mjs` (see Cleanup). Run cleanup after every failed iteration that launched.
@@ -98,7 +100,9 @@ With production:
 VERIFY_BASE_URL=https://westfieldbuzz.com node .cursor/skills/verify-westfieldbuzz/helpers/doctor.mjs
 ```
 
-Pass (`ok: true`) means: target HTTP shell contains Westfield Buzz + primary copy; cron unauthenticated GET is 401/403/503 not 200; local mode also requires a live lock pid and no `WESTFIELDBUZZ_ENABLE_*=true`. Fail means do not drive.
+Pass (`ok: true`) means: target HTTP shell contains Westfield Buzz + primary copy; cron unauthenticated GET is 401/403/503 not 200; local mode also requires a live lock pid and no `WESTFIELDBUZZ_ENABLE_*=true`. Fail means do not drive that target.
+
+Port ownership: `ss -lptn`, then `lsof -t -iTCP:$PORT -sTCP:LISTEN`, then `netstat -lptn`. This cloud image has `netstat` and `lsof`, not `ss`. The lock pid is `npm exec next`; the LISTEN pid is often child `next-server`. That is still ours if the lock pid is alive. A LISTEN pid with **no** lock is a foreign instance — refuse.
 
 Doctor does **not** classify client-rendered agenda state. That is Playwright (`helpers/drive.mjs`).
 
