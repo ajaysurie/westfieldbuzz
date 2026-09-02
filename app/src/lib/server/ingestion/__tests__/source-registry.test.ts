@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { EVENT_SOURCES, sourceById } from "../source-registry";
 
 describe("event source registry", () => {
-  it("enrolls additional first-party JSON-LD calendars for review", () => {
+  it("auto-approves additional first-party JSON-LD calendars", () => {
     const ids = [
       "nj-festival-orchestra-jsonld",
       "westfield-on-weekends-jsonld",
@@ -12,7 +12,7 @@ describe("event source registry", () => {
     for (const id of ids) {
       expect(sourceById(id)).toMatchObject({
         type: "jsonld",
-        autoApprove: false,
+        autoApprove: true,
         expectedLayoutMarker: "application/ld+json",
       });
     }

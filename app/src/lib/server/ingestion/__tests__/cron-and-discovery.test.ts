@@ -64,8 +64,11 @@ describe("source registry and discovery boundary", () => {
     expect(EVENT_SOURCES
       .filter((source) => source.type === "llm-extract" || source.type === "llm-search")
       .every((source) => source.autoApprove === false)).toBe(true);
-    expect(EVENT_SOURCES.find((source) => source.id === "westfield-schools-ical")?.autoApprove).toBe(true);
-    expect(EVENT_SOURCES.find((source) => source.id === "ucpac-tribe")?.autoApprove).toBe(false);
+    // First-party calendars publish directly; only discovery sources remain in
+    // the manual-review path.
+    expect(EVENT_SOURCES
+      .filter((source) => source.type !== "llm-extract" && source.type !== "llm-search")
+      .every((source) => source.autoApprove)).toBe(true);
   });
 
   it("emits JSON candidates that can never self-enable", async () => {
