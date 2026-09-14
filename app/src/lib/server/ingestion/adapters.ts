@@ -738,6 +738,90 @@ export function parseJsonLdPayload(
   };
 }
 
+/** Extracts the balanced [...] array literal following `"key":` in a blob of
+ * embedded page JSON. Returns null when the key or a parseable array is absent. */
+function extractJsonArrayField(html: string, key: string): unknown[] | null {
+  const keyIndex = html.indexOf(`"${key}"`);
+  if (keyIndex === -1) return null;
+  const start = html.indexOf("[", keyIndex);
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < html.length; i += 1) {
+    const ch = html[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\") { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "[") depth += 1;
+    if (ch === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const parsed: unknown = JSON.parse(html.slice(start, i + 1));
+          return Array.isArray(parsed) ? parsed : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** Eventbrite organizer pages embed the organizer's upcoming events as a JSON
+ * array in the initial page state — the authoritative listing the venue itself
+ * publishes for tickets, so it reconciles cleanly and can auto-approve. */
+export function parseEventbriteOrganizerPayload(
+  source: EventSourcePolicy,
+  html: string,
+  window: DateWindow
+): ParsedPayload {
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+  const layoutValid = html.includes('"upcomingEvents"');
+  const items = extractJsonArrayField(html, "upcomingEvents") ?? [];
+
+  for (const item of items) {
+    const event = record(item);
+    const title = text(event.name);
+    const tz = text(event.timezone) || source.timezone;
+    const start = parseSourceDateTime(
+      `${text(event.start_date)} ${text(event.start_time)}`.trim(), tz);
+    const endRaw = `${text(event.end_date)} ${text(event.end_time)}`.trim();
+    const end = endRaw ? parseSourceDateTime(endRaw, tz) : null;
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled Eventbrite event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    const venue = record(event.primary_venue);
+    const address = record(venue.address);
+    const locationParts = [text(venue.name), text(address.address_1), text(address.city)]
+      .filter(Boolean);
+    const eventId = text(event.eventbrite_event_id) || text(event.id);
+    const url = text(event.url);
+    events.push({
+      title,
+      description: stripHtml(event.summary),
+      date: start,
+      endDate: end,
+      location: locationParts.join(", ") || source.name,
+      town: source.town,
+      category: mapCategory([title, source.name]),
+      status: event.is_cancelled === true ? "cancelled" : "scheduled",
+      availability: "unknown",
+      sourceId: source.id,
+      sourceEventId: eventId || url || `fallback:${start.toISOString()}:${title}`,
+      sourceUrl: url || source.publicUrl || source.url,
+      imageUrl: safeImageUrl(record(event.image).url),
+    });
+  }
+
+  return { events, errors, layoutValid };
+}
+
 const DEFAULT_MAX_DETAIL_PAGES = 30;
 const DETAIL_CRAWL_DELAY_MS = 250;
 const DETAIL_CRAWL_RETRY_MS = 1_000;
@@ -871,6 +955,16 @@ export async function fetchSourceEvents(input: {
     );
   }
 
+  if (source.type === "eventbrite-organizer") {
+    const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
+    return finalize(
+      source,
+      parseEventbriteOrganizerPayload(source, response.text, window),
+      response.bytes,
+      response.finalUrl
+    );
+  }
+
   if (source.type === "llm-search") {
     // No page fetch: the model's search grounding is the fetch. Every result
     // must carry its own citation URL or the extractor drops it.
@@ -898,7 +992,12 @@ export async function fetchSourceEvents(input: {
         warnings: extraction.warnings,
         // The failure mode here is the model erroring, which surfaces above; an
         // empty page is a real possibility for JS-rendered sites, not a layout break.
-        layoutValid: response.text.length > 0,
+        // When a marker is configured it still gates: a renamed listing page
+        // (e.g. a rotated season slug) is a layout break, not an empty season.
+        layoutValid:
+          response.text.length > 0 &&
+          (!source.expectedLayoutMarker ||
+            response.text.includes(source.expectedLayoutMarker)),
       },
       response.bytes,
       response.finalUrl

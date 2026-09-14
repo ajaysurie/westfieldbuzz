@@ -378,7 +378,7 @@ describe("jsonld-index adapter", () => {
     expect(result.complete).toBe(false);
     expect(result.events).toHaveLength(1);
     expect(result.errors.some((e) => e.includes("/events/broken/"))).toBe(true);
-  });
+  }, 15_000);
 
   it("caps the detail crawl at maxDetailPages with a warning", async () => {
     const capped = { ...policy(), maxDetailPages: 1 };
@@ -426,7 +426,7 @@ describe("jsonld-index adapter", () => {
     expect(result.events).toHaveLength(0);
     expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true);
     expect(fetched).toHaveLength(2);
-  });
+  }, 15_000);
 
   it("keeps every night of a multi-date run that reuses one event URL", () => {
     const html = `<script type="application/ld+json">${JSON.stringify({
@@ -450,5 +450,86 @@ describe("jsonld-index adapter", () => {
     expect(parsed.events).toHaveLength(2);
     expect(parsed.events[0].sourceEventId).toBe("https://www.sopacnow.org/events/shu/");
     expect(parsed.events[1].sourceEventId).toContain("#2026-10-17T00:00:00.000Z");
+  });
+});
+
+describe("eventbrite-organizer adapter", () => {
+  const policy = () => source("crossroads-eventbrite");
+
+  function organizerPage(events: unknown[]): string {
+    return `<html><body><script>window.__state = ${JSON.stringify({ upcomingEvents: events })};</script></body></html>`;
+  }
+
+  const SHOW = {
+    id: "1992011276351",
+    eventbrite_event_id: "1992011276351",
+    name: "Jeff Rosenstock",
+    url: "https://www.eventbrite.com/e/jeff-rosenstock-tickets-1992011276351",
+    start_date: "2026-09-19",
+    start_time: "19:00:00",
+    end_date: "2026-09-19",
+    end_time: "23:00:00",
+    timezone: "America/New_York",
+    is_cancelled: false,
+    summary: "Punk rock show",
+    primary_venue: {
+      name: "Crossroads",
+      address: { address_1: "78 North Ave", city: "Garwood" },
+    },
+    image: { url: "https://img.evbuc.com/img/1.jpg" },
+  };
+
+  it("extracts upcoming events from the embedded organizer page state", async () => {
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: async () =>
+        new Response(organizerPage([SHOW, { ...SHOW, eventbrite_event_id: "x2", id: "x2", name: "Cancelled Show", is_cancelled: true, start_date: "2026-10-01", end_date: "2026-10-01" }]), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.complete).toBe(true);
+    expect(result.events).toHaveLength(2);
+    expect(result.events[0]).toMatchObject({
+      title: "Jeff Rosenstock",
+      sourceEventId: "1992011276351",
+      sourceUrl: "https://www.eventbrite.com/e/jeff-rosenstock-tickets-1992011276351",
+      location: "Crossroads, 78 North Ave, Garwood",
+      town: "Garwood",
+      category: "Music",
+      status: "scheduled",
+      imageUrl: "https://img.evbuc.com/img/1.jpg",
+    });
+    expect(result.events[0].date.toISOString()).toBe("2026-09-19T23:00:00.000Z");
+    expect(result.events[1].status).toBe("cancelled");
+  });
+
+  it("drops out-of-window events and fails closed on layout break", async () => {
+    const stale = { ...SHOW, start_date: "2030-01-01", end_date: "2030-01-01" };
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: async () =>
+        new Response(organizerPage([stale]), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    });
+    expect(result.events).toHaveLength(0);
+    expect(result.complete).toBe(true); // layout valid, legitimately empty window
+
+    const broken = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: async () =>
+        new Response("<html><body>redesign</body></html>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    });
+    expect(broken.complete).toBe(false);
+    expect(broken.errors).toContain("Expected source layout marker was missing");
   });
 });

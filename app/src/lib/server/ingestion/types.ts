@@ -9,6 +9,7 @@ export interface EventSourcePolicy {
     | "civicplus-ical"
     | "jsonld"
     | "jsonld-index"
+    | "eventbrite-organizer"
     | "llm-extract"
     | "llm-search"
     | "squarespace-json"

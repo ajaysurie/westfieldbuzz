@@ -269,8 +269,11 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     id: "comedy-cove-llm-search",
     name: "Comedy Cove",
     type: "llm-search",
-    url: "https://www.comedycove.com/",
-    publicUrl: "https://www.comedycove.com/",
+    // The venue's domain is a parked GoDaddy page — there is no site to fetch.
+    // Listings live on Facebook and Brown Paper Tickets; grounded search is
+    // the only automated route. URL is the producer page for attribution.
+    url: "https://www.brownpapertickets.com/producer/3588844",
+    publicUrl: "https://www.brownpapertickets.com/producer/3588844",
     town: "Springfield",
     autoApprove: false,
     group: "venue-search",
@@ -283,37 +286,40 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
   },
   {
     ...STANDARD_FETCH,
-    id: "crossroads-llm-search",
+    id: "crossroads-eventbrite",
     name: "Crossroads",
-    type: "llm-search",
-    url: "https://www.crossroadsnj.com/",
-    publicUrl: "https://www.crossroadsnj.com/",
+    type: "eventbrite-organizer",
+    // The venue tickets through Eventbrite; its organizer page embeds the
+    // authoritative upcoming-events JSON in the initial page state.
+    url: "https://www.eventbrite.com/o/crossroads-18337279677",
+    publicUrl: "https://www.xxroads.com/calendar",
     town: "Garwood",
-    autoApprove: false,
-    group: "venue-search",
-    allowedHosts: [],
-    expectedContentTypes: [],
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["eventbrite.com", "www.eventbrite.com"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    expectedLayoutMarker: '"upcomingEvents"',
     minimumExpectedEvents: 0,
-    searchQueries: [
-      "upcoming concerts and live music at Crossroads in Garwood NJ",
-    ],
+    junkTitlePatterns: ["^waiting\\s?list"],
   },
   {
     ...STANDARD_FETCH,
-    id: "paper-mill-llm-search",
+    id: "paper-mill-llm",
     name: "Paper Mill Playhouse",
-    type: "llm-search",
-    url: "https://www.papermill.org/",
-    publicUrl: "https://www.papermill.org/",
+    type: "llm-extract",
+    // Queue-it guards the my.papermill.org ticketing flow, but the content
+    // site is plain server-rendered WordPress and fetches cleanly. The season
+    // slug rotates yearly; when it rolls over this source will fail visibly
+    // on the layout check rather than publish stale records.
+    url: "https://papermill.org/26-27_season/",
+    publicUrl: "https://papermill.org/26-27_season/",
     town: "Millburn",
     autoApprove: false,
-    group: "venue-search",
-    allowedHosts: [],
-    expectedContentTypes: [],
+    group: "nearby-venues",
+    allowedHosts: ["papermill.org", "www.papermill.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    expectedLayoutMarker: "BUY TICKETS",
     minimumExpectedEvents: 0,
-    searchQueries: [
-      "upcoming shows and performances at Paper Mill Playhouse in Millburn NJ",
-    ],
   },
   {
     ...STANDARD_FETCH,
@@ -375,6 +381,10 @@ const CATEGORY_MAP: Record<string, EventCategory> = {
   "Union County Performing Arts Center": "Entertainment",
   "South Orange Performing Arts Center": "Entertainment",
   "New Jersey Festival Orchestra": "Music",
+  "Crossroads": "Music",
+  "Paper Mill Playhouse": "Entertainment",
+  "Comedy Cove": "Entertainment",
+  "16 Prospect Wine Bar": "Music",
   "Cranford Community Events": "Community",
   "Main Calendar": "Community",
   "Community Events": "Community",
