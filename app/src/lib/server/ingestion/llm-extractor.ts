@@ -122,8 +122,13 @@ export async function extractEventsWithLlm(input: {
   const fetchImpl = input.fetchImpl ?? fetch;
   const searchMode = input.source.type === "llm-search";
   const text = input.pageText.slice(0, MAX_PAGE_CHARS);
+  const angles = searchMode
+    ? (input.source.searchQueries?.length
+        ? input.source.searchQueries
+        : searchAngles(input.source.town))
+    : [];
   const prompts = searchMode
-    ? searchAngles(input.source.town).map((angle) =>
+    ? angles.map((angle) =>
         searchPrompt(angle, input.window.fromLocalDate, input.window.toLocalDate))
     : [prompt(text, input.window.fromLocalDate, input.window.toLocalDate)];
 

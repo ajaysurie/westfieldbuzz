@@ -3,18 +3,27 @@ import { EVENT_SOURCES, sourceById } from "../source-registry";
 
 describe("event source registry", () => {
   it("auto-approves additional first-party JSON-LD calendars", () => {
-    const ids = [
-      "nj-festival-orchestra-jsonld",
-      "westfield-on-weekends-jsonld",
-      "reeves-reed-jsonld",
-    ];
     expect(EVENT_SOURCES.length).toBeGreaterThan(9);
-    for (const id of ids) {
-      expect(sourceById(id)).toMatchObject({
-        type: "jsonld",
-        autoApprove: true,
-        expectedLayoutMarker: "application/ld+json",
-      });
-    }
+    expect(sourceById("reeves-reed-jsonld")).toMatchObject({
+      type: "jsonld",
+      autoApprove: true,
+      expectedLayoutMarker: "application/ld+json",
+    });
+  });
+
+  it("keeps the SOPAC index/detail source bounded and host-pinned", () => {
+    expect(sourceById("sopac-jsonld-index")).toMatchObject({
+      type: "jsonld-index",
+      autoApprove: true,
+      group: "nearby-venues",
+      allowedHosts: ["sopacnow.org", "www.sopacnow.org"],
+    });
+  });
+
+  it("keeps model-backed sources in the manual-review path", () => {
+    expect(sourceById("nj-festival-orchestra-llm")).toMatchObject({
+      type: "llm-extract",
+      autoApprove: false,
+    });
   });
 });

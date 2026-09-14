@@ -677,6 +677,7 @@ export function parseJsonLdPayload(
   ) ?? [];
 
   const found: UnknownRecord[] = [];
+  const usedSourceEventIds = new Set<string>();
   for (const block of blocks) {
     const body = block.replace(/^<script\b[^>]*>/i, "").replace(/<\/script>$/i, "");
     try {
@@ -701,6 +702,15 @@ export function parseJsonLdPayload(
     }
     if (!withinWindow(start, end, window)) continue;
     const url = text(node.url) || text(node["@id"]);
+    // Multi-night runs emit one node per date but reuse the same event URL.
+    // Keying purely on the URL would collapse every night into the first, so
+    // repeat occurrences get a start-time suffix. First occurrences keep the
+    // bare URL so single-event pages reconcile exactly as before.
+    let sourceEventId = url || `fallback:${start.toISOString()}:${title}`;
+    if (usedSourceEventIds.has(sourceEventId)) {
+      sourceEventId = `${sourceEventId}#${start.toISOString()}`;
+    }
+    usedSourceEventIds.add(sourceEventId);
     events.push({
       title,
       description: stripHtml(node.description),
@@ -714,7 +724,7 @@ export function parseJsonLdPayload(
       sourceId: source.id,
       // Prefer the publisher's own identifier so reruns reconcile instead of
       // creating duplicates; fall back to start plus title only when absent.
-      sourceEventId: url || `fallback:${start.toISOString()}:${title}`,
+      sourceEventId,
       sourceUrl: url || source.publicUrl || source.url,
       imageUrl: jsonLdImage(node.image),
     });
@@ -726,6 +736,43 @@ export function parseJsonLdPayload(
     // A page with no JSON-LD at all is a layout change, not an empty calendar.
     layoutValid: blocks.length > 0,
   };
+}
+
+const DEFAULT_MAX_DETAIL_PAGES = 30;
+const DETAIL_CRAWL_DELAY_MS = 250;
+const DETAIL_CRAWL_RETRY_MS = 1_000;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Index pages (e.g. a venue's /events listing) only link out to detail pages;
+ * the JSON-LD lives on each detail page. Links are constrained to the source's
+ * allowed hosts so a poisoned index cannot steer the crawler off-site.
+ */
+export function extractDetailLinks(
+  html: string,
+  indexUrl: string,
+  source: EventSourcePolicy
+): string[] {
+  const pattern = new RegExp(source.detailLinkPattern ?? "$.", "i");
+  const allowed = new Set(source.allowedHosts.map((host) => host.toLowerCase()));
+  const links = new Set<string>();
+  for (const match of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+    let url: URL;
+    try {
+      url = new URL(match[1], indexUrl);
+    } catch {
+      continue;
+    }
+    if (url.protocol !== "https:") continue;
+    if (!allowed.has(url.hostname.toLowerCase())) continue;
+    if (!pattern.test(url.pathname)) continue;
+    url.hash = "";
+    links.add(url.toString());
+  }
+  return [...links];
 }
 
 
@@ -865,6 +912,67 @@ export async function fetchSourceEvents(input: {
       parseJsonLdPayload(source, response.text, window),
       response.bytes,
       response.finalUrl
+    );
+  }
+
+  if (source.type === "jsonld-index") {
+    const index = await fetchOne(source, source.url, fetchImpl, deadlineAt);
+    const links = extractDetailLinks(index.text, index.finalUrl, source);
+    const cap = source.maxDetailPages ?? DEFAULT_MAX_DETAIL_PAGES;
+    const all: SourceObservation[] = [];
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let bytes = index.bytes;
+    const layoutValid =
+      (source.expectedLayoutMarker
+        ? index.text.includes(source.expectedLayoutMarker)
+        : true) && links.length > 0;
+    let fetched = 0;
+    for (const link of links.slice(0, cap)) {
+      try {
+        // Detail crawls fan out tens of requests at one host; unpaced bursts
+        // trip rate limiters (SOPAC starts resetting connections around page
+        // 20). A short pause plus one retry keeps the crawl polite without a
+        // scheduler — the shared deadline still bounds the whole loop.
+        if (fetched > 0) await sleep(DETAIL_CRAWL_DELAY_MS);
+        let detail;
+        try {
+          detail = await fetchOne(source, link, fetchImpl, deadlineAt);
+        } catch {
+          await sleep(DETAIL_CRAWL_RETRY_MS);
+          detail = await fetchOne(source, link, fetchImpl, deadlineAt);
+        }
+        bytes += detail.bytes;
+        fetched += 1;
+        const parsed = parseJsonLdPayload(source, detail.text, window);
+        all.push(...parsed.events);
+        errors.push(...parsed.errors);
+        warnings.push(...(parsed.warnings ?? []));
+        if (!parsed.layoutValid) {
+          warnings.push(`${link}: no JSON-LD event found on detail page`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/deadline/i.test(message)) {
+          warnings.push(
+            `Detail crawl truncated at ${fetched}/${links.length} pages: ${message}`
+          );
+          break;
+        }
+        errors.push(`${link}: ${message}`);
+      }
+    }
+    if (links.length > cap) {
+      warnings.push(`Detail crawl capped at ${cap} of ${links.length} linked pages`);
+    }
+    if (links.length === 0) {
+      errors.push("Index page linked to no detail pages matching the pattern");
+    }
+    return finalize(
+      source,
+      { events: all, errors, warnings, layoutValid },
+      bytes,
+      index.finalUrl
     );
   }
 

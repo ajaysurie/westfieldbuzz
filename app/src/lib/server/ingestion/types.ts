@@ -8,6 +8,7 @@ export interface EventSourcePolicy {
     | "ical"
     | "civicplus-ical"
     | "jsonld"
+    | "jsonld-index"
     | "llm-extract"
     | "llm-search"
     | "squarespace-json"
@@ -21,12 +22,21 @@ export interface EventSourcePolicy {
   timezone: string;
   autoApprove: boolean;
   missingGraceRuns: number;
-  group: "core-libraries" | "core-town-school" | "nearby-venues";
+  group: "core-libraries" | "core-town-school" | "nearby-venues" | "venue-search";
   allowedHosts: string[];
   expectedContentTypes: string[];
   timeoutMs: number;
   maxResponseBytes: number;
   expectedLayoutMarker?: string;
+  /** jsonld-index: regex matched against link pathnames on the index page; each
+   * matching page is fetched for JSON-LD events. */
+  detailLinkPattern?: string;
+  /** jsonld-index: upper bound on detail pages fetched per run. */
+  maxDetailPages?: number;
+  /** llm-search: replaces the default town-wide search angles with these
+   * queries — use for a single venue that web search covers better than its
+   * own site does (protected calendars, client-rendered ticketing). */
+  searchQueries?: string[];
   minimumExpectedEvents?: number;
   anomalyFloorRatio?: number;
   freshnessThresholdHours: number;

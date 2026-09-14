@@ -6,6 +6,7 @@ import {
   fetchSourceEvents,
   humanVenue,
   parseICalPayload,
+  parseJsonLdPayload,
   parseMecHtml,
   parseSquarespacePayload,
   parseTribePayload,
@@ -276,5 +277,178 @@ describe("approved source adapters", () => {
     });
     expect(result.complete).toBe(false);
     expect(result.errors).toContain("Expected source layout marker was missing");
+  });
+});
+
+describe("jsonld-index adapter", () => {
+  const policy = () => source("sopac-jsonld-index");
+
+  function detailPage(name: string, start: string): string {
+    return `<html><head><script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Event",
+      name,
+      startDate: start,
+      url: `https://www.sopacnow.org/events/${name.toLowerCase().replace(/\s+/g, "-")}/`,
+      location: { "@type": "Place", name: "SOPAC", address: "One SOPAC Way, South Orange, NJ" },
+    })}</script></head><body>detail</body></html>`;
+  }
+
+  function routingFetch(pages: Record<string, string | Response>) {
+    const fetched: string[] = [];
+    const impl = async (url: string | URL | Request) => {
+      const key = String(url);
+      fetched.push(key);
+      const page = pages[key];
+      if (page instanceof Response) return page;
+      if (page === undefined) {
+        return new Response("not found", { status: 404 });
+      }
+      return new Response(page, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    };
+    return { impl: impl as typeof fetch, fetched };
+  }
+
+  it("follows index links to detail pages and parses their JSON-LD events", async () => {
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="https://www.sopacnow.org/events/show-two/">Two</a>
+      <a href="/events/show-one/#tickets">dup</a>
+      <a href="/about/">not an event</a>
+      <a href="https://evil.example.com/events/pwned/">offsite</a>
+    </body></html>`;
+    const { impl, fetched } = routingFetch({
+      "https://www.sopacnow.org/events/": index,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+      "https://www.sopacnow.org/events/show-two/": detailPage("Show Two", "2026-09-27T20:00:00-04:00"),
+    });
+    const result = await fetchSourceEvents({ source: policy(), window, fetchImpl: impl });
+    expect(result.errors).toEqual([]);
+    expect(result.complete).toBe(true);
+    expect(result.events).toHaveLength(2);
+    expect(result.events.map((e) => e.title).sort()).toEqual(["Show One", "Show Two"]);
+    expect(result.events[0]).toMatchObject({
+      town: "South Orange",
+      sourceId: "sopac-jsonld-index",
+      category: "Entertainment",
+    });
+    // The duplicate href and the off-site/non-matching links were never fetched.
+    expect(fetched).toEqual([
+      "https://www.sopacnow.org/events/",
+      "https://www.sopacnow.org/events/show-one/",
+      "https://www.sopacnow.org/events/show-two/",
+    ]);
+  });
+
+  it("marks an index with no matching links incomplete so events are not aged", async () => {
+    const { impl } = routingFetch({
+      "https://www.sopacnow.org/events/": "<html><body>no links</body></html>",
+    });
+    const result = await fetchSourceEvents({ source: policy(), window, fetchImpl: impl });
+    expect(result.complete).toBe(false);
+    expect(result.errors).toContain("Expected source layout marker was missing");
+    expect(result.errors.some((e) => e.includes("no detail pages"))).toBe(true);
+  });
+
+  it("fails closed when the configured layout marker is absent", async () => {
+    const marked = { ...policy(), expectedLayoutMarker: "mc_event_listing" };
+    const { impl } = routingFetch({
+      "https://www.sopacnow.org/events/": `<html><body><a href="/events/show-one/">One</a></body></html>`,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+    });
+    const result = await fetchSourceEvents({ source: marked, window, fetchImpl: impl });
+    expect(result.complete).toBe(false);
+    expect(result.errors).toContain("Expected source layout marker was missing");
+  });
+
+  it("keeps good detail pages when a sibling detail fetch fails", async () => {
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="/events/broken/">Broken</a>
+    </body></html>`;
+    const { impl } = routingFetch({
+      "https://www.sopacnow.org/events/": index,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+      "https://www.sopacnow.org/events/broken/": new Response("oops", { status: 500 }),
+    });
+    const result = await fetchSourceEvents({ source: policy(), window, fetchImpl: impl });
+    expect(result.complete).toBe(false);
+    expect(result.events).toHaveLength(1);
+    expect(result.errors.some((e) => e.includes("/events/broken/"))).toBe(true);
+  });
+
+  it("caps the detail crawl at maxDetailPages with a warning", async () => {
+    const capped = { ...policy(), maxDetailPages: 1 };
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="/events/show-two/">Two</a>
+    </body></html>`;
+    const { impl, fetched } = routingFetch({
+      "https://www.sopacnow.org/events/": index,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+      "https://www.sopacnow.org/events/show-two/": detailPage("Show Two", "2026-09-27T20:00:00-04:00"),
+    });
+    const result = await fetchSourceEvents({ source: capped, window, fetchImpl: impl });
+    expect(result.events).toHaveLength(1);
+    expect(fetched).toHaveLength(2);
+    expect(result.warnings.some((w) => w.includes("capped at 1 of 2"))).toBe(true);
+  });
+
+  it("stops fetching detail pages when the global deadline hits", async () => {
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="/events/show-two/">Two</a>
+    </body></html>`;
+    const fetched: string[] = [];
+    const impl = (async (url: string | URL | Request) => {
+      const key = String(url);
+      fetched.push(key);
+      if (key.endsWith("/events/")) {
+        return new Response(index, { status: 200, headers: { "content-type": "text/html" } });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return new Response(detailPage("Show", "2026-09-20T19:30:00-04:00"), {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as typeof fetch;
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: impl,
+      deadlineAt: new Date(Date.now() + 50),
+    });
+    // The in-flight detail fetch resolves after the deadline, so its body read
+    // aborts and no events are kept; the second detail never starts.
+    expect(result.events).toHaveLength(0);
+    expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true);
+    expect(fetched).toHaveLength(2);
+  });
+
+  it("keeps every night of a multi-date run that reuses one event URL", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Event",
+          name: "SHU",
+          startDate: "2026-10-15T20:00:00-04:00",
+          url: "https://www.sopacnow.org/events/shu/",
+        },
+        {
+          "@type": "Event",
+          name: "SHU",
+          startDate: "2026-10-16T20:00:00-04:00",
+          url: "https://www.sopacnow.org/events/shu/",
+        },
+      ],
+    })}</script>`;
+    const parsed = parseJsonLdPayload(policy(), html, window);
+    expect(parsed.events).toHaveLength(2);
+    expect(parsed.events[0].sourceEventId).toBe("https://www.sopacnow.org/events/shu/");
+    expect(parsed.events[1].sourceEventId).toContain("#2026-10-17T00:00:00.000Z");
   });
 });

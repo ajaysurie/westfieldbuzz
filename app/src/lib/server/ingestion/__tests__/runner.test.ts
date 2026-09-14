@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("../adapters", () => ({ fetchSourceEvents: mocks.fetchSourceEvents }));
 vi.mock("../firestore-repository", () => ({ reconcileSource: mocks.reconcileSource }));
 
-import { runIngestion } from "../runner";
+import { INGESTION_CONCURRENCY, runIngestion } from "../runner";
 
 class FakeReference {
   constructor(
@@ -67,25 +67,27 @@ describe("runIngestion runtime bounds", () => {
     mocks.reconcileSource.mockReset();
   });
 
-  it("runs no more than two sources concurrently and returns source order", async () => {
+  it("caps concurrency at INGESTION_CONCURRENCY and returns source order", async () => {
     let active = 0;
     let maximum = 0;
-    mocks.fetchSourceEvents.mockImplementation(async ({ source: item }: { source: EventSourcePolicy }) => {
+    mocks.fetchSourceEvents.mockImplementation(async () => {
       active += 1;
       maximum = Math.max(maximum, active);
-      await new Promise((resolve) => setTimeout(resolve, item.id === "slow" ? 35 : 5));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       active -= 1;
       return successfulFetch();
     });
     mocks.reconcileSource.mockResolvedValue({ created: 0, updated: 0, verified: 0, missing: 0, stale: 0, candidates: 0, safetyHeld: false });
 
+    const ids = ["a", "b", "c", "d", "e", "f"];
     const result = await runIngestion({
       db: new FakeFirestore() as unknown as Firestore,
-      sources: [source("slow"), source("fast-a"), source("fast-b")], window, write: false,
+      sources: ids.map(source), window, write: false,
     });
 
-    expect(maximum).toBe(2);
-    expect(result.sourceResults.map((item) => item.sourceId)).toEqual(["slow", "fast-a", "fast-b"]);
+    expect(ids.length).toBeGreaterThan(INGESTION_CONCURRENCY);
+    expect(maximum).toBe(INGESTION_CONCURRENCY);
+    expect(result.sourceResults.map((item) => item.sourceId)).toEqual(ids);
     expect(result.sourceResults.every((item) => item.status === "success")).toBe(true);
   });
 

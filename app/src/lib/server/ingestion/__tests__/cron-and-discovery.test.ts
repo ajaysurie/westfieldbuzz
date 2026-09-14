@@ -49,6 +49,7 @@ describe("source registry and discovery boundary", () => {
       "core-libraries",
       "core-town-school",
       "nearby-venues",
+      "venue-search",
     ]);
     // Structural invariants instead of a magic count, which broke on every
     // legitimate addition without protecting anything.
