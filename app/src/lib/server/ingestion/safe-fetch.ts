@@ -112,6 +112,9 @@ export async function safeFetchText(input: {
   >;
   fetchImpl?: FetchImplementation;
   maxRedirects?: number;
+  /** Extra request headers, merged over the defaults (e.g. session cookies for
+   * authenticated source endpoints). */
+  headers?: Record<string, string>;
   /** A job-wide upper bound shared by redirects and response body reads. */
   deadlineAt?: Date;
 }): Promise<SafeFetchResponse> {
@@ -150,6 +153,7 @@ export async function safeFetchText(input: {
         headers: {
           Accept: input.policy.expectedContentTypes.join(", "),
           "User-Agent": "WestfieldBuzz/1.0 (+https://westfieldbuzz.com)",
+          ...input.headers,
         },
       });
 

@@ -582,7 +582,9 @@ describe("instagram-profile adapter", () => {
 
   it("reads post captions through the browse session and extracts cited events", async () => {
     const key = process.env.GEMINI_API_KEY;
+    const sid = process.env.INSTAGRAM_COOKIE;
     process.env.GEMINI_API_KEY = "test-key";
+    delete process.env.INSTAGRAM_COOKIE; // force the browse transport
     try {
       const result = await fetchSourceEvents({
         source: policy(),
@@ -616,6 +618,72 @@ describe("instagram-profile adapter", () => {
     } finally {
       if (key === undefined) delete process.env.GEMINI_API_KEY;
       else process.env.GEMINI_API_KEY = key;
+      if (sid === undefined) delete process.env.INSTAGRAM_COOKIE;
+      else process.env.INSTAGRAM_COOKIE = sid;
+    }
+  });
+
+  it("uses the web_profile_info endpoint when INSTAGRAM_COOKIE is set", async () => {
+    const key = process.env.GEMINI_API_KEY;
+    const sid = process.env.INSTAGRAM_COOKIE;
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.INSTAGRAM_COOKIE = "test-session";
+    const profileJson = JSON.stringify({
+      data: {
+        user: {
+          id: "1",
+          edge_owner_to_timeline_media: {
+            edges: [
+              {
+                node: {
+                  shortcode: "AAA111",
+                  taken_at_timestamp: 1789200000,
+                  edge_media_to_caption: {
+                    edges: [
+                      { node: { text: "LIVE MUSIC Friday 9/18 — The Barn Dogs, 9pm" } },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    try {
+      const result = await fetchSourceEvents({
+        source: policy(),
+        window,
+        fetchImpl: async (url) => {
+          const u = String(url);
+          if (u.includes("web_profile_info")) {
+            return new Response(profileJson, {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          return llmResponse([
+            {
+              title: "The Barn Dogs live",
+              startIso: "2026-09-18T21:00:00-04:00",
+              locationText: "Stage House Tavern, Scotch Plains",
+              eventUrl: "https://www.instagram.com/p/AAA111/",
+              cancelled: false,
+            },
+          ]);
+        },
+      });
+      expect(result.errors).toEqual([]);
+      expect(result.complete).toBe(true);
+      expect(result.events).toHaveLength(1);
+      expect(result.events[0].sourceUrl).toBe(
+        "https://www.instagram.com/p/AAA111/"
+      );
+    } finally {
+      if (key === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = key;
+      if (sid === undefined) delete process.env.INSTAGRAM_COOKIE;
+      else process.env.INSTAGRAM_COOKIE = sid;
     }
   });
 

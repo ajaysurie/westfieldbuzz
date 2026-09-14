@@ -321,11 +321,14 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     expectedLayoutMarker: "BUY TICKETS",
     minimumExpectedEvents: 0,
   },
-  // Instagram-only venues. Their event content lives in post captions behind
-  // the login wall, so these run through the local `browse` session — never on
-  // Vercel cron, which is why they sit in the unscheduled local-social group
-  // and are driven by scripts/ingest-events.ts --source <id>. (16 Prospect was
-  // the first source here; it closed permanently in early 2026 and is removed.)
+  // Instagram-only venues. Event content lives in post captions behind the
+  // login wall; INSTAGRAM_COOKIE (the instagram.com cookie header exported
+  // from the operator's browser into env) unlocks the web_profile_info
+  // endpoint over plain HTTP, so these run on the venue-search cron. Without
+  // the env var the adapter falls back to the local `browse` session. Results
+  // are model-extracted, so they land in review like other llm sources.
+  // (16 Prospect was the first source here; it closed permanently in early
+  // 2026 and is removed.)
   {
     ...STANDARD_FETCH,
     id: "stage-house-instagram",
@@ -335,9 +338,9 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     publicUrl: "https://www.instagram.com/stagehousetavern/",
     town: "Scotch Plains",
     autoApprove: false,
-    group: "local-social",
-    allowedHosts: ["instagram.com", "www.instagram.com"],
-    expectedContentTypes: [],
+    group: "venue-search",
+    allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
+    expectedContentTypes: ["application/json"],
     minimumExpectedEvents: 0,
     maxPosts: 12,
   },
@@ -348,9 +351,6 @@ export const SOURCE_GROUPS = [
   "core-town-school",
   "nearby-venues",
   "venue-search",
-  // Session-backed sources that can only run where the browser session lives.
-  // No Vercel cron entry exists for this group on purpose.
-  "local-social",
 ] as const;
 
 export type SourceGroup = (typeof SOURCE_GROUPS)[number];

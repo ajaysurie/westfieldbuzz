@@ -50,9 +50,6 @@ describe("source registry and discovery boundary", () => {
       "core-town-school",
       "nearby-venues",
       "venue-search",
-      // No cron entry exists for this group: session-backed sources run only
-      // on the machine that holds the browser login.
-      "local-social",
     ]);
     // Structural invariants instead of a magic count, which broke on every
     // legitimate addition without protecting anything.

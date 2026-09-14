@@ -28,8 +28,7 @@ export interface EventSourcePolicy {
     | "core-libraries"
     | "core-town-school"
     | "nearby-venues"
-    | "venue-search"
-    | "local-social";
+    | "venue-search";
   allowedHosts: string[];
   expectedContentTypes: string[];
   timeoutMs: number;

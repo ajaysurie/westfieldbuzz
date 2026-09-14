@@ -858,6 +858,81 @@ function parseBrowseJson(stdout: string): unknown {
   return JSON.parse(stdout.slice(start));
 }
 
+/** Reads an Instagram profile's recent posts through the private
+ * web_profile_info JSON endpoint — the same call the site's own web app makes.
+ * With a valid sessionid cookie it returns captions + dates + shortcodes for
+ * the latest ~12 posts, so it runs anywhere including Vercel cron. The cookie
+ * comes from INSTAGRAM_SESSIONID, set from the operator's logged-in browser. */
+async function fetchInstagramViaApi(
+  source: EventSourcePolicy,
+  cookieHeader: string,
+  fetchImpl: FetchImplementation | undefined,
+  deadlineAt?: Date
+): Promise<{ text: string; errors: string[]; warnings: string[]; bytes: number }> {
+  const handle = source.url.match(/instagram\.com\/([^/?#]+)/)?.[1];
+  if (!handle) {
+    return {
+      text: "",
+      errors: [`Cannot derive Instagram handle from ${source.url}`],
+      warnings: [],
+      bytes: 0,
+    };
+  }
+  const response = await safeFetchText({
+    url: `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(handle)}`,
+    policy: { ...source, expectedContentTypes: ["application/json"] },
+    fetchImpl,
+    deadlineAt,
+    headers: {
+      "X-IG-App-ID": "936619743392459",
+      Cookie: cookieHeader,
+      Referer: `https://www.instagram.com/${handle}/`,
+      "X-Requested-With": "XMLHttpRequest",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    },
+  });
+  const payload = record(parseJson(response.text));
+  if (payload.require_login === true) {
+    return {
+      text: "",
+      errors: ["Instagram rejected the session: require_login — re-export INSTAGRAM_COOKIE"],
+      warnings: [],
+      bytes: response.bytes,
+    };
+  }
+  const user = record(record(payload.data).user);
+  const edges = array(record(user.edge_owner_to_timeline_media).edges);
+  if (!user.id && edges.length === 0) {
+    return {
+      text: "",
+      errors: [`Instagram returned no profile for @${handle} — session may be expired`],
+      warnings: [],
+      bytes: response.bytes,
+    };
+  }
+  const cap = source.maxPosts ?? DEFAULT_MAX_IG_POSTS;
+  const blocks: string[] = [];
+  const warnings: string[] = [];
+  for (const edge of edges.slice(0, cap)) {
+    const node = record(record(edge).node);
+    const captionEdges = array(record(node.edge_media_to_caption).edges);
+    const caption = text(record(record(captionEdges[0]).node).text);
+    const shortcode = text(node.shortcode);
+    if (!caption || !shortcode) {
+      if (shortcode) warnings.push(`Post ${shortcode}: no caption`);
+      continue;
+    }
+    const posted = Number(node.taken_at_timestamp);
+    blocks.push(
+      `POST https://www.instagram.com/p/${shortcode}/ — posted ${
+        Number.isFinite(posted) ? new Date(posted * 1000).toISOString() : "unknown"
+      }\n${caption}`
+    );
+  }
+  return { text: blocks.join("\n\n"), errors: [], warnings, bytes: response.bytes };
+}
+
 /** Reads an Instagram profile's recent post captions through the browse
  * session. Returns one text block per post — "POST <url> — posted <iso>"
  * followed by the caption — which the LLM extractor treats as page text. */
@@ -1101,10 +1176,21 @@ export async function fetchSourceEvents(input: {
   }
 
   if (source.type === "instagram-profile") {
-    const exec = execImpl ?? defaultBrowseExec(BROWSE_BIN);
+    // Two transports for the same payload. INSTAGRAM_COOKIE (the full
+    // instagram.com cookie header exported from the operator's browser into
+    // env) unlocks the private web_profile_info endpoint — that path works on
+    // Vercel. Without it we fall back to the local `browse` session, which
+    // only exists on the machine where the cookie import ran.
+    const cookieHeader = process.env.INSTAGRAM_COOKIE;
     let page;
     try {
-      page = await fetchInstagramProfileText(source, exec, deadlineAt);
+      page = cookieHeader
+        ? await fetchInstagramViaApi(source, cookieHeader, fetchImpl, deadlineAt)
+        : await fetchInstagramProfileText(
+            source,
+            execImpl ?? defaultBrowseExec(BROWSE_BIN),
+            deadlineAt
+          );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return finalize(

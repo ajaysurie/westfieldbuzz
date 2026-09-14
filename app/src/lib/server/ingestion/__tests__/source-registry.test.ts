@@ -27,12 +27,12 @@ describe("event source registry", () => {
     });
   });
 
-  it("keeps session-backed Instagram sources local-only and reviewed", () => {
+  it("keeps session-backed Instagram sources reviewed and host-pinned", () => {
     expect(sourceById("stage-house-instagram")).toMatchObject({
       type: "instagram-profile",
       autoApprove: false,
-      group: "local-social",
-      allowedHosts: ["instagram.com", "www.instagram.com"],
+      group: "venue-search",
+      allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
     });
   });
 });
