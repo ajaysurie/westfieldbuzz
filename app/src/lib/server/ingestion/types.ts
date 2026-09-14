@@ -12,6 +12,7 @@ export interface EventSourcePolicy {
     | "eventbrite-organizer"
     | "llm-extract"
     | "llm-search"
+    | "instagram-profile"
     | "squarespace-json"
     | "wordpress-mec-html"
     | "wordpress-tribe-json";
@@ -23,7 +24,12 @@ export interface EventSourcePolicy {
   timezone: string;
   autoApprove: boolean;
   missingGraceRuns: number;
-  group: "core-libraries" | "core-town-school" | "nearby-venues" | "venue-search";
+  group:
+    | "core-libraries"
+    | "core-town-school"
+    | "nearby-venues"
+    | "venue-search"
+    | "local-social";
   allowedHosts: string[];
   expectedContentTypes: string[];
   timeoutMs: number;
@@ -38,6 +44,8 @@ export interface EventSourcePolicy {
    * queries — use for a single venue that web search covers better than its
    * own site does (protected calendars, client-rendered ticketing). */
   searchQueries?: string[];
+  /** instagram-profile: upper bound on recent posts read per run. */
+  maxPosts?: number;
   minimumExpectedEvents?: number;
   anomalyFloorRatio?: number;
   freshnessThresholdHours: number;

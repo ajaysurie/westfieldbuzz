@@ -321,22 +321,25 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     expectedLayoutMarker: "BUY TICKETS",
     minimumExpectedEvents: 0,
   },
+  // Instagram-only venues. Their event content lives in post captions behind
+  // the login wall, so these run through the local `browse` session — never on
+  // Vercel cron, which is why they sit in the unscheduled local-social group
+  // and are driven by scripts/ingest-events.ts --source <id>. (16 Prospect was
+  // the first source here; it closed permanently in early 2026 and is removed.)
   {
     ...STANDARD_FETCH,
-    id: "16-prospect-llm-search",
-    name: "16 Prospect Wine Bar",
-    type: "llm-search",
-    url: "https://www.16prospect.com/",
-    publicUrl: "https://www.16prospect.com/",
-    town: "Westfield",
+    id: "stage-house-instagram",
+    name: "Stage House Tavern",
+    type: "instagram-profile",
+    url: "https://www.instagram.com/stagehousetavern/",
+    publicUrl: "https://www.instagram.com/stagehousetavern/",
+    town: "Scotch Plains",
     autoApprove: false,
-    group: "venue-search",
-    allowedHosts: [],
+    group: "local-social",
+    allowedHosts: ["instagram.com", "www.instagram.com"],
     expectedContentTypes: [],
     minimumExpectedEvents: 0,
-    searchQueries: [
-      "upcoming live music and events at 16 Prospect Wine Bar in Westfield NJ",
-    ],
+    maxPosts: 12,
   },
 ];
 
@@ -345,6 +348,9 @@ export const SOURCE_GROUPS = [
   "core-town-school",
   "nearby-venues",
   "venue-search",
+  // Session-backed sources that can only run where the browser session lives.
+  // No Vercel cron entry exists for this group on purpose.
+  "local-social",
 ] as const;
 
 export type SourceGroup = (typeof SOURCE_GROUPS)[number];

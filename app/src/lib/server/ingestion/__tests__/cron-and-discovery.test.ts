@@ -50,6 +50,9 @@ describe("source registry and discovery boundary", () => {
       "core-town-school",
       "nearby-venues",
       "venue-search",
+      // No cron entry exists for this group: session-backed sources run only
+      // on the machine that holds the browser login.
+      "local-social",
     ]);
     // Structural invariants instead of a magic count, which broke on every
     // legitimate addition without protecting anything.
@@ -61,14 +64,16 @@ describe("source registry and discovery boundary", () => {
       .filter((source) => source.type !== "llm-search")
       .every((source) => source.allowedHosts.length > 0)).toBe(true);
     // Model-backed sources always start untrusted; publishing requires the
-    // operator toggle in config/sources.
+    // operator toggle in config/sources. instagram-profile feeds LLM
+    // extraction, so it is model-backed too.
+    const MODEL_BACKED = new Set(["llm-extract", "llm-search", "instagram-profile"]);
     expect(EVENT_SOURCES
-      .filter((source) => source.type === "llm-extract" || source.type === "llm-search")
+      .filter((source) => MODEL_BACKED.has(source.type))
       .every((source) => source.autoApprove === false)).toBe(true);
     // First-party calendars publish directly; only discovery sources remain in
     // the manual-review path.
     expect(EVENT_SOURCES
-      .filter((source) => source.type !== "llm-extract" && source.type !== "llm-search")
+      .filter((source) => !MODEL_BACKED.has(source.type))
       .every((source) => source.autoApprove)).toBe(true);
   });
 

@@ -26,4 +26,13 @@ describe("event source registry", () => {
       autoApprove: false,
     });
   });
+
+  it("keeps session-backed Instagram sources local-only and reviewed", () => {
+    expect(sourceById("stage-house-instagram")).toMatchObject({
+      type: "instagram-profile",
+      autoApprove: false,
+      group: "local-social",
+      allowedHosts: ["instagram.com", "www.instagram.com"],
+    });
+  });
 });

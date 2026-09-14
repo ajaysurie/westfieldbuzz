@@ -533,3 +533,115 @@ describe("eventbrite-organizer adapter", () => {
     expect(broken.errors).toContain("Expected source layout marker was missing");
   });
 });
+
+describe("instagram-profile adapter", () => {
+  const policy = () => source("stage-house-instagram");
+
+  const POSTS = [
+    "https://www.instagram.com/stagehousetavern/p/AAA111/",
+    "https://www.instagram.com/stagehousetavern/p/BBB222/",
+  ];
+  const CAPTIONS: Record<string, { caption: string; posted: string }> = {
+    [POSTS[0]]: {
+      posted: "2026-09-10T14:00:00.000Z",
+      caption: "LIVE MUSIC this Friday 9/18 — The Barn Dogs, 9pm. No cover!",
+    },
+    [POSTS[1]]: {
+      posted: "2026-09-11T14:00:00.000Z",
+      caption: "New brunch menu drops Sunday 🍳",
+    },
+  };
+
+  function execImpl() {
+    let current = "";
+    return async (args: string[]): Promise<string> => {
+      if (args[0] === "goto") {
+        current = args[1];
+        return "";
+      }
+      if (args[0] === "js" && args[1].includes("querySelectorAll")) {
+        return JSON.stringify(POSTS);
+      }
+      if (args[0] === "js") {
+        return JSON.stringify(CAPTIONS[current] ?? { caption: "", posted: "" });
+      }
+      throw new Error(`unexpected browse args: ${args.join(" ")}`);
+    };
+  }
+
+  function llmResponse(events: unknown[]) {
+    return new Response(
+      JSON.stringify({
+        candidates: [
+          { content: { parts: [{ text: JSON.stringify({ events }) }] } },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  }
+
+  it("reads post captions through the browse session and extracts cited events", async () => {
+    const key = process.env.GEMINI_API_KEY;
+    process.env.GEMINI_API_KEY = "test-key";
+    try {
+      const result = await fetchSourceEvents({
+        source: policy(),
+        window,
+        execImpl: execImpl(),
+        fetchImpl: async () =>
+          llmResponse([
+            {
+              title: "The Barn Dogs live",
+              description: "Live music, no cover",
+              startIso: "2026-09-18T21:00:00-04:00",
+              locationText: "Stage House Tavern, Scotch Plains",
+              eventUrl: POSTS[0],
+              cancelled: false,
+            },
+          ]),
+      });
+      expect(result.errors).toEqual([]);
+      expect(result.complete).toBe(true);
+      expect(result.events).toHaveLength(1);
+      expect(result.events[0]).toMatchObject({
+        title: "The Barn Dogs live",
+        town: "Scotch Plains",
+        sourceUrl: POSTS[0],
+      });
+      // Stable key = post URL + event date + title slug, so two events from
+      // one post do not collapse.
+      expect(result.events[0].sourceEventId).toBe(
+        `${POSTS[0]}#2026-09-19-the-barn-dogs-live`
+      );
+    } finally {
+      if (key === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = key;
+    }
+  });
+
+  it("fails closed when the session cannot read the profile", async () => {
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      execImpl: async () => {
+        throw new Error("browse binary not found");
+      },
+    });
+    expect(result.complete).toBe(false);
+    expect(result.events).toEqual([]);
+    expect(result.errors.join(" ")).toContain("Instagram session fetch failed");
+  });
+
+  it("fails closed when the profile renders no post links", async () => {
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      execImpl: async (args) =>
+        args[0] === "js" && args[1].includes("querySelectorAll")
+          ? "[]"
+          : "",
+    });
+    expect(result.complete).toBe(false);
+    expect(result.errors.join(" ")).toContain("no post links");
+  }, 15_000);
+});

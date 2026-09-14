@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { expandRecurringEvent, sync as icalSync, type VEvent } from "node-ical";
 import { normalizeWhitespace } from "../../events/normalize";
 import { parseSourceDateTime } from "./time";
@@ -825,6 +827,99 @@ export function parseEventbriteOrganizerPayload(
 const DEFAULT_MAX_DETAIL_PAGES = 30;
 const DETAIL_CRAWL_DELAY_MS = 250;
 const DETAIL_CRAWL_RETRY_MS = 1_000;
+const DEFAULT_MAX_IG_POSTS = 12;
+const IG_POST_DELAY_MS = 400;
+const IG_GRID_SETTLE_MS = 1_500;
+const BROWSE_BIN =
+  process.env.WESTFIELDBUZZ_BROWSE_BIN ??
+  `${process.env.HOME}/.agents/skills/browse/dist/browse`;
+
+const execFileAsync = promisify(execFile);
+
+/** Runs the local `browse` CLI against the persistent browser session. The
+ * session carries the operator's logged-in Instagram cookies, so this only
+ * exists on a machine where that import was performed — on Vercel there is no
+ * session and the source fails fast instead of hitting the login wall. */
+export type BrowseExec = (args: string[]) => Promise<string>;
+
+function defaultBrowseExec(bin: string): BrowseExec {
+  return async (args) => {
+    const { stdout } = await execFileAsync(bin, args, {
+      timeout: 45_000,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    return stdout;
+  };
+}
+
+function parseBrowseJson(stdout: string): unknown {
+  const start = stdout.search(/[[{]/);
+  if (start === -1) throw new Error("browse returned no JSON");
+  return JSON.parse(stdout.slice(start));
+}
+
+/** Reads an Instagram profile's recent post captions through the browse
+ * session. Returns one text block per post — "POST <url> — posted <iso>"
+ * followed by the caption — which the LLM extractor treats as page text. */
+async function fetchInstagramProfileText(
+  source: EventSourcePolicy,
+  exec: BrowseExec,
+  deadlineAt?: Date
+): Promise<{ text: string; errors: string[]; warnings: string[]; bytes: number }> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  await exec(["goto", source.url]);
+  const linksExpr =
+    "Array.from(document.querySelectorAll('a[href*=\"/p/\"],a[href*=\"/reel/\"]'))" +
+    ".map(a=>a.href).filter(h=>/instagram\\.com\\/[^/]+\\/(p|reel)\\//.test(h))";
+  // The post grid lazy-renders after navigation; give it a beat, scroll to
+  // trigger it, then retry once before declaring the session logged out.
+  let links: string[] = [];
+  for (let attempt = 0; attempt < 2 && links.length === 0; attempt++) {
+    await sleep(IG_GRID_SETTLE_MS);
+    await exec(["js", "window.scrollTo(0, 1500); 'scrolled'"]);
+    await sleep(IG_GRID_SETTLE_MS);
+    const linksRaw = parseBrowseJson(await exec(["js", linksExpr]));
+    links = [...new Set(array(linksRaw).map((l) => text(l)).filter(Boolean))];
+  }
+  const cap = source.maxPosts ?? DEFAULT_MAX_IG_POSTS;
+  const blocks: string[] = [];
+  let bytes = 0;
+  let fetched = 0;
+  for (const link of links.slice(0, cap)) {
+    if (deadlineAt && new Date() >= deadlineAt) {
+      warnings.push(`Post crawl stopped at ${fetched}/${links.length} posts: deadline reached`);
+      break;
+    }
+    try {
+      if (fetched > 0) await sleep(IG_POST_DELAY_MS);
+      await exec(["goto", link]);
+      const post = record(
+        parseBrowseJson(
+          await exec([
+            "js",
+            "({caption:(document.querySelector('meta[property=\"og:description\"]')||{}).content||''," +
+              "posted:(document.querySelector('time')||{}).dateTime||''})",
+          ])
+        )
+      );
+      fetched += 1;
+      const caption = text(post.caption);
+      if (!caption) {
+        warnings.push(`${link}: no caption found on post page`);
+        continue;
+      }
+      bytes += caption.length;
+      blocks.push(`POST ${link} — posted ${text(post.posted) || "unknown"}\n${caption}`);
+    } catch (error) {
+      errors.push(`${link}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  if (links.length === 0) {
+    errors.push("Profile rendered no post links — session may be logged out");
+  }
+  return { text: blocks.join("\n\n"), errors, warnings, bytes };
+}
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -872,9 +967,10 @@ export async function fetchSourceEvents(input: {
   source: EventSourcePolicy;
   window: DateWindow;
   fetchImpl?: FetchImplementation;
+  execImpl?: BrowseExec;
   deadlineAt?: Date;
 }): Promise<SourceFetchResult> {
-  const { source, window, fetchImpl, deadlineAt } = input;
+  const { source, window, fetchImpl, execImpl, deadlineAt } = input;
   if (source.type === "libcal") {
     const all: SourceObservation[] = [];
     const errors: string[] = [];
@@ -1001,6 +1097,56 @@ export async function fetchSourceEvents(input: {
       },
       response.bytes,
       response.finalUrl
+    );
+  }
+
+  if (source.type === "instagram-profile") {
+    const exec = execImpl ?? defaultBrowseExec(BROWSE_BIN);
+    let page;
+    try {
+      page = await fetchInstagramProfileText(source, exec, deadlineAt);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return finalize(
+        source,
+        {
+          events: [],
+          errors: [`Instagram session fetch failed: ${message}`],
+          warnings: [],
+          layoutValid: false,
+        },
+        0,
+        source.url
+      );
+    }
+    const extraction = await extractEventsWithLlm({
+      source,
+      pageText: page.text,
+      window,
+      fetchImpl,
+    });
+    // Every extracted event must cite the post URL it came from (enforced in
+    // the extractor). Multiple events can share a post, so the stable key
+    // appends the event date and title to the post URL.
+    for (const event of extraction.events) {
+      event.sourceEventId = `${event.sourceEventId}#${event.date
+        .toISOString()
+        .slice(0, 10)}-${event.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 40)}`;
+    }
+    return finalize(
+      source,
+      {
+        events: extraction.events,
+        errors: [...page.errors, ...extraction.errors],
+        warnings: [...page.warnings, ...extraction.warnings],
+        // No posts means a logged-out or layout-changed session — fail closed.
+        layoutValid: page.text.length > 0,
+      },
+      page.bytes,
+      source.url
     );
   }
 
