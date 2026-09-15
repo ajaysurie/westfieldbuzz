@@ -47,6 +47,9 @@ export interface DigestRepository {
     nextCursor: string | null;
   }>;
   getPreferences(userId: string): Promise<DigestPreferences | null>;
+  /** Event ids the subscriber saved on the site. Powers the "From your saved
+   *  list" block. Optional so test fakes and non-Firestore repos can omit it. */
+  getSavedEventIds?(userId: string): Promise<string[]>;
   claimDelivery(input: {
     editionId: string;
     subscriberId: string;
@@ -344,6 +347,11 @@ export function createFirestoreDigestRepository(db: Firestore): DigestRepository
       return snapshot.exists ? preferencesFromDocument(snapshot.data() ?? {}) : null;
     },
 
+    async getSavedEventIds(userId) {
+      const snapshot = await db.collection("users").doc(userId).collection("savedEvents").get();
+      return snapshot.docs.map((document) => document.id);
+    },
+
     async claimDelivery({ editionId, subscriberId, selection, now }) {
       const deliveryId = deliveryDocumentId(editionId, subscriberId);
       const deliveryKey = `friday-digest/${editionId}/${subscriberId}`;
@@ -511,6 +519,7 @@ function statusLabel(event: DigestEventSnapshot): string | undefined {
 export function emailProps(input: {
   edition: DigestEdition;
   eventIds: string[];
+  savedEventIds?: string[];
   personalized: boolean;
   unsubscribePageUrl: string;
   oneClickUnsubscribeUrl: string;
@@ -525,6 +534,19 @@ export function emailProps(input: {
     hour: "numeric",
     minute: "2-digit",
   });
+  const toItem = (id: string) => {
+    const event = byId.get(id);
+    if (!event) return [];
+    return [{
+      id: event.id,
+      title: event.title,
+      when: formatter.format(new Date(event.date)),
+      location: event.location,
+      town: event.town,
+      url: event.sourceUrl,
+      statusLabel: statusLabel(event),
+    }];
+  };
   const props: DigestEmailProps = {
     issueLabel: input.edition.issueLabel,
     intro: input.edition.intro,
@@ -532,19 +554,11 @@ export function emailProps(input: {
     calendarUrl: new URL("/events", input.siteOrigin).toString(),
     unsubscribePageUrl: input.unsubscribePageUrl,
     oneClickUnsubscribeUrl: input.oneClickUnsubscribeUrl,
-    events: input.eventIds.flatMap((id) => {
-      const event = byId.get(id);
-      if (!event) return [];
-      return [{
-        id: event.id,
-        title: event.title,
-        when: formatter.format(new Date(event.date)),
-        location: event.location,
-        town: event.town,
-        url: event.sourceUrl,
-        statusLabel: statusLabel(event),
-      }];
-    }),
+    events: input.eventIds.flatMap(toItem),
+    savedEvents: (input.savedEventIds ?? [])
+      .filter((id) => !input.eventIds.includes(id))
+      .flatMap(toItem)
+      .slice(0, 5),
   };
   return props;
 }
@@ -629,6 +643,9 @@ export async function runFridayDigest(input: {
       const preferences = subscriber.personalize && subscriber.userId
         ? await input.repository.getPreferences(subscriber.userId)
         : null;
+      const savedEventIds = subscriber.userId
+        ? await input.repository.getSavedEventIds?.(subscriber.userId) ?? []
+        : [];
       const selection = selectDigestEvents(edition, preferences, subscriber.personalize);
       if (selection.personalized) summary.personalized += 1;
       else summary.generic += 1;
@@ -680,6 +697,7 @@ export async function runFridayDigest(input: {
           props: emailProps({
             edition,
             eventIds: claim.eventIds,
+            savedEventIds,
             personalized: claim.personalized,
             unsubscribePageUrl: unsubscribePageUrl.toString(),
             oneClickUnsubscribeUrl: oneClickUnsubscribeUrl.toString(),

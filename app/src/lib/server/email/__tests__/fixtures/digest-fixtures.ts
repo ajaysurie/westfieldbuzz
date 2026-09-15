@@ -113,6 +113,12 @@ export class MemoryDigestRepository implements DigestRepository {
     return this.preferences.get(userId) ?? null;
   }
 
+  savedEventIds = new Map<string, string[]>();
+
+  async getSavedEventIds(userId: string): Promise<string[]> {
+    return this.savedEventIds.get(userId) ?? [];
+  }
+
   async claimDelivery(input: {
     editionId: string;
     subscriberId: string;

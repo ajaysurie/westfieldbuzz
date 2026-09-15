@@ -2,26 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Timestamp } from "firebase/firestore";
 import type { Event } from "@/lib/firestore";
-import { EVENT_CATEGORY_COLORS as CATEGORY_COLORS } from "@/lib/event-categories";
+import { EVENT_CATEGORY_COLORS as CATEGORY_COLORS, eventCategoryImage } from "@/lib/event-categories";
 import EventStatusBadge from "@/components/EventStatusBadge";
-
-const CATEGORY_IMAGES: Record<string, string> = {
-  "Sports & Recreation": "/event-cats/sports.png",
-  Sports: "/event-cats/sports.png",
-  "Food & Drink": "/event-cats/food.png",
-  "Family & Kids": "/event-cats/family.png",
-  Family: "/event-cats/family.png",
-  "Arts & Culture": "/event-cats/arts.png",
-  Arts: "/event-cats/arts.png",
-  Music: "/event-cats/music.png",
-  Community: "/event-cats/community.png",
-  "Health & Wellness": "/event-cats/health.png",
-  Health: "/event-cats/health.png",
-  Entertainment: "/event-cats/entertainment.png",
-  History: "/event-cats/history.png",
-  Markets: "/event-cats/market.png",
-  Market: "/event-cats/market.png",
-};
 
 function toDate(timestamp: Timestamp | null | undefined): Date | null {
   if (!timestamp) return null;
@@ -70,13 +52,15 @@ interface EventCardProps {
   event: Event;
   dark?: boolean;
   showInterested?: boolean;
+  recurrenceLabel?: string;
+  saved?: boolean;
 }
 
-export default function EventCard({ event, dark = false }: EventCardProps) {
+export default function EventCard({ event, dark = false, recurrenceLabel, saved = false }: EventCardProps) {
   const startTime = formatEventTime(event.date);
   const endTime = formatEventTime(event.endDate);
   const timeRange = endTime ? `${startTime}\u2013${endTime}` : startTime;
-  const categoryImage = CATEGORY_IMAGES[event.category] ?? "/event-cats/community.png";
+  const categoryImage = eventCategoryImage(event.category);
   const hasPhoto = typeof event.imageUrl === "string" && /^https?:\/\//i.test(event.imageUrl);
 
   return (
@@ -110,17 +94,22 @@ export default function EventCard({ event, dark = false }: EventCardProps) {
             freshness={event.freshnessStatus}
             compact
           />
-          {event.category && (
-            <span
-              className="event-card__category"
-              style={{
-                background: CATEGORY_COLORS[event.category]?.bg || "#e8eef2",
-                color: CATEGORY_COLORS[event.category]?.text || "#31506b",
-              }}
-            >
-              {event.category}
-            </span>
-          )}
+          <span className="event-card__chips">
+            {event.category && (
+              <span
+                className="event-card__category"
+                style={{
+                  background: CATEGORY_COLORS[event.category]?.bg || "#e8eef2",
+                  color: CATEGORY_COLORS[event.category]?.text || "#31506b",
+                }}
+              >
+                {event.category}
+              </span>
+            )}
+            {recurrenceLabel && (
+              <span className="event-card__recurrence">↻ {recurrenceLabel}</span>
+            )}
+          </span>
         </div>
         <Link href={`/events/${encodeURIComponent(event.id)}`} className="event-card__title">
           {event.title}
@@ -136,7 +125,9 @@ export default function EventCard({ event, dark = false }: EventCardProps) {
         </p>
         {event.description && <p className="event-card__description">{event.description}</p>}
         <div className="event-card__footer">
-          <span>{verifiedLabel(event.lastVerifiedAt)}</span>
+          {saved
+            ? <span className="event-card__saved">★ Saved · on your Friday list</span>
+            : <span>{verifiedLabel(event.lastVerifiedAt)}</span>}
           <Link href={`/events/${encodeURIComponent(event.id)}`}>Event details <span aria-hidden="true">→</span></Link>
         </div>
       </div>

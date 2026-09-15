@@ -1,3 +1,25 @@
+export const EVENT_CATEGORY_IMAGES: Record<string, string> = {
+  "Sports & Recreation": "/event-cats/sports.png",
+  Sports: "/event-cats/sports.png",
+  "Food & Drink": "/event-cats/food.png",
+  "Family & Kids": "/event-cats/family.png",
+  Family: "/event-cats/family.png",
+  "Arts & Culture": "/event-cats/arts.png",
+  Arts: "/event-cats/arts.png",
+  Music: "/event-cats/music.png",
+  Community: "/event-cats/community.png",
+  "Health & Wellness": "/event-cats/health.png",
+  Health: "/event-cats/health.png",
+  Entertainment: "/event-cats/entertainment.png",
+  History: "/event-cats/history.png",
+  Markets: "/event-cats/market.png",
+  Market: "/event-cats/market.png",
+};
+
+export function eventCategoryImage(category: string | undefined): string {
+  return EVENT_CATEGORY_IMAGES[category ?? ""] ?? "/event-cats/community.png";
+}
+
 export const EVENT_CATEGORY_COLORS: Record<string, { bg: string; text: string }> = {
   "Sports & Recreation": { bg: "#dbeafe", text: "#1e40af" },
   "Sports":        { bg: "#dbeafe", text: "#1e40af" },

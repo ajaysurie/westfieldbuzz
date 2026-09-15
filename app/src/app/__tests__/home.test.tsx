@@ -4,6 +4,9 @@ import HomeContent, { type SerializedHomeEvent } from "../HomeContent";
 
 vi.mock("@/components/search/HomeSearch", () => ({ default: () => <div>Search</div> }));
 vi.mock("@/components/FridaySignup", () => ({ FridaySignup: () => <div>Signup</div> }));
+vi.mock("@/components/WeatherBanner", () => ({ default: () => null }));
+vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("@/lib/personalization", () => ({ useSavedEventIds: () => new Set<string>() }));
 
 afterEach(cleanup);
 

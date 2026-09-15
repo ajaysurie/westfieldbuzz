@@ -18,6 +18,8 @@ export interface FridayDigestProps {
   unsubscribePageUrl: string;
   oneClickUnsubscribeUrl: string;
   personalized?: boolean;
+  /** Events the subscriber saved on the site that fall inside this edition. */
+  savedEvents?: DigestEventItem[];
 }
 
 const colors = {
@@ -43,6 +45,7 @@ export function FridayDigest({
   calendarUrl,
   unsubscribePageUrl,
   personalized = false,
+  savedEvents = [],
 }: FridayDigestProps) {
   return (
     <html lang="en">
@@ -72,6 +75,20 @@ export function FridayDigest({
               </p>
             ) : null}
           </header>
+
+          {savedEvents.length > 0 ? (
+            <section style={{ padding: "8px 32px 4px" }}>
+              <p style={{ margin: "0 0 10px", color: colors.gold, fontSize: 12, fontWeight: 700, letterSpacing: 1.4, textTransform: "uppercase" }}>
+                From your saved list
+              </p>
+              {savedEvents.map((event) => (
+                <p key={event.id} style={{ margin: "0 0 8px", fontSize: 14, color: colors.muted }}>
+                  <a href={event.url} style={{ color: colors.ink, fontWeight: 700, textDecoration: "none" }}>{event.title}</a>
+                  {" — "}{event.when}, {event.location}
+                </p>
+              ))}
+            </section>
+          ) : null}
 
           <section style={{ padding: "0 32px" }}>
             {events.map((event) => (
@@ -117,6 +134,12 @@ export function fridayDigestText(props: FridayDigestProps): string {
     "",
     props.intro,
     "",
+    ...(props.savedEvents?.length
+      ? ["FROM YOUR SAVED LIST", ...props.savedEvents.flatMap((event) => [
+          `${event.title} — ${event.when}, ${event.location}`,
+          event.url,
+        ]), ""]
+      : []),
     ...props.events.flatMap((event) => [
       `${event.when}${event.statusLabel ? ` · ${event.statusLabel}` : ""}`,
       event.title,

@@ -32,6 +32,7 @@ export default function Nav() {
 
   const links = [
     { href: "/", label: "This week", active: pathname === "/" },
+    { href: "/weekend", label: "Weekend", active: pathname === "/weekend" },
     { href: "/events", label: "Calendar", active: pathname.startsWith("/events") },
     { href: "/#friday-list", label: "Get the list", active: false },
   ];
