@@ -20,17 +20,17 @@ describe("event source registry", () => {
     });
   });
 
-  it("keeps model-backed sources in the manual-review path", () => {
+  it("auto-approves model-backed sources — the operator opted out of review", () => {
     expect(sourceById("nj-festival-orchestra-llm")).toMatchObject({
       type: "llm-extract",
-      autoApprove: false,
+      autoApprove: true,
     });
   });
 
-  it("keeps session-backed Instagram sources reviewed and host-pinned", () => {
+  it("keeps session-backed Instagram sources host-pinned", () => {
     expect(sourceById("stage-house-instagram")).toMatchObject({
       type: "instagram-profile",
-      autoApprove: false,
+      autoApprove: true,
       group: "venue-search",
       allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
     });

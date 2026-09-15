@@ -44,14 +44,14 @@ describe("loadResolvedSources", () => {
   });
 
   it("applies an autoApprove override without touching the URL", async () => {
-    // A venue with autoApprove flipped on still crawls its code-defined URL;
+    // A venue with autoApprove flipped off still crawls its code-defined URL;
     // trust is data, the target is not.
-    const venue = EVENT_SOURCES.find((source) => !source.autoApprove)!;
+    const venue = EVENT_SOURCES.find((source) => source.autoApprove)!;
     const { sources } = await loadResolvedSources(
-      db({ exists: true, data: () => ({ overrides: { [venue.id]: { autoApprove: true } } }) })
+      db({ exists: true, data: () => ({ overrides: { [venue.id]: { autoApprove: false } } }) })
     );
     const resolved = sources.find((source) => source.id === venue.id)!;
-    expect(resolved.autoApprove).toBe(true);
+    expect(resolved.autoApprove).toBe(false);
     expect(resolved.url).toBe(venue.url);
     expect(resolved.allowedHosts).toEqual(venue.allowedHosts);
   });
