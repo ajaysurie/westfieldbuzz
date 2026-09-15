@@ -173,9 +173,9 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     url: "https://www.njfestivalorchestra.org/concerts",
     publicUrl: "https://www.njfestivalorchestra.org/concerts",
     town: "Westfield",
-    // Model-backed sources stay in the review queue until an operator enables
-    // publishing via config/sources.
-    autoApprove: false,
+    // Model-backed sources publish directly — the operator opted out of the
+    // review queue (Sept 2026).
+    autoApprove: true,
     group: "nearby-venues",
     allowedHosts: ["njfestivalorchestra.org", "www.njfestivalorchestra.org"],
     expectedContentTypes: ["text/html", "application/xhtml+xml"],
@@ -253,7 +253,7 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     url: "https://westfieldbuzz.com/sources/web-search",
     publicUrl: "https://westfieldbuzz.com",
     town: "Westfield",
-    autoApprove: false,
+    autoApprove: true,
     group: "venue-search",
     allowedHosts: [],
     expectedContentTypes: [],
@@ -275,7 +275,7 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     url: "https://www.brownpapertickets.com/producer/3588844",
     publicUrl: "https://www.brownpapertickets.com/producer/3588844",
     town: "Springfield",
-    autoApprove: false,
+    autoApprove: true,
     group: "venue-search",
     allowedHosts: [],
     expectedContentTypes: [],
@@ -314,7 +314,7 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     url: "https://papermill.org/26-27_season/",
     publicUrl: "https://papermill.org/26-27_season/",
     town: "Millburn",
-    autoApprove: false,
+    autoApprove: true,
     group: "nearby-venues",
     allowedHosts: ["papermill.org", "www.papermill.org"],
     expectedContentTypes: ["text/html", "application/xhtml+xml"],
@@ -326,7 +326,7 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
   // from the operator's browser into env) unlocks the web_profile_info
   // endpoint over plain HTTP, so these run on the venue-search cron. Without
   // the env var the adapter falls back to the local `browse` session. Results
-  // are model-extracted, so they land in review like other llm sources.
+  // are model-extracted and publish directly — no manual review step.
   // (16 Prospect was the first source here; it closed permanently in early
   // 2026 and is removed.)
   {
@@ -337,7 +337,132 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     url: "https://www.instagram.com/stagehousetavern/",
     publicUrl: "https://www.instagram.com/stagehousetavern/",
     town: "Scotch Plains",
-    autoApprove: false,
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
+    expectedContentTypes: ["application/json"],
+    minimumExpectedEvents: 0,
+    maxPosts: 12,
+  },
+  // Bars, breweries, and restaurants sweep (Sept 2026). Verified by probing
+  // each profile through the browse session or fetching its events page:
+  // skipped venues had no dated public event content (Cranford Hotel posts
+  // menu promos, Sheelen's Crossing IG went quiet in 2023, Fox & Falcon has
+  // an empty lander and zero posts, Wet Ticket's own /events page renders
+  // no dates client-side).
+  {
+    ...STANDARD_FETCH,
+    id: "bull-n-bear-events",
+    name: "Bull n Bear Brewery",
+    type: "llm-extract",
+    // Server-rendered show list: band name, date, time, cover — no JSON-LD,
+    // but the text layout is stable and the extractor reads it directly.
+    url: "https://bullnbearbrewery.com/events/",
+    publicUrl: "https://bullnbearbrewery.com/events/",
+    town: "Summit",
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: ["bullnbearbrewery.com", "www.bullnbearbrewery.com"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    expectedLayoutMarker: "No cover",
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "wet-ticket-llm-search",
+    name: "Wet Ticket Brewing",
+    type: "llm-search",
+    // The venue's /events page is client-rendered and its Instagram grid is
+    // nearly empty; listings surface through grounded web search instead.
+    url: "https://www.wetticketbrewing.com/events",
+    publicUrl: "https://www.wetticketbrewing.com/events",
+    town: "Rahway",
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: [],
+    expectedContentTypes: [],
+    minimumExpectedEvents: 0,
+    searchQueries: [
+      "upcoming live music, trivia, and events at Wet Ticket Brewing in Rahway NJ",
+    ],
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "felina-summit-llm-search",
+    name: "Felina Summit",
+    type: "llm-search",
+    // bylandmark.com happenings calendar 403s plain fetches; the restaurant's
+    // wine dinners and classes are indexed by search.
+    url: "https://bylandmark.com/restaurants/felina-summit/",
+    publicUrl: "https://bylandmark.com/restaurants/felina-summit/",
+    town: "Summit",
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: [],
+    expectedContentTypes: [],
+    minimumExpectedEvents: 0,
+    searchQueries: [
+      "upcoming wine dinners, classes, and events at Felina Summit restaurant NJ",
+    ],
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "deutscher-club-instagram",
+    name: "Deutscher Club of Clark",
+    type: "instagram-profile",
+    // Active profile posting dated public events (fests, band nights).
+    url: "https://www.instagram.com/deutscherclubofclark/",
+    publicUrl: "https://www.instagram.com/deutscherclubofclark/",
+    town: "Clark",
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
+    expectedContentTypes: ["application/json"],
+    minimumExpectedEvents: 0,
+    maxPosts: 12,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "tomasello-cranford-instagram",
+    name: "Tomasello Winery Cranford",
+    type: "instagram-profile",
+    // Posts monthly performer lineups naming the Cranford tasting room.
+    url: "https://www.instagram.com/tomasellowinery/",
+    publicUrl: "https://www.tomasellowinery.com/sips-sounds-cranford",
+    town: "Cranford",
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
+    expectedContentTypes: ["application/json"],
+    minimumExpectedEvents: 0,
+    maxPosts: 12,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "james-ward-instagram",
+    name: "The James Ward Mansion",
+    type: "instagram-profile",
+    // Westfield event venue posting dated open houses and tours.
+    url: "https://www.instagram.com/thejameswardmansion/",
+    publicUrl: "https://www.jameswardmansion.com/",
+    town: "Westfield",
+    autoApprove: true,
+    group: "venue-search",
+    allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
+    expectedContentTypes: ["application/json"],
+    minimumExpectedEvents: 0,
+    maxPosts: 12,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "fire-me-up-instagram",
+    name: "Fire Me Up Studio",
+    type: "instagram-profile",
+    // Cranford studio posting dated classes and workshops.
+    url: "https://www.instagram.com/firemeupstudio/",
+    publicUrl: "https://www.firemeupstudio.com/",
+    town: "Cranford",
+    autoApprove: true,
     group: "venue-search",
     allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
     expectedContentTypes: ["application/json"],

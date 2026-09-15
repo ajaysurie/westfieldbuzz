@@ -60,18 +60,10 @@ describe("source registry and discovery boundary", () => {
     expect(EVENT_SOURCES
       .filter((source) => source.type !== "llm-search")
       .every((source) => source.allowedHosts.length > 0)).toBe(true);
-    // Model-backed sources always start untrusted; publishing requires the
-    // operator toggle in config/sources. instagram-profile feeds LLM
-    // extraction, so it is model-backed too.
-    const MODEL_BACKED = new Set(["llm-extract", "llm-search", "instagram-profile"]);
-    expect(EVENT_SOURCES
-      .filter((source) => MODEL_BACKED.has(source.type))
-      .every((source) => source.autoApprove === false)).toBe(true);
-    // First-party calendars publish directly; only discovery sources remain in
-    // the manual-review path.
-    expect(EVENT_SOURCES
-      .filter((source) => !MODEL_BACKED.has(source.type))
-      .every((source) => source.autoApprove)).toBe(true);
+    // The operator publishes every registered source directly — including
+    // model-backed ones (llm-extract, llm-search, instagram-profile). Trust is
+    // enforced at registration instead of a review queue.
+    expect(EVENT_SOURCES.every((source) => source.autoApprove)).toBe(true);
   });
 
   it("emits JSON candidates that can never self-enable", async () => {
