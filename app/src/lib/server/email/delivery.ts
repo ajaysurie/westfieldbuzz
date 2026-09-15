@@ -555,7 +555,10 @@ export function emailProps(input: {
     unsubscribePageUrl: input.unsubscribePageUrl,
     oneClickUnsubscribeUrl: input.oneClickUnsubscribeUrl,
     events: input.eventIds.flatMap(toItem),
-    savedEvents: (input.savedEventIds ?? []).flatMap(toItem).slice(0, 5),
+    savedEvents: (input.savedEventIds ?? [])
+      .filter((id) => !input.eventIds.includes(id))
+      .flatMap(toItem)
+      .slice(0, 5),
   };
   return props;
 }

@@ -159,13 +159,17 @@ describe("Friday digest delivery", () => {
   });
 
   it("adds the subscriber's saved events to the email when they are in the edition", async () => {
-    const repository = readyRepository();
+    const repository = new MemoryDigestRepository();
+    repository.inventory = Array.from({ length: 9 }, (_, index) =>
+      eventFixture({ id: `e${index + 1}`, date: `2026-08-22T1${index}:00:00.000Z` }));
     const subscriber = subscriberFixture({ userId: "user-1" });
     repository.subscribers = [subscriber];
-    repository.savedEventIds.set("user-1", ["two", "not-in-edition"]);
+    repository.savedEventIds.set("user-1", ["e2", "e9", "not-in-edition"]);
     const savedLists: string[][] = [];
+    const mainLists: string[][] = [];
     const sender = vi.fn<DigestSender>(async (input) => {
       savedLists.push((input.props.savedEvents ?? []).map((event) => event.id));
+      mainLists.push(input.props.events.map((event) => event.id));
       return "resend-saved";
     });
 
@@ -177,7 +181,8 @@ describe("Friday digest delivery", () => {
       now: FRIDAY,
     });
 
-    expect(savedLists[0]).toEqual(["two"]);
+    expect(mainLists[0]).toContain("e2");
+    expect(savedLists[0]).toEqual(["e9"]);
   });
 
   it("omits the saved block for subscribers without a linked account", async () => {
