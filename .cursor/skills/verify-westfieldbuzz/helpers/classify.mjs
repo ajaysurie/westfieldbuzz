@@ -6,9 +6,10 @@
 
 export const HOMEPAGE_H1 = /What's on around Westfield/i;
 export const WEEK_HEADING = /This week, in order/;
-export const WEEK_LOADING = /Checking this week's calendars/;
-export const WEEK_ERROR = /We couldn't check the calendar/;
-export const WEEK_EMPTY = /This week is still taking shape/;
+// The homepage is server-rendered (app/src/app/page.tsx, force-dynamic):
+// there is no client loading or error copy in its markup — a fetch failure
+// surfaces as a Next error page caught by FATAL_MARKERS.
+export const WEEK_EMPTY = /No events listed this week/;
 export const EVENT_CARD_FOOTER = /Verified |Source verification pending|Event details/;
 
 export const EVENTS_H1 = /Plan what's next/;
@@ -23,11 +24,8 @@ export function classifyHomepageText(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
     return { surface: "homepage", state: "unknown", reason: "empty-body" };
   }
-  if (WEEK_ERROR.test(text) || (FATAL_MARKERS.test(text) && !WEEK_EMPTY.test(text))) {
+  if (FATAL_MARKERS.test(text) && !WEEK_EMPTY.test(text)) {
     return { surface: "homepage", state: "error", reason: "calendar-load-failed" };
-  }
-  if (WEEK_LOADING.test(text) && !WEEK_EMPTY.test(text) && !EVENT_CARD_FOOTER.test(text)) {
-    return { surface: "homepage", state: "loading", reason: "still-checking-calendars" };
   }
   if (WEEK_EMPTY.test(text)) {
     return { surface: "homepage", state: "empty", reason: "no-published-events-this-week" };

@@ -293,7 +293,7 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
               appliedPreferenceFields={result.appliedPreferenceFields}
             />
             <span className="search-provenance ml-auto" title={`${result.meta.matchedCount} matched`}>
-              ✓ {result.meta.candidateCount} events checked · verified today
+              ✓ {result.meta.candidateCount} events checked
             </span>
           </div>
         )}
@@ -315,7 +315,18 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
             )}
           </p>
         )}
-        {!result && !error && (
+        {!result && !error && loading && (
+          <div className="rounded-2xl border border-black/8 bg-white px-6 py-12 text-center" role="status" aria-live="polite">
+            <p className="font-[family-name:var(--font-display)] text-2xl text-ink">Searching the calendar…</p>
+            <p className="mt-2 text-sm text-ink-muted">Interpreting your request, then checking upcoming events.</p>
+            <div className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3" aria-hidden="true">
+              {[0, 1, 2].map((index) => (
+                <div key={index} className="h-28 animate-pulse rounded-xl bg-paper-dark" />
+              ))}
+            </div>
+          </div>
+        )}
+        {!result && !error && !loading && (
           <div className="rounded-2xl border border-black/8 bg-white px-6 py-12 text-center">
             <p className="font-[family-name:var(--font-display)] text-2xl text-ink">Try a sentence, not a filter maze.</p>
             <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">

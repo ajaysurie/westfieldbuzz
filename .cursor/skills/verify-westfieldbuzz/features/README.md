@@ -32,7 +32,7 @@ Record in the artifact `drive.json` and in the PR/agent report:
 - **Evidence paths** that still exist after cleanup.
 - **Skip** only when doctor forbids the target, or the feature requires a session (`/admin`, `/suggest`, `/account`) and you have no test user. Write `skipped: <reason>`. Do not skip an empty agenda — report `empty`.
 
-A load error (`We couldn't check the calendar` / `The calendar did not load`) is a failed drive, not an empty feed.
+A load error (`The calendar did not load` on `/events`, or a Next `Application error` page anywhere) is a failed drive, not an empty feed.
 
 ## Feature list
 

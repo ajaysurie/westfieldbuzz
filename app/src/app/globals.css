@@ -557,6 +557,22 @@ a {
 .event-status--muted { color: #5e6871; background: #e9ecee; }
 .event-status--compact { min-height: 24px; padding: 3px 8px; font-size: 0.6rem; }
 
+.btn {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 9px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-primary { background: var(--accent); color: white; }
+.btn--ghost { background: transparent; color: var(--accent); border: 1.5px solid rgba(27, 58, 92, 0.3); }
+
 .state-panel {
   min-height: 210px;
   display: grid;

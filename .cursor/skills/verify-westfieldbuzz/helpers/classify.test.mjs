@@ -16,29 +16,24 @@ Event details →
 const HOME_EMPTY = `
 What's on around Westfield this week.
 This week, in order
-This week is still taking shape
-No published events are on the board yet.
+No events listed this week
+See the full calendar for events later this month.
 `;
 
 const HOME_ERROR = `
-What's on around Westfield this week.
-This week, in order
-We couldn't check the calendar
-The source data did not load.
+Application error: a server-side exception has occurred
 `;
 
-const HOME_LOADING = `
+const HOME_SHELL = `
 What's on around Westfield this week.
 This week, in order
-Checking this week's calendars
-We're loading the latest published event details.
 `;
 
-test("homepage populated vs empty vs error vs loading from real copy", () => {
+test("homepage populated vs empty vs error vs shell from real copy", () => {
   assert.equal(classifyHomepageText(HOME_POPULATED).state, "populated");
   assert.equal(classifyHomepageText(HOME_EMPTY).state, "empty");
   assert.equal(classifyHomepageText(HOME_ERROR).state, "error");
-  assert.equal(classifyHomepageText(HOME_LOADING).state, "loading");
+  assert.equal(classifyHomepageText(HOME_SHELL).state, "shell");
   assert.equal(classifyHomepageText("").state, "unknown");
 });
 

@@ -137,7 +137,10 @@ describe("SearchExperience", () => {
 
     render(<SearchExperience />);
     fireEvent.click(screen.getByRole("button", { name: "Free live music Friday night" }));
-    fireEvent.click(screen.getByRole("button", { name: "Indoors Saturday morning for a 5-year-old" }));
+    fireEvent.change(screen.getByLabelText("Describe the event you want"), {
+      target: { value: "Indoors Saturday morning for a 5-year-old" },
+    });
+    fireEvent.submit(screen.getByRole("button", { name: "Searching…" }).closest("form")!);
 
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(firstSignal?.aborted).toBe(true);

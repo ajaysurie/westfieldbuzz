@@ -100,7 +100,7 @@ export default function SearchResults({ result }: { result: EventSearchSuccess }
     return (
       <section className="rounded-2xl border border-black/8 bg-paper-pure px-6 py-10 text-center shadow-sm">
         <h2 className="font-[family-name:var(--font-display)] text-3xl text-ink">No exact matches yet</h2>
-        <p className="mx-auto mt-2 max-w-lg text-sm text-ink-light">The inventory has no event that safely meets every interpreted constraint. Nothing has been invented to fill the gap.</p>
+        <p className="mx-auto mt-2 max-w-lg text-sm text-ink-light">Nothing on the calendar matches every part of that yet. Widening the dates or dropping one requirement usually turns something up.</p>
         <ul className="mx-auto mt-5 grid max-w-md gap-2 text-left text-sm text-ink-light">
           {result.suggestions.map((suggestion) => <li key={suggestion}>• {suggestion}</li>)}
         </ul>
