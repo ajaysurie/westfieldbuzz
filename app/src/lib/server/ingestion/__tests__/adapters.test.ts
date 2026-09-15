@@ -6,6 +6,7 @@ import {
   fetchSourceEvents,
   humanVenue,
   parseICalPayload,
+  parseJsonLdPayload,
   parseMecHtml,
   parseSquarespacePayload,
   parseTribePayload,
@@ -277,4 +278,438 @@ describe("approved source adapters", () => {
     expect(result.complete).toBe(false);
     expect(result.errors).toContain("Expected source layout marker was missing");
   });
+});
+
+describe("jsonld-index adapter", () => {
+  const policy = () => source("sopac-jsonld-index");
+
+  function detailPage(name: string, start: string): string {
+    return `<html><head><script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Event",
+      name,
+      startDate: start,
+      url: `https://www.sopacnow.org/events/${name.toLowerCase().replace(/\s+/g, "-")}/`,
+      location: { "@type": "Place", name: "SOPAC", address: "One SOPAC Way, South Orange, NJ" },
+    })}</script></head><body>detail</body></html>`;
+  }
+
+  function routingFetch(pages: Record<string, string | Response>) {
+    const fetched: string[] = [];
+    const impl = async (url: string | URL | Request) => {
+      const key = String(url);
+      fetched.push(key);
+      const page = pages[key];
+      if (page instanceof Response) return page;
+      if (page === undefined) {
+        return new Response("not found", { status: 404 });
+      }
+      return new Response(page, {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    };
+    return { impl: impl as typeof fetch, fetched };
+  }
+
+  it("follows index links to detail pages and parses their JSON-LD events", async () => {
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="https://www.sopacnow.org/events/show-two/">Two</a>
+      <a href="/events/show-one/#tickets">dup</a>
+      <a href="/about/">not an event</a>
+      <a href="https://evil.example.com/events/pwned/">offsite</a>
+    </body></html>`;
+    const { impl, fetched } = routingFetch({
+      "https://www.sopacnow.org/events/": index,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+      "https://www.sopacnow.org/events/show-two/": detailPage("Show Two", "2026-09-27T20:00:00-04:00"),
+    });
+    const result = await fetchSourceEvents({ source: policy(), window, fetchImpl: impl });
+    expect(result.errors).toEqual([]);
+    expect(result.complete).toBe(true);
+    expect(result.events).toHaveLength(2);
+    expect(result.events.map((e) => e.title).sort()).toEqual(["Show One", "Show Two"]);
+    expect(result.events[0]).toMatchObject({
+      town: "South Orange",
+      sourceId: "sopac-jsonld-index",
+      category: "Entertainment",
+    });
+    // The duplicate href and the off-site/non-matching links were never fetched.
+    expect(fetched).toEqual([
+      "https://www.sopacnow.org/events/",
+      "https://www.sopacnow.org/events/show-one/",
+      "https://www.sopacnow.org/events/show-two/",
+    ]);
+  });
+
+  it("marks an index with no matching links incomplete so events are not aged", async () => {
+    const { impl } = routingFetch({
+      "https://www.sopacnow.org/events/": "<html><body>no links</body></html>",
+    });
+    const result = await fetchSourceEvents({ source: policy(), window, fetchImpl: impl });
+    expect(result.complete).toBe(false);
+    expect(result.errors).toContain("Expected source layout marker was missing");
+    expect(result.errors.some((e) => e.includes("no detail pages"))).toBe(true);
+  });
+
+  it("fails closed when the configured layout marker is absent", async () => {
+    const marked = { ...policy(), expectedLayoutMarker: "mc_event_listing" };
+    const { impl } = routingFetch({
+      "https://www.sopacnow.org/events/": `<html><body><a href="/events/show-one/">One</a></body></html>`,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+    });
+    const result = await fetchSourceEvents({ source: marked, window, fetchImpl: impl });
+    expect(result.complete).toBe(false);
+    expect(result.errors).toContain("Expected source layout marker was missing");
+  });
+
+  it("keeps good detail pages when a sibling detail fetch fails", async () => {
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="/events/broken/">Broken</a>
+    </body></html>`;
+    const { impl } = routingFetch({
+      "https://www.sopacnow.org/events/": index,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+      "https://www.sopacnow.org/events/broken/": new Response("oops", { status: 500 }),
+    });
+    const result = await fetchSourceEvents({ source: policy(), window, fetchImpl: impl });
+    expect(result.complete).toBe(false);
+    expect(result.events).toHaveLength(1);
+    expect(result.errors.some((e) => e.includes("/events/broken/"))).toBe(true);
+  }, 15_000);
+
+  it("caps the detail crawl at maxDetailPages with a warning", async () => {
+    const capped = { ...policy(), maxDetailPages: 1 };
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="/events/show-two/">Two</a>
+    </body></html>`;
+    const { impl, fetched } = routingFetch({
+      "https://www.sopacnow.org/events/": index,
+      "https://www.sopacnow.org/events/show-one/": detailPage("Show One", "2026-09-20T19:30:00-04:00"),
+      "https://www.sopacnow.org/events/show-two/": detailPage("Show Two", "2026-09-27T20:00:00-04:00"),
+    });
+    const result = await fetchSourceEvents({ source: capped, window, fetchImpl: impl });
+    expect(result.events).toHaveLength(1);
+    expect(fetched).toHaveLength(2);
+    expect(result.warnings.some((w) => w.includes("capped at 1 of 2"))).toBe(true);
+  });
+
+  it("stops fetching detail pages when the global deadline hits", async () => {
+    const index = `<html><body>
+      <a href="/events/show-one/">One</a>
+      <a href="/events/show-two/">Two</a>
+    </body></html>`;
+    const fetched: string[] = [];
+    const impl = (async (url: string | URL | Request) => {
+      const key = String(url);
+      fetched.push(key);
+      if (key.endsWith("/events/")) {
+        return new Response(index, { status: 200, headers: { "content-type": "text/html" } });
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return new Response(detailPage("Show", "2026-09-20T19:30:00-04:00"), {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      });
+    }) as typeof fetch;
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: impl,
+      deadlineAt: new Date(Date.now() + 50),
+    });
+    // The in-flight detail fetch resolves after the deadline, so its body read
+    // aborts and no events are kept; the second detail never starts.
+    expect(result.events).toHaveLength(0);
+    expect(result.warnings.some((w) => w.includes("truncated"))).toBe(true);
+    expect(fetched).toHaveLength(2);
+  }, 15_000);
+
+  it("keeps every night of a multi-date run that reuses one event URL", () => {
+    const html = `<script type="application/ld+json">${JSON.stringify({
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Event",
+          name: "SHU",
+          startDate: "2026-10-15T20:00:00-04:00",
+          url: "https://www.sopacnow.org/events/shu/",
+        },
+        {
+          "@type": "Event",
+          name: "SHU",
+          startDate: "2026-10-16T20:00:00-04:00",
+          url: "https://www.sopacnow.org/events/shu/",
+        },
+      ],
+    })}</script>`;
+    const parsed = parseJsonLdPayload(policy(), html, window);
+    expect(parsed.events).toHaveLength(2);
+    expect(parsed.events[0].sourceEventId).toBe("https://www.sopacnow.org/events/shu/");
+    expect(parsed.events[1].sourceEventId).toContain("#2026-10-17T00:00:00.000Z");
+  });
+});
+
+describe("eventbrite-organizer adapter", () => {
+  const policy = () => source("crossroads-eventbrite");
+
+  function organizerPage(events: unknown[]): string {
+    return `<html><body><script>window.__state = ${JSON.stringify({ upcomingEvents: events })};</script></body></html>`;
+  }
+
+  const SHOW = {
+    id: "1992011276351",
+    eventbrite_event_id: "1992011276351",
+    name: "Jeff Rosenstock",
+    url: "https://www.eventbrite.com/e/jeff-rosenstock-tickets-1992011276351",
+    start_date: "2026-09-19",
+    start_time: "19:00:00",
+    end_date: "2026-09-19",
+    end_time: "23:00:00",
+    timezone: "America/New_York",
+    is_cancelled: false,
+    summary: "Punk rock show",
+    primary_venue: {
+      name: "Crossroads",
+      address: { address_1: "78 North Ave", city: "Garwood" },
+    },
+    image: { url: "https://img.evbuc.com/img/1.jpg" },
+  };
+
+  it("extracts upcoming events from the embedded organizer page state", async () => {
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: async () =>
+        new Response(organizerPage([SHOW, { ...SHOW, eventbrite_event_id: "x2", id: "x2", name: "Cancelled Show", is_cancelled: true, start_date: "2026-10-01", end_date: "2026-10-01" }]), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    });
+    expect(result.errors).toEqual([]);
+    expect(result.complete).toBe(true);
+    expect(result.events).toHaveLength(2);
+    expect(result.events[0]).toMatchObject({
+      title: "Jeff Rosenstock",
+      sourceEventId: "1992011276351",
+      sourceUrl: "https://www.eventbrite.com/e/jeff-rosenstock-tickets-1992011276351",
+      location: "Crossroads, 78 North Ave, Garwood",
+      town: "Garwood",
+      category: "Music",
+      status: "scheduled",
+      imageUrl: "https://img.evbuc.com/img/1.jpg",
+    });
+    expect(result.events[0].date.toISOString()).toBe("2026-09-19T23:00:00.000Z");
+    expect(result.events[1].status).toBe("cancelled");
+  });
+
+  it("drops out-of-window events and fails closed on layout break", async () => {
+    const stale = { ...SHOW, start_date: "2030-01-01", end_date: "2030-01-01" };
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: async () =>
+        new Response(organizerPage([stale]), {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    });
+    expect(result.events).toHaveLength(0);
+    expect(result.complete).toBe(true); // layout valid, legitimately empty window
+
+    const broken = await fetchSourceEvents({
+      source: policy(),
+      window,
+      fetchImpl: async () =>
+        new Response("<html><body>redesign</body></html>", {
+          status: 200,
+          headers: { "content-type": "text/html" },
+        }),
+    });
+    expect(broken.complete).toBe(false);
+    expect(broken.errors).toContain("Expected source layout marker was missing");
+  });
+});
+
+describe("instagram-profile adapter", () => {
+  const policy = () => source("stage-house-instagram");
+
+  const POSTS = [
+    "https://www.instagram.com/stagehousetavern/p/AAA111/",
+    "https://www.instagram.com/stagehousetavern/p/BBB222/",
+  ];
+  const CAPTIONS: Record<string, { caption: string; posted: string }> = {
+    [POSTS[0]]: {
+      posted: "2026-09-10T14:00:00.000Z",
+      caption: "LIVE MUSIC this Friday 9/18 — The Barn Dogs, 9pm. No cover!",
+    },
+    [POSTS[1]]: {
+      posted: "2026-09-11T14:00:00.000Z",
+      caption: "New brunch menu drops Sunday 🍳",
+    },
+  };
+
+  function execImpl() {
+    let current = "";
+    return async (args: string[]): Promise<string> => {
+      if (args[0] === "goto") {
+        current = args[1];
+        return "";
+      }
+      if (args[0] === "js" && args[1].includes("querySelectorAll")) {
+        return JSON.stringify(POSTS);
+      }
+      if (args[0] === "js") {
+        return JSON.stringify(CAPTIONS[current] ?? { caption: "", posted: "" });
+      }
+      throw new Error(`unexpected browse args: ${args.join(" ")}`);
+    };
+  }
+
+  function llmResponse(events: unknown[]) {
+    return new Response(
+      JSON.stringify({
+        candidates: [
+          { content: { parts: [{ text: JSON.stringify({ events }) }] } },
+        ],
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    );
+  }
+
+  it("reads post captions through the browse session and extracts cited events", async () => {
+    const key = process.env.GEMINI_API_KEY;
+    const sid = process.env.INSTAGRAM_COOKIE;
+    process.env.GEMINI_API_KEY = "test-key";
+    delete process.env.INSTAGRAM_COOKIE; // force the browse transport
+    try {
+      const result = await fetchSourceEvents({
+        source: policy(),
+        window,
+        execImpl: execImpl(),
+        fetchImpl: async () =>
+          llmResponse([
+            {
+              title: "The Barn Dogs live",
+              description: "Live music, no cover",
+              startIso: "2026-09-18T21:00:00-04:00",
+              locationText: "Stage House Tavern, Scotch Plains",
+              eventUrl: POSTS[0],
+              cancelled: false,
+            },
+          ]),
+      });
+      expect(result.errors).toEqual([]);
+      expect(result.complete).toBe(true);
+      expect(result.events).toHaveLength(1);
+      expect(result.events[0]).toMatchObject({
+        title: "The Barn Dogs live",
+        town: "Scotch Plains",
+        sourceUrl: POSTS[0],
+      });
+      // Stable key = post URL + event date + title slug, so two events from
+      // one post do not collapse.
+      expect(result.events[0].sourceEventId).toBe(
+        `${POSTS[0]}#2026-09-19-the-barn-dogs-live`
+      );
+    } finally {
+      if (key === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = key;
+      if (sid === undefined) delete process.env.INSTAGRAM_COOKIE;
+      else process.env.INSTAGRAM_COOKIE = sid;
+    }
+  });
+
+  it("uses the web_profile_info endpoint when INSTAGRAM_COOKIE is set", async () => {
+    const key = process.env.GEMINI_API_KEY;
+    const sid = process.env.INSTAGRAM_COOKIE;
+    process.env.GEMINI_API_KEY = "test-key";
+    process.env.INSTAGRAM_COOKIE = "test-session";
+    const profileJson = JSON.stringify({
+      data: {
+        user: {
+          id: "1",
+          edge_owner_to_timeline_media: {
+            edges: [
+              {
+                node: {
+                  shortcode: "AAA111",
+                  taken_at_timestamp: 1789200000,
+                  edge_media_to_caption: {
+                    edges: [
+                      { node: { text: "LIVE MUSIC Friday 9/18 — The Barn Dogs, 9pm" } },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+    try {
+      const result = await fetchSourceEvents({
+        source: policy(),
+        window,
+        fetchImpl: async (url) => {
+          const u = String(url);
+          if (u.includes("web_profile_info")) {
+            return new Response(profileJson, {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            });
+          }
+          return llmResponse([
+            {
+              title: "The Barn Dogs live",
+              startIso: "2026-09-18T21:00:00-04:00",
+              locationText: "Stage House Tavern, Scotch Plains",
+              eventUrl: "https://www.instagram.com/p/AAA111/",
+              cancelled: false,
+            },
+          ]);
+        },
+      });
+      expect(result.errors).toEqual([]);
+      expect(result.complete).toBe(true);
+      expect(result.events).toHaveLength(1);
+      expect(result.events[0].sourceUrl).toBe(
+        "https://www.instagram.com/p/AAA111/"
+      );
+    } finally {
+      if (key === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = key;
+      if (sid === undefined) delete process.env.INSTAGRAM_COOKIE;
+      else process.env.INSTAGRAM_COOKIE = sid;
+    }
+  });
+
+  it("fails closed when the session cannot read the profile", async () => {
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      execImpl: async () => {
+        throw new Error("browse binary not found");
+      },
+    });
+    expect(result.complete).toBe(false);
+    expect(result.events).toEqual([]);
+    expect(result.errors.join(" ")).toContain("Instagram session fetch failed");
+  });
+
+  it("fails closed when the profile renders no post links", async () => {
+    const result = await fetchSourceEvents({
+      source: policy(),
+      window,
+      execImpl: async (args) =>
+        args[0] === "js" && args[1].includes("querySelectorAll")
+          ? "[]"
+          : "",
+    });
+    expect(result.complete).toBe(false);
+    expect(result.errors.join(" ")).toContain("no post links");
+  }, 15_000);
 });

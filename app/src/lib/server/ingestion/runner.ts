@@ -43,7 +43,12 @@ export interface IngestionRunResult {
   };
 }
 
-export const INGESTION_CONCURRENCY = 2;
+// Sources run through a small worker pool against a shared deadline. Two
+// workers let a slow upstream (CivicPlus feeds regularly take 10s+) starve the
+// tail of a group: every slow feed occupies a worker while the deadline burns.
+// Four keeps a group's tail sources reachable without turning the crawl into a
+// burst — fetches are still per-source bounded by timeout and response caps.
+export const INGESTION_CONCURRENCY = 4;
 export const CLEANUP_RESERVE_MS = 2_000;
 
 export function makeIngestionWindow(input: {

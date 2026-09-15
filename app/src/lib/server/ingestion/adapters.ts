@@ -1,3 +1,5 @@
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { expandRecurringEvent, sync as icalSync, type VEvent } from "node-ical";
 import { normalizeWhitespace } from "../../events/normalize";
 import { parseSourceDateTime } from "./time";
@@ -677,6 +679,7 @@ export function parseJsonLdPayload(
   ) ?? [];
 
   const found: UnknownRecord[] = [];
+  const usedSourceEventIds = new Set<string>();
   for (const block of blocks) {
     const body = block.replace(/^<script\b[^>]*>/i, "").replace(/<\/script>$/i, "");
     try {
@@ -701,6 +704,15 @@ export function parseJsonLdPayload(
     }
     if (!withinWindow(start, end, window)) continue;
     const url = text(node.url) || text(node["@id"]);
+    // Multi-night runs emit one node per date but reuse the same event URL.
+    // Keying purely on the URL would collapse every night into the first, so
+    // repeat occurrences get a start-time suffix. First occurrences keep the
+    // bare URL so single-event pages reconcile exactly as before.
+    let sourceEventId = url || `fallback:${start.toISOString()}:${title}`;
+    if (usedSourceEventIds.has(sourceEventId)) {
+      sourceEventId = `${sourceEventId}#${start.toISOString()}`;
+    }
+    usedSourceEventIds.add(sourceEventId);
     events.push({
       title,
       description: stripHtml(node.description),
@@ -714,7 +726,7 @@ export function parseJsonLdPayload(
       sourceId: source.id,
       // Prefer the publisher's own identifier so reruns reconcile instead of
       // creating duplicates; fall back to start plus title only when absent.
-      sourceEventId: url || `fallback:${start.toISOString()}:${title}`,
+      sourceEventId,
       sourceUrl: url || source.publicUrl || source.url,
       imageUrl: jsonLdImage(node.image),
     });
@@ -726,6 +738,295 @@ export function parseJsonLdPayload(
     // A page with no JSON-LD at all is a layout change, not an empty calendar.
     layoutValid: blocks.length > 0,
   };
+}
+
+/** Extracts the balanced [...] array literal following `"key":` in a blob of
+ * embedded page JSON. Returns null when the key or a parseable array is absent. */
+function extractJsonArrayField(html: string, key: string): unknown[] | null {
+  const keyIndex = html.indexOf(`"${key}"`);
+  if (keyIndex === -1) return null;
+  const start = html.indexOf("[", keyIndex);
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < html.length; i += 1) {
+    const ch = html[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\") { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "[") depth += 1;
+    if (ch === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        try {
+          const parsed: unknown = JSON.parse(html.slice(start, i + 1));
+          return Array.isArray(parsed) ? parsed : null;
+        } catch {
+          return null;
+        }
+      }
+    }
+  }
+  return null;
+}
+
+/** Eventbrite organizer pages embed the organizer's upcoming events as a JSON
+ * array in the initial page state — the authoritative listing the venue itself
+ * publishes for tickets, so it reconciles cleanly and can auto-approve. */
+export function parseEventbriteOrganizerPayload(
+  source: EventSourcePolicy,
+  html: string,
+  window: DateWindow
+): ParsedPayload {
+  const errors: string[] = [];
+  const events: SourceObservation[] = [];
+  const layoutValid = html.includes('"upcomingEvents"');
+  const items = extractJsonArrayField(html, "upcomingEvents") ?? [];
+
+  for (const item of items) {
+    const event = record(item);
+    const title = text(event.name);
+    const tz = text(event.timezone) || source.timezone;
+    const start = parseSourceDateTime(
+      `${text(event.start_date)} ${text(event.start_time)}`.trim(), tz);
+    const endRaw = `${text(event.end_date)} ${text(event.end_time)}`.trim();
+    const end = endRaw ? parseSourceDateTime(endRaw, tz) : null;
+    if (invalidDate(start)) {
+      errors.push(`Invalid start date for ${title || "untitled Eventbrite event"}`);
+      continue;
+    }
+    if (!withinWindow(start, end, window)) continue;
+    const venue = record(event.primary_venue);
+    const address = record(venue.address);
+    const locationParts = [text(venue.name), text(address.address_1), text(address.city)]
+      .filter(Boolean);
+    const eventId = text(event.eventbrite_event_id) || text(event.id);
+    const url = text(event.url);
+    events.push({
+      title,
+      description: stripHtml(event.summary),
+      date: start,
+      endDate: end,
+      location: locationParts.join(", ") || source.name,
+      town: source.town,
+      category: mapCategory([title, source.name]),
+      status: event.is_cancelled === true ? "cancelled" : "scheduled",
+      availability: "unknown",
+      sourceId: source.id,
+      sourceEventId: eventId || url || `fallback:${start.toISOString()}:${title}`,
+      sourceUrl: url || source.publicUrl || source.url,
+      imageUrl: safeImageUrl(record(event.image).url),
+    });
+  }
+
+  return { events, errors, layoutValid };
+}
+
+const DEFAULT_MAX_DETAIL_PAGES = 30;
+const DETAIL_CRAWL_DELAY_MS = 250;
+const DETAIL_CRAWL_RETRY_MS = 1_000;
+const DEFAULT_MAX_IG_POSTS = 12;
+const IG_POST_DELAY_MS = 400;
+const IG_GRID_SETTLE_MS = 1_500;
+const BROWSE_BIN =
+  process.env.WESTFIELDBUZZ_BROWSE_BIN ??
+  `${process.env.HOME}/.agents/skills/browse/dist/browse`;
+
+const execFileAsync = promisify(execFile);
+
+/** Runs the local `browse` CLI against the persistent browser session. The
+ * session carries the operator's logged-in Instagram cookies, so this only
+ * exists on a machine where that import was performed — on Vercel there is no
+ * session and the source fails fast instead of hitting the login wall. */
+export type BrowseExec = (args: string[]) => Promise<string>;
+
+function defaultBrowseExec(bin: string): BrowseExec {
+  return async (args) => {
+    const { stdout } = await execFileAsync(bin, args, {
+      timeout: 45_000,
+      maxBuffer: 4 * 1024 * 1024,
+    });
+    return stdout;
+  };
+}
+
+function parseBrowseJson(stdout: string): unknown {
+  const start = stdout.search(/[[{]/);
+  if (start === -1) throw new Error("browse returned no JSON");
+  return JSON.parse(stdout.slice(start));
+}
+
+/** Reads an Instagram profile's recent posts through the private
+ * web_profile_info JSON endpoint — the same call the site's own web app makes.
+ * With a valid sessionid cookie it returns captions + dates + shortcodes for
+ * the latest ~12 posts, so it runs anywhere including Vercel cron. The cookie
+ * comes from INSTAGRAM_SESSIONID, set from the operator's logged-in browser. */
+async function fetchInstagramViaApi(
+  source: EventSourcePolicy,
+  cookieHeader: string,
+  fetchImpl: FetchImplementation | undefined,
+  deadlineAt?: Date
+): Promise<{ text: string; errors: string[]; warnings: string[]; bytes: number }> {
+  const handle = source.url.match(/instagram\.com\/([^/?#]+)/)?.[1];
+  if (!handle) {
+    return {
+      text: "",
+      errors: [`Cannot derive Instagram handle from ${source.url}`],
+      warnings: [],
+      bytes: 0,
+    };
+  }
+  const response = await safeFetchText({
+    url: `https://www.instagram.com/api/v1/users/web_profile_info/?username=${encodeURIComponent(handle)}`,
+    policy: { ...source, expectedContentTypes: ["application/json"] },
+    fetchImpl,
+    deadlineAt,
+    headers: {
+      "X-IG-App-ID": "936619743392459",
+      Cookie: cookieHeader,
+      Referer: `https://www.instagram.com/${handle}/`,
+      "X-Requested-With": "XMLHttpRequest",
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
+    },
+  });
+  const payload = record(parseJson(response.text));
+  if (payload.require_login === true) {
+    return {
+      text: "",
+      errors: ["Instagram rejected the session: require_login — re-export INSTAGRAM_COOKIE"],
+      warnings: [],
+      bytes: response.bytes,
+    };
+  }
+  const user = record(record(payload.data).user);
+  const edges = array(record(user.edge_owner_to_timeline_media).edges);
+  if (!user.id && edges.length === 0) {
+    return {
+      text: "",
+      errors: [`Instagram returned no profile for @${handle} — session may be expired`],
+      warnings: [],
+      bytes: response.bytes,
+    };
+  }
+  const cap = source.maxPosts ?? DEFAULT_MAX_IG_POSTS;
+  const blocks: string[] = [];
+  const warnings: string[] = [];
+  for (const edge of edges.slice(0, cap)) {
+    const node = record(record(edge).node);
+    const captionEdges = array(record(node.edge_media_to_caption).edges);
+    const caption = text(record(record(captionEdges[0]).node).text);
+    const shortcode = text(node.shortcode);
+    if (!caption || !shortcode) {
+      if (shortcode) warnings.push(`Post ${shortcode}: no caption`);
+      continue;
+    }
+    const posted = Number(node.taken_at_timestamp);
+    blocks.push(
+      `POST https://www.instagram.com/p/${shortcode}/ — posted ${
+        Number.isFinite(posted) ? new Date(posted * 1000).toISOString() : "unknown"
+      }\n${caption}`
+    );
+  }
+  return { text: blocks.join("\n\n"), errors: [], warnings, bytes: response.bytes };
+}
+
+/** Reads an Instagram profile's recent post captions through the browse
+ * session. Returns one text block per post — "POST <url> — posted <iso>"
+ * followed by the caption — which the LLM extractor treats as page text. */
+async function fetchInstagramProfileText(
+  source: EventSourcePolicy,
+  exec: BrowseExec,
+  deadlineAt?: Date
+): Promise<{ text: string; errors: string[]; warnings: string[]; bytes: number }> {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  await exec(["goto", source.url]);
+  const linksExpr =
+    "Array.from(document.querySelectorAll('a[href*=\"/p/\"],a[href*=\"/reel/\"]'))" +
+    ".map(a=>a.href).filter(h=>/instagram\\.com\\/[^/]+\\/(p|reel)\\//.test(h))";
+  // The post grid lazy-renders after navigation; give it a beat, scroll to
+  // trigger it, then retry once before declaring the session logged out.
+  let links: string[] = [];
+  for (let attempt = 0; attempt < 2 && links.length === 0; attempt++) {
+    await sleep(IG_GRID_SETTLE_MS);
+    await exec(["js", "window.scrollTo(0, 1500); 'scrolled'"]);
+    await sleep(IG_GRID_SETTLE_MS);
+    const linksRaw = parseBrowseJson(await exec(["js", linksExpr]));
+    links = [...new Set(array(linksRaw).map((l) => text(l)).filter(Boolean))];
+  }
+  const cap = source.maxPosts ?? DEFAULT_MAX_IG_POSTS;
+  const blocks: string[] = [];
+  let bytes = 0;
+  let fetched = 0;
+  for (const link of links.slice(0, cap)) {
+    if (deadlineAt && new Date() >= deadlineAt) {
+      warnings.push(`Post crawl stopped at ${fetched}/${links.length} posts: deadline reached`);
+      break;
+    }
+    try {
+      if (fetched > 0) await sleep(IG_POST_DELAY_MS);
+      await exec(["goto", link]);
+      const post = record(
+        parseBrowseJson(
+          await exec([
+            "js",
+            "({caption:(document.querySelector('meta[property=\"og:description\"]')||{}).content||''," +
+              "posted:(document.querySelector('time')||{}).dateTime||''})",
+          ])
+        )
+      );
+      fetched += 1;
+      const caption = text(post.caption);
+      if (!caption) {
+        warnings.push(`${link}: no caption found on post page`);
+        continue;
+      }
+      bytes += caption.length;
+      blocks.push(`POST ${link} — posted ${text(post.posted) || "unknown"}\n${caption}`);
+    } catch (error) {
+      errors.push(`${link}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  if (links.length === 0) {
+    errors.push("Profile rendered no post links — session may be logged out");
+  }
+  return { text: blocks.join("\n\n"), errors, warnings, bytes };
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Index pages (e.g. a venue's /events listing) only link out to detail pages;
+ * the JSON-LD lives on each detail page. Links are constrained to the source's
+ * allowed hosts so a poisoned index cannot steer the crawler off-site.
+ */
+export function extractDetailLinks(
+  html: string,
+  indexUrl: string,
+  source: EventSourcePolicy
+): string[] {
+  const pattern = new RegExp(source.detailLinkPattern ?? "$.", "i");
+  const allowed = new Set(source.allowedHosts.map((host) => host.toLowerCase()));
+  const links = new Set<string>();
+  for (const match of html.matchAll(/href=["']([^"'#]+)["']/gi)) {
+    let url: URL;
+    try {
+      url = new URL(match[1], indexUrl);
+    } catch {
+      continue;
+    }
+    if (url.protocol !== "https:") continue;
+    if (!allowed.has(url.hostname.toLowerCase())) continue;
+    if (!pattern.test(url.pathname)) continue;
+    url.hash = "";
+    links.add(url.toString());
+  }
+  return [...links];
 }
 
 
@@ -741,9 +1042,10 @@ export async function fetchSourceEvents(input: {
   source: EventSourcePolicy;
   window: DateWindow;
   fetchImpl?: FetchImplementation;
+  execImpl?: BrowseExec;
   deadlineAt?: Date;
 }): Promise<SourceFetchResult> {
-  const { source, window, fetchImpl, deadlineAt } = input;
+  const { source, window, fetchImpl, execImpl, deadlineAt } = input;
   if (source.type === "libcal") {
     const all: SourceObservation[] = [];
     const errors: string[] = [];
@@ -824,6 +1126,16 @@ export async function fetchSourceEvents(input: {
     );
   }
 
+  if (source.type === "eventbrite-organizer") {
+    const response = await fetchOne(source, source.url, fetchImpl, deadlineAt);
+    return finalize(
+      source,
+      parseEventbriteOrganizerPayload(source, response.text, window),
+      response.bytes,
+      response.finalUrl
+    );
+  }
+
   if (source.type === "llm-search") {
     // No page fetch: the model's search grounding is the fetch. Every result
     // must carry its own citation URL or the extractor drops it.
@@ -851,10 +1163,76 @@ export async function fetchSourceEvents(input: {
         warnings: extraction.warnings,
         // The failure mode here is the model erroring, which surfaces above; an
         // empty page is a real possibility for JS-rendered sites, not a layout break.
-        layoutValid: response.text.length > 0,
+        // When a marker is configured it still gates: a renamed listing page
+        // (e.g. a rotated season slug) is a layout break, not an empty season.
+        layoutValid:
+          response.text.length > 0 &&
+          (!source.expectedLayoutMarker ||
+            response.text.includes(source.expectedLayoutMarker)),
       },
       response.bytes,
       response.finalUrl
+    );
+  }
+
+  if (source.type === "instagram-profile") {
+    // Two transports for the same payload. INSTAGRAM_COOKIE (the full
+    // instagram.com cookie header exported from the operator's browser into
+    // env) unlocks the private web_profile_info endpoint — that path works on
+    // Vercel. Without it we fall back to the local `browse` session, which
+    // only exists on the machine where the cookie import ran.
+    const cookieHeader = process.env.INSTAGRAM_COOKIE;
+    let page;
+    try {
+      page = cookieHeader
+        ? await fetchInstagramViaApi(source, cookieHeader, fetchImpl, deadlineAt)
+        : await fetchInstagramProfileText(
+            source,
+            execImpl ?? defaultBrowseExec(BROWSE_BIN),
+            deadlineAt
+          );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return finalize(
+        source,
+        {
+          events: [],
+          errors: [`Instagram session fetch failed: ${message}`],
+          warnings: [],
+          layoutValid: false,
+        },
+        0,
+        source.url
+      );
+    }
+    const extraction = await extractEventsWithLlm({
+      source,
+      pageText: page.text,
+      window,
+      fetchImpl,
+    });
+    // Every extracted event must cite the post URL it came from (enforced in
+    // the extractor). Multiple events can share a post, so the stable key
+    // appends the event date and title to the post URL.
+    for (const event of extraction.events) {
+      event.sourceEventId = `${event.sourceEventId}#${event.date
+        .toISOString()
+        .slice(0, 10)}-${event.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .slice(0, 40)}`;
+    }
+    return finalize(
+      source,
+      {
+        events: extraction.events,
+        errors: [...page.errors, ...extraction.errors],
+        warnings: [...page.warnings, ...extraction.warnings],
+        // No posts means a logged-out or layout-changed session — fail closed.
+        layoutValid: page.text.length > 0,
+      },
+      page.bytes,
+      source.url
     );
   }
 
@@ -865,6 +1243,67 @@ export async function fetchSourceEvents(input: {
       parseJsonLdPayload(source, response.text, window),
       response.bytes,
       response.finalUrl
+    );
+  }
+
+  if (source.type === "jsonld-index") {
+    const index = await fetchOne(source, source.url, fetchImpl, deadlineAt);
+    const links = extractDetailLinks(index.text, index.finalUrl, source);
+    const cap = source.maxDetailPages ?? DEFAULT_MAX_DETAIL_PAGES;
+    const all: SourceObservation[] = [];
+    const errors: string[] = [];
+    const warnings: string[] = [];
+    let bytes = index.bytes;
+    const layoutValid =
+      (source.expectedLayoutMarker
+        ? index.text.includes(source.expectedLayoutMarker)
+        : true) && links.length > 0;
+    let fetched = 0;
+    for (const link of links.slice(0, cap)) {
+      try {
+        // Detail crawls fan out tens of requests at one host; unpaced bursts
+        // trip rate limiters (SOPAC starts resetting connections around page
+        // 20). A short pause plus one retry keeps the crawl polite without a
+        // scheduler — the shared deadline still bounds the whole loop.
+        if (fetched > 0) await sleep(DETAIL_CRAWL_DELAY_MS);
+        let detail;
+        try {
+          detail = await fetchOne(source, link, fetchImpl, deadlineAt);
+        } catch {
+          await sleep(DETAIL_CRAWL_RETRY_MS);
+          detail = await fetchOne(source, link, fetchImpl, deadlineAt);
+        }
+        bytes += detail.bytes;
+        fetched += 1;
+        const parsed = parseJsonLdPayload(source, detail.text, window);
+        all.push(...parsed.events);
+        errors.push(...parsed.errors);
+        warnings.push(...(parsed.warnings ?? []));
+        if (!parsed.layoutValid) {
+          warnings.push(`${link}: no JSON-LD event found on detail page`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (/deadline/i.test(message)) {
+          warnings.push(
+            `Detail crawl truncated at ${fetched}/${links.length} pages: ${message}`
+          );
+          break;
+        }
+        errors.push(`${link}: ${message}`);
+      }
+    }
+    if (links.length > cap) {
+      warnings.push(`Detail crawl capped at ${cap} of ${links.length} linked pages`);
+    }
+    if (links.length === 0) {
+      errors.push("Index page linked to no detail pages matching the pattern");
+    }
+    return finalize(
+      source,
+      { events: all, errors, warnings, layoutValid },
+      bytes,
+      index.finalUrl
     );
   }
 
