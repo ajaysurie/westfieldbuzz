@@ -1,6 +1,6 @@
 # WestfieldBuzz
 
-Community-curated directory of Westfield, NJ's most trusted local businesses and events. Built with Next.js App Router, Firebase Auth (Facebook login), and Firestore.
+Local events guide for Westfield, NJ and nearby towns. Built with Next.js App Router, Firebase Auth (Facebook login), and Firestore. (The business directory was removed — see git history.)
 
 ## Architecture
 
@@ -62,11 +62,10 @@ cd /path/to/westfieldbuzz && vercel --prod --scope ajay-suries-projects
 ```
 app/
 ├── src/
-│   ├── app/           # Next.js pages (directory, events, privacy, data-deletion)
-│   ├── components/    # React components (Nav, ServiceCard, EventCard, etc.)
-│   ├── lib/           # Firebase config, Firestore helpers, auth context, event categories
-│   └── data/          # scraped-businesses.json (282 businesses)
-├── scripts/           # Seeding scripts (seed.ts, seed-events.ts, cleanup-businesses.ts)
+│   ├── app/           # Next.js pages (events, weekend, privacy, data-deletion)
+│   ├── components/    # React components (Nav, EventCard, etc.)
+│   └── lib/           # Firebase config, Firestore helpers, auth context, event categories
+├── scripts/           # Event scripts (seed-events.ts, ingest-events.ts)
 └── public/            # Static assets, logos, concepts HTML files
 ```
 
@@ -74,19 +73,17 @@ app/
 
 - Named databases: pass DB name as second arg to `getFirestore(app, "db-name")`
 - Env var `NEXT_PUBLIC_FIRESTORE_DB` controls which DB is used
-- Collections: `services` (businesses), `events`, `users`, `config`
+- Collections: `events`, `users`, `config`, ingestion ledgers (`eventSourceHealth`, `eventCandidates`, `sourceCandidates`, `crawlRuns`), email (`subscribers`, `digestEditions`, `digestDeliveries`)
 - Admin allowlist: `config/admin` document with `allowlist` array of emails
 
 ## Seeding
 
 ```bash
 # Dev (default)
-npx tsx scripts/seed.ts
 npx tsx scripts/seed-events.ts
 npx tsx scripts/seed-events-newsletter.ts
 
 # Production
-npx tsx scripts/seed.ts --prod
 npx tsx scripts/seed-events.ts --prod
 npx tsx scripts/seed-events-newsletter.ts --prod
 ```

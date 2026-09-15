@@ -71,7 +71,7 @@ export default function DataDeletionPage() {
           <ul className="ml-5 list-disc flex flex-col gap-1">
             <li>Your user profile (name, email, photo)</li>
             <li>Your public profile</li>
-            <li>All recommendations you&rsquo;ve made</li>
+            <li>Your saved events and searches</li>
             <li>Your event interest markers</li>
             <li>Any other data associated with your account</li>
           </ul>
@@ -87,8 +87,8 @@ export default function DataDeletionPage() {
           <p>
             We process deletion requests within 30 days of receipt. You&rsquo;ll
             receive a confirmation email once your data has been removed. Some
-            anonymized, aggregated data (like recommendation counts on
-            businesses) may be retained as it cannot be linked back to you.
+            anonymized, aggregated data may be retained as it cannot be
+            linked back to you.
           </p>
         </section>
 
