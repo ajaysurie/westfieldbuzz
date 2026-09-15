@@ -13,8 +13,6 @@ import {
   where,
   documentId,
   limit as firestoreLimit,
-  arrayUnion,
-  writeBatch,
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -31,25 +29,6 @@ import { normalizeCategory } from "./events/normalize";
 import { isWithinVerificationAge } from "./events/freshness";
 
 // ===== Types =====
-
-export interface Service {
-  id: string;
-  name: string;
-  category: string;
-  phone: string;
-  email: string;
-  address: string;
-  website: string;
-  instagram?: string;
-  facebook?: string;
-  yelp?: string;
-  googleMapsUrl?: string;
-  recommendations: number;
-  recentRecommenders: (string | { uid: string; displayName?: string; timestamp: Timestamp })[];
-  lastRecommended: Timestamp | null;
-  seeded?: boolean;
-  createdAt: Timestamp;
-}
 
 export interface Event {
   id: string;
@@ -81,19 +60,6 @@ export interface Event {
   suppressedAt?: Timestamp;
   suppressedBy?: string;
   suppressionReason?: string;
-}
-
-export interface SuggestedService {
-  id: string;
-  userId: string;
-  businessName: string;
-  category: string;
-  address: string;
-  phone: string;
-  website: string;
-  notes: string;
-  status: "pending" | "approved" | "rejected";
-  suggestedAt: Timestamp;
 }
 
 /** Operational data written by the server-side ingestion runner. */
@@ -136,115 +102,6 @@ export interface SourceCandidate {
   host?: string;
   reviewStatus: PendingEventCandidate["reviewStatus"];
   reason?: string;
-}
-
-// ===== Stats =====
-
-export async function getCommunityStats(): Promise<{
-  providers: number;
-  recommendations: number;
-  recommenders: number;
-}> {
-  const snap = await getDocs(collection(db, "services"));
-  let totalRecs = 0;
-  const recommenderNames = new Set<string>();
-
-  for (const d of snap.docs) {
-    const data = d.data();
-    totalRecs += data.recommendations || 0;
-    const recs = data.recentRecommenders || data.recommendedBy || [];
-    for (const r of recs) {
-      if (typeof r === "string") recommenderNames.add(r);
-    }
-  }
-
-  return {
-    providers: snap.size,
-    recommendations: totalRecs,
-    recommenders: recommenderNames.size,
-  };
-}
-
-// ===== Services =====
-
-export async function getServices(category?: string): Promise<Service[]> {
-  const servicesRef = collection(db, "services");
-  let q;
-
-  if (category) {
-    q = query(servicesRef, where("category", "==", category));
-  } else {
-    q = query(servicesRef);
-  }
-
-  const snap = await getDocs(q);
-  const services = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Service));
-  // Sort client-side to avoid requiring a composite index
-  return services.sort((a, b) => (b.recommendations || 0) - (a.recommendations || 0));
-}
-
-export async function getServiceById(id: string): Promise<Service | null> {
-  const snap = await getDoc(doc(db, "services", id));
-  if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Service;
-}
-
-export async function getCategories(): Promise<string[]> {
-  const snap = await getDoc(doc(db, "config", "categories"));
-  if (!snap.exists()) return [];
-  return snap.data().list || [];
-}
-
-export async function getAllServices(): Promise<Service[]> {
-  const snap = await getDocs(collection(db, "services"));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as Service));
-}
-
-export async function deleteService(id: string) {
-  // Delete recommendations subcollection first
-  const recsSnap = await getDocs(collection(db, "services", id, "recommendations"));
-  for (const recDoc of recsSnap.docs) {
-    await deleteDoc(recDoc.ref);
-  }
-  // Delete the service doc
-  await deleteDoc(doc(db, "services", id));
-}
-
-// ===== Recommendations =====
-
-export async function hasUserRecommended(serviceId: string, userId: string): Promise<boolean> {
-  const snap = await getDoc(doc(db, "services", serviceId, "recommendations", userId));
-  return snap.exists();
-}
-
-export async function recommendService(serviceId: string, userId: string, displayName?: string) {
-  const recRef = doc(db, "services", serviceId, "recommendations", userId);
-  const serviceRef = doc(db, "services", serviceId);
-
-  await setDoc(recRef, { uid: userId, timestamp: serverTimestamp() });
-
-  await updateDoc(serviceRef, {
-    recommendations: increment(1),
-    lastRecommended: serverTimestamp(),
-    recentRecommenders: arrayUnion({ uid: userId, displayName: displayName || null, timestamp: new Date() }),
-  });
-}
-
-export async function unrecommendService(serviceId: string, userId: string) {
-  const recRef = doc(db, "services", serviceId, "recommendations", userId);
-  const serviceRef = doc(db, "services", serviceId);
-
-  // Get the existing entry to remove from array
-  const recSnap = await getDoc(recRef);
-  await deleteDoc(recRef);
-
-  if (recSnap.exists()) {
-    // We can't easily remove from recentRecommenders by uid only, so we rebuild.
-    // For MVP, just decrement the count. Array cleanup happens on next recommend.
-    await updateDoc(serviceRef, {
-      recommendations: increment(-1),
-    });
-  }
 }
 
 // ===== Events =====
@@ -353,44 +210,6 @@ export async function unmarkInterested(eventId: string, userId: string) {
   });
 }
 
-// ===== Suggestions =====
-
-export async function submitSuggestion(data: {
-  userId: string;
-  businessName: string;
-  category: string;
-  address: string;
-  phone: string;
-  website: string;
-  notes: string;
-}) {
-  const ref = doc(collection(db, "suggested_services"));
-  await setDoc(ref, {
-    ...data,
-    status: "pending",
-    suggestedAt: serverTimestamp(),
-  });
-  return ref.id;
-}
-
-export async function getSuggestions(status?: string): Promise<SuggestedService[]> {
-  const ref = collection(db, "suggested_services");
-  try {
-    const q = status
-      ? query(ref, where("status", "==", status), orderBy("suggestedAt", "desc"))
-      : query(ref, orderBy("suggestedAt", "desc"));
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as SuggestedService));
-  } catch {
-    // Fallback: query without orderBy (missing composite index)
-    const q = status ? query(ref, where("status", "==", status)) : query(ref);
-    const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() } as SuggestedService))
-      .sort((a, b) => (b.suggestedAt?.seconds || 0) - (a.suggestedAt?.seconds || 0));
-  }
-}
-
 // ===== Admin operational visibility =====
 
 export async function getSourceHealth(): Promise<SourceHealth[]> {
@@ -448,45 +267,6 @@ export async function reviewCandidate(token: string, input: {
     body: JSON.stringify(input),
   });
   if (!response.ok) throw new Error("Review action could not be saved.");
-}
-
-export async function approveSuggestion(suggestion: SuggestedService) {
-  const batch = writeBatch(db);
-  const serviceRef = doc(collection(db, "services"));
-
-  // Create actual service
-  batch.set(serviceRef, {
-    name: suggestion.businessName,
-    category: suggestion.category,
-    phone: suggestion.phone,
-    email: "",
-    address: suggestion.address || "",
-    website: suggestion.website,
-    recommendations: 1,
-    // Firestore doesn't allow serverTimestamp() inside array values, so use new Date()
-    recentRecommenders: [{ uid: suggestion.userId, displayName: null, timestamp: new Date() }],
-    lastRecommended: serverTimestamp(),
-    createdAt: serverTimestamp(),
-  });
-
-  // Record the submitter's recommendation in the subcollection
-  batch.set(
-    doc(db, "services", serviceRef.id, "recommendations", suggestion.userId),
-    { uid: suggestion.userId, timestamp: serverTimestamp() }
-  );
-
-  // Mark suggestion as approved
-  batch.update(doc(db, "suggested_services", suggestion.id), {
-    status: "approved",
-  });
-
-  await batch.commit();
-}
-
-export async function rejectSuggestion(suggestionId: string) {
-  await updateDoc(doc(db, "suggested_services", suggestionId), {
-    status: "rejected",
-  });
 }
 
 // ===== Admin Events CRUD =====
