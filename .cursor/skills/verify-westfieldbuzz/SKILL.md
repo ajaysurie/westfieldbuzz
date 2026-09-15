@@ -141,7 +141,7 @@ Real selectors (see `helpers/selectors.mjs` and feature files):
 | Interpreted chips | `[aria-label="Interpreted search filters"]` |
 | Provenance | `.search-provenance` (`events checked`) |
 
-Do not submit `#friday-email` on production. Do not click Continue with Google on production. Empty agenda (`This week is still taking shape` / `No published events yet`) is an **observation**, not a prompt to change ingest or copy.
+Do not submit `#friday-email` on production. Do not click Continue with Google on production. Empty agenda (`No events listed this week` / `No published events yet`) is an **observation**, not a prompt to change ingest or copy.
 
 ## Evidence
 

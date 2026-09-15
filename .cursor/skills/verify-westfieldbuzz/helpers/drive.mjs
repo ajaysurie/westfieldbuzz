@@ -125,9 +125,20 @@ async function driveEvents(page, outDir, baseUrl) {
 async function driveSearch(page, outDir, baseUrl) {
   await page.goto(`${baseUrl}${ROUTES.search}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { level: 1, name: COPY.searchH1 }).waitFor({ timeout: 20_000 });
+  // The submit button stays disabled until React state sees text, so a
+  // pre-hydration fill() silently dead-ends the drive on slower deploys.
+  await page.waitForLoadState("networkidle");
   const input = page.locator(SELECTORS.eventSearch);
-  await input.fill("something fun for kids this weekend");
-  await page.getByRole("button", { name: "Search" }).click();
+  await input.click();
+  await input.pressSequentially("something fun for kids this weekend");
+  const searchButton = page.getByRole("button", { name: "Search" });
+  await searchButton.waitFor({ state: "visible" });
+  await page.waitForFunction(
+    (button) => button instanceof HTMLButtonElement && !button.disabled,
+    await searchButton.elementHandle(),
+    { timeout: 15_000 }
+  );
+  await searchButton.click();
   await page.waitForTimeout(20_000);
   const text = await page.locator("body").innerText();
   await page.screenshot({ path: path.join(outDir, "search.png"), fullPage: true });

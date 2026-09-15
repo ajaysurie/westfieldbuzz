@@ -4,10 +4,10 @@ Users never see cron. They see whether this week and `/events` have published, i
 
 ## Sub-features
 
-- Homepage empty: `This week is still taking shape` + `Browse the calendar`.
+- Homepage empty: `No events listed this week` + `See the full calendar for events later this month.` + `Browse the calendar`. Server-rendered — no loading copy to wait out.
 - Events empty: `No published events yet` (no filters). Filter/day empty is a different panel.
 - Populated: `article.event-card` and footer `Verified {Mon D}` when `lastVerifiedAt` exists.
-- Cron HTTP (operator, not UX): `app/vercel.json` paths `/api/cron/ingest?group=core-libraries|core-town-school|nearby-venues`, `/api/cron/discover`, `/api/cron/freshness-watchdog`, `/api/cron/friday-digest`. Unauthenticated GET must not run work.
+- Cron HTTP (operator, not UX): `app/vercel.json` paths `/api/cron/ingest?group=core-libraries|core-town-school|nearby-venues|venue-search`, `/api/cron/discover`, `/api/cron/freshness-watchdog`, `/api/cron/friday-digest`. Unauthenticated GET must not run work.
 
 ## How to get to it (user POV)
 
@@ -15,7 +15,7 @@ Open `/` or `/events` and wait until loading copy disappears. The feed is the ag
 
 ## Driving it with Playwright
 
-Use `helpers/drive.mjs --feature homepage-this-week` and `--feature events-calendar`. Classify with `helpers/classify.mjs` states `populated` | `empty` | `error`. Doctor already probes `GET /api/cron/ingest?group=core-libraries` **without** a bearer and expects 401/403/503.
+Use `helpers/drive.mjs --feature homepage-this-week` and `--feature events-calendar`. Classify with `helpers/classify.mjs` states `populated` | `empty` | `error`. Doctor already probes `GET /api/cron/ingest?group=core-libraries` **without** a bearer and expects 401/503 (`authorizeCron` only emits those two; 403 is a safe superset).
 
 Smoke canary (deployments you believe should have inventory):
 
@@ -27,8 +27,8 @@ If that fails and `drive.mjs` says `empty`, report empty feed. Do not enable `WE
 
 ## Gotchas
 
-- `publicationStatus == "published"` is required (`getPublicEvents`). Drafts from ingest never appear.
+- `publicationStatus == "published"` is necessary but not sufficient: `getPublicEvents` also drops `freshnessStatus !== "current"` and `lastVerifiedAt` missing or older than 36h (`app/src/lib/events/freshness.ts`). The "at least one Verified" canary depends on both.
 - Local missing Firebase env looks like error or empty after client failure — doctor `firebasePublic: false` first.
-- 503 on cron with body `Event ingestion is disabled` or `CRON_SECRET is not configured` is **correct** default-off (`cron-auth.ts`, README). 200 without a bearer is a failed doctor.
+- `authorizeCron` runs **before** `cronFeatureEnabled`, so the flag-off 503 (`Event ingestion is disabled` etc.) is only reachable with a valid bearer; an unauthenticated probe sees 401 (or 503 `CRON_SECRET is not configured` when the env var is absent). 200/207 without a bearer is a failed doctor.
 - Freshness watchdog records alerts; it does not fill the homepage.
 - Do not fix empty-events product bugs in a verification-skill change.

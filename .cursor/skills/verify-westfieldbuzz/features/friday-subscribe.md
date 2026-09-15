@@ -6,13 +6,15 @@ Anonymous visitors can join the generic Friday email from the home strip. Confir
 
 - Home `#friday-list`: `form[aria-label="Friday email signup"]`, `#friday-email`, submit **Get the list** / **Sending…**. Idle helper text: `No account needed. Confirm once by email.` Success `role="status"`: `You're almost on Friday's list.` + `Check your inbox to confirm Friday's list.` Error uses `.friday-signup__error`.
 - POST `/api/subscriptions` with `{ email }`. Optional `Authorization: Bearer` ID token if the signed-in verified email matches.
-- `/subscribe/confirm?token=` (`ConfirmSubscription`) and `/subscribe/confirmed`.
-- `/unsubscribe?token=` (`UnsubscribeForm`).
+- `/subscribe/confirm?token=` (`ConfirmSubscription`): tokenless renders `That link couldn't be confirmed.` With a token, a button `Confirm my Friday list` → `POST /api/subscriptions/confirm` → `router.replace` to `/subscribe/confirmed?status=…`. A `GET /api/subscriptions/confirm?token=` 307 redirect shim also exists for email clients.
+- `/subscribe/confirmed` (server component, tokenless-checkable): `status=confirmed|already-confirmed` renders green ✓ mark, eyebrow `Confirmed`, h1 `See you Friday.`, three expectation cards (`When / Fridays, morning`, `What / 5–8 verified events`, `Off switch / One click, in every email`), CTAs `.btn.btn-primary` `Browse this week's events` → `/events` and `.btn.btn--ghost` `Back to homepage` → `/`. Any other/missing status renders `That confirmation link isn't valid.` + `Return home`.
+- `/unsubscribe?token=` (`UnsubscribeForm`): tokenless → `That link isn't valid.` Other states: `Stop Friday emails?` (ready), `You're unsubscribed.` (done), `We couldn't update that yet.` (error).
+- Buttons across this flow use `.btn` / `.btn-primary` / `.btn--ghost` (defined in `globals.css`).
 - Nav **Get the list** is `a[href="/#friday-list"]` (hash on home), not `/subscribe`.
 
 ## How to get to it (user POV)
 
-On `/`, scroll to **The good stuff, before the weekend starts.** or tap **Get the list** in primary nav / footer **Get the Friday list**. Confirm/unsubscribe only from email links.
+On `/`, scroll to the `#friday-list` strip (`#friday-heading` `Plan your weekend.`) or tap **Get the list** in primary nav / footer **Get the Friday list**. Confirm/unsubscribe only from email links; `/subscribe/confirmed` is reachable bare for a tokenless render check.
 
 ## Driving it with Playwright
 

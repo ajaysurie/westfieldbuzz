@@ -5,8 +5,9 @@
 ## Sub-features
 
 - Form: `#event-search` (sr-only label `Describe the event you want`), submit button **Search** / **Searching…**.
-- After success: `[aria-label="Interpreted search filters"]` chips (`aria-label="Remove {label} filter"`), `.search-provenance` (`✓ {n} events checked · verified today`).
-- Results: `.search-kicker` **Top picks**, `a.search-card` (`aria-label="View {title}"`), or **No exact matches yet**.
+- First-search loading: while `loading` and no result yet, the "Try a sentence" panel is replaced by a `role="status"` panel **Searching the calendar…** ("Interpreting your request, then checking upcoming events.") with three pulsing skeleton cards. On refinements the previous results stay visible under `aria-busy` — the loading panel does not return.
+- After success: `[aria-label="Interpreted search filters"]` chips (`aria-label="Remove {label} filter"`), `.search-provenance` (`✓ {n} events checked`; the `title` tooltip carries `{matchedCount} matched`).
+- Results: `.search-kicker` **Top picks**, `a.search-card` (`aria-label="View {title}"`), or **No exact matches yet** ("Nothing on the calendar matches every part of that yet…" + `• {suggestion}` list + `Browse the calendar` link).
 - Fallback notice (status): `the language parser was unavailable` when `fallbackUsed` (`SearchNotice.tsx`).
 - Examples on empty start: `Free live music Friday night`, `Indoors Saturday morning for a 5-year-old`, `Not sports, within 15 minutes`.
 - **Save this search** (`aria-pressed`) requires auth; anonymous click goes to `/login`. Do not follow that on production.
@@ -29,5 +30,6 @@ Local without `OPENAI_API_KEY`: expect the controlled unavailable/fallback path,
 
 - `#event-search` has **no** `type="search"` (plain text input). `#home-search` does. Smoke already ORs both.
 - Parser fallback and AI copy quality are product bugs; verification reports them. Do not patch prompts here.
-- Search can take ~20s (route + model). Use the existing timeout, do not shorten it.
+- Search can take ~20s (route + model). Use the existing timeout, do not shorten it. `drive.mjs` waits a flat 20s — a slower search snapshots the "Searching the calendar…" loading panel and classifies `unknown`, which is a slow-response observation, not a broken drive.
+- The Search button is `disabled` until React state sees input text — a `fill()` that lands before hydration leaves it disabled forever. `drive.mjs` types via `pressSequentially` after `networkidle` for that reason; hand-written recipes should do the same.
 - Saving searches writes Firestore as the signed-in user. Skip unless you have a disposable `westfieldbuzz-dev` account.
