@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getSourceHealth: vi.fn(),
-  getPendingEventCandidates: vi.fn(),
   getSourceCandidates: vi.fn(),
   reviewCandidate: vi.fn(),
 }));
@@ -11,7 +10,6 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/components/AdminGate", () => ({ default: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/lib/firestore", () => ({
   getSourceHealth: mocks.getSourceHealth,
-  getPendingEventCandidates: mocks.getPendingEventCandidates,
   getSourceCandidates: mocks.getSourceCandidates,
   reviewCandidate: mocks.reviewCandidate,
 }));
@@ -28,19 +26,22 @@ describe("AdminSourcesPage", () => {
     cleanup();
   });
 
-  it("shows source safety and pending review evidence", async () => {
-    mocks.getSourceHealth.mockResolvedValue([{
-      id: "library", sourceId: "library", sourceName: "Westfield Library", group: "libraries",
-      status: "partial", checkedAt: { toDate: () => new Date("2026-08-20T12:00:00Z") },
-      nextExpectedRunAt: { toDate: () => new Date("2020-01-01T12:00:00Z") },
-      consecutiveFailures: 2, fetched: 4, created: 1, updated: 2, candidates: 1, safetyHeld: true,
-      errors: ["Feed changed"], warnings: ["Low count"],
-    }]);
-    mocks.getPendingEventCandidates.mockResolvedValue([{
-      id: "candidate", sourceId: "library", sourceName: "Westfield Library", title: "Storytime",
-      date: { toDate: () => new Date("2026-08-22T12:00:00Z") }, sourceUrl: "https://example.com/storytime",
-      reason: "possible-cross-source-duplicate", matchingEventIds: ["event-1"], matchingSourceIds: ["source-1"], reviewStatus: "pending",
-    }]);
+  it("sorts exceptions above healthy sources and hides routine detail", async () => {
+    mocks.getSourceHealth.mockResolvedValue([
+      {
+        id: "library", sourceId: "library", sourceName: "Westfield Library", group: "libraries",
+        status: "partial", checkedAt: { toDate: () => new Date("2026-08-20T12:00:00Z") },
+        nextExpectedRunAt: { toDate: () => new Date("2020-01-01T12:00:00Z") },
+        consecutiveFailures: 2, fetched: 4, created: 1, updated: 2, candidates: 1, safetyHeld: true,
+        errors: ["Feed changed"], warnings: ["Low count"],
+      },
+      {
+        id: "schools", sourceId: "schools", sourceName: "Westfield Schools", group: "core-town-school",
+        status: "success", checkedAt: { toDate: () => new Date("2026-08-20T12:00:00Z") },
+        nextExpectedRunAt: { toDate: () => new Date("2999-01-01T12:00:00Z") },
+        consecutiveFailures: 0, fetched: 40, created: 3, updated: 30, candidates: 0,
+      },
+    ]);
     mocks.getSourceCandidates.mockResolvedValue([]);
 
     render(<AdminSourcesPage />);
@@ -48,19 +49,19 @@ describe("AdminSourcesPage", () => {
     expect(screen.getByText("Loading source health…")).toBeInTheDocument();
     expect(await screen.findByText("Westfield Library")).toBeInTheDocument();
     expect(screen.getByText("Safety hold")).toBeInTheDocument();
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
     expect(screen.getByText("Feed changed")).toBeInTheDocument();
-    expect(screen.getByText("possible-cross-source-duplicate")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open original source" })).toHaveAttribute("href", "https://example.com/storytime");
+    expect(screen.getByText("Westfield Schools")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
   });
 
   it("has useful empty and error states", async () => {
     mocks.getSourceHealth.mockResolvedValue([]);
-    mocks.getPendingEventCandidates.mockResolvedValue([]);
     mocks.getSourceCandidates.mockResolvedValue([]);
     const view = render(<AdminSourcesPage />);
 
-    expect(await screen.findByText(/No approved source health has been recorded yet/)).toBeInTheDocument();
-    expect(screen.getByText("No observations are awaiting review.")).toBeInTheDocument();
+    expect(await screen.findByText("Every recorded source is healthy.")).toBeInTheDocument();
+    expect(screen.getByText("No discovered sources are awaiting review.")).toBeInTheDocument();
 
     mocks.getSourceHealth.mockRejectedValue(new Error("denied"));
     view.getByRole("button", { name: "Refresh" }).click();
