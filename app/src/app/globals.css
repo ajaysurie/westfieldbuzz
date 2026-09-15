@@ -458,6 +458,23 @@ a {
   gap: 12px;
 }
 
+.event-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.event-card__recurrence {
+  padding: 3px 9px;
+  border: 1px dashed var(--accent-light);
+  border-radius: 999px;
+  color: var(--accent-light);
+  font-size: 0.68rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .event-card__category {
   max-width: 48%;
   padding: 3px 9px;
@@ -572,6 +589,40 @@ a {
 
 .btn-primary { background: var(--accent); color: white; }
 .btn--ghost { background: transparent; color: var(--accent); border: 1.5px solid rgba(27, 58, 92, 0.3); }
+
+.weather-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 26px;
+  padding: 14px 18px;
+  border: 1px solid #c3d5e4;
+  border-radius: 14px;
+  background: linear-gradient(90deg, #eaf1f7, var(--paper-pure));
+}
+
+.weather-banner__icon {
+  font-size: 1.3rem;
+}
+
+.weather-banner p {
+  margin: 0;
+  color: var(--ink-light);
+  font-size: 0.85rem;
+}
+
+.weather-banner strong {
+  color: var(--ink);
+}
+
+.weather-banner a {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-decoration: none;
+}
 
 .state-panel {
   min-height: 210px;

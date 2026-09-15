@@ -8,6 +8,7 @@ import EventCard from "@/components/EventCard";
 import { getPublicEvents, type Event } from "@/lib/firestore";
 import { EVENT_CATEGORIES, type EventCategory } from "@/lib/events/types";
 import { publicEventQueryRange } from "@/lib/events/query-range";
+import { detectWeeklyRecurrence } from "@/lib/events/recurrence";
 
 type EventsView = "agenda" | "calendar";
 
@@ -113,6 +114,16 @@ function EventsContent() {
     }
     return true;
   }), [activeCategory, publicEvents, selectedDate, view, visibleMonth.month, visibleMonth.year]);
+
+  const recurrenceLabels = useMemo(
+    () => detectWeeklyRecurrence(publicEvents.map((event) => ({
+      id: event.id,
+      title: event.title,
+      location: event.location,
+      date: toDate(event),
+    }))),
+    [publicEvents]
+  );
 
   const agendaGroups = useMemo(() => {
     const groups = new Map<string, Event[]>();
@@ -275,7 +286,9 @@ function EventsContent() {
                 <section key={date} className="agenda-day" aria-labelledby={`events-day-${date}`}>
                   <h3 id={`events-day-${date}`}>{readableDate(date)}</h3>
                   <div className="agenda-day__events">
-                    {dayEvents.map((event) => <EventCard key={event.id} event={event} />)}
+                    {dayEvents.map((event) => (
+                      <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} />
+                    ))}
                   </div>
                 </section>
               ))}
