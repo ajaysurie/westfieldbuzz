@@ -508,7 +508,7 @@ function statusLabel(event: DigestEventSnapshot): string | undefined {
   return undefined;
 }
 
-function emailProps(input: {
+export function emailProps(input: {
   edition: DigestEdition;
   eventIds: string[];
   personalized: boolean;

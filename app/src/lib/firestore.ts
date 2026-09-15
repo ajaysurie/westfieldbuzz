@@ -420,6 +420,23 @@ export async function getSourceCandidates(): Promise<SourceCandidate[]> {
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
+export async function sendTestDigest(token: string): Promise<{
+  ok: boolean;
+  editionId?: string;
+  issueLabel?: string;
+  events?: number;
+  holdReason?: string;
+  error?: string;
+}> {
+  const response = await fetch("/api/admin/digest-test", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.error ?? body.message ?? "Test digest could not be sent.");
+  return body;
+}
+
 export async function reviewCandidate(token: string, input: {
   kind: "event" | "source";
   id: string;
