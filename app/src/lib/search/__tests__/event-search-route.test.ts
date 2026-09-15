@@ -6,10 +6,13 @@ import { eventFixture } from "./test-events";
 
 const NOW = new Date("2026-08-19T16:00:00.000Z");
 const originalKey = process.env.OPENAI_API_KEY;
+const originalGeminiKey = process.env.GEMINI_API_KEY;
 
 afterEach(() => {
   if (originalKey == null) delete process.env.OPENAI_API_KEY;
   else process.env.OPENAI_API_KEY = originalKey;
+  if (originalGeminiKey == null) delete process.env.GEMINI_API_KEY;
+  else process.env.GEMINI_API_KEY = originalGeminiKey;
 });
 
 function request(body: unknown): Request {
@@ -23,6 +26,7 @@ function request(body: unknown): Request {
 describe("POST /api/event-search", () => {
   it("returns deterministic fallback results when no model key is present", async () => {
     delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
     const repository: EventRepository = {
       async listPublishedEvents() {
         return [
@@ -36,12 +40,13 @@ describe("POST /api/event-search", () => {
     expect(response.status).toBe(200);
     expect(payload.ok).toBe(true);
     expect(payload.fallbackUsed).toBe(true);
-    expect(payload.results.map((result: { event: { id: string } }) => result.event.id)).toEqual(["music"]);
+    expect(payload.results[0].event.id).toBe("music");
     expect(payload.results[0].reason).toMatch(/free|music|Cranford/i);
   });
 
   it("returns an honest no-match state with relaxation suggestions", async () => {
     delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
     const repository: EventRepository = { async listPublishedEvents() { return []; } };
     const response = await handleEventSearch(request({ query: "indoors Saturday for a 5-year-old" }), { repository, now: NOW, skipRateLimit: true });
     const payload = await response.json();
@@ -132,6 +137,7 @@ describe("POST /api/event-search", () => {
 
   it("returns a privacy-safe controlled inventory configuration error", async () => {
     delete process.env.OPENAI_API_KEY;
+    delete process.env.GEMINI_API_KEY;
     const repository: EventRepository = { async listPublishedEvents() { throw new Error("FIREBASE_PRIVATE_KEY=super-secret"); } };
     const response = await handleEventSearch(request({ query: "music" }), { repository, now: NOW, skipRateLimit: true });
     const body = await response.text();

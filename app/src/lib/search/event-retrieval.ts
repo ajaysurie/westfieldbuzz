@@ -230,3 +230,46 @@ export function filterEvents(
 ): SearchableEvent[] {
   return events.filter((event) => eventMatchesIntent(event, intent));
 }
+
+/**
+ * Objective eligibility only: publication, freshness, status, availability,
+ * dates, town, and exclusions. These fields are reliably populated, so they
+ * can gate safely. Semantic constraints (category, keywords, budget, ages,
+ * environment) are deliberately left out — most event docs lack structured
+ * values for them, and the model matcher reads that meaning from the text.
+ */
+export function hardBoundsMatch(
+  event: SearchableEvent,
+  intent: SearchIntent
+): boolean {
+  if (
+    event.publicationStatus !== "published" ||
+    event.freshnessStatus !== "current" ||
+    !["scheduled", "rescheduled", "weather-dependent"].includes(event.status) ||
+    event.availability === "sold-out"
+  ) {
+    return false;
+  }
+
+  const local = eventLocalParts(event.date);
+  if (!local) return false;
+  if (
+    intent.dateWindow &&
+    (local.date < intent.dateWindow.startDate ||
+      local.date > intent.dateWindow.endDate)
+  ) {
+    return false;
+  }
+  if (intent.timeOfDay.length && !matchesTimeOfDay(local.hour, intent.timeOfDay)) {
+    return false;
+  }
+  if (intent.towns.length && !intent.towns.some((town) => normalized(town) === normalized(event.town))) {
+    return false;
+  }
+  if (intent.exclusions.categories.includes(event.category)) return false;
+  const haystack = normalized(`${event.title} ${event.description} ${event.tags.join(" ")}`);
+  if (intent.exclusions.keywords.some((word) => haystack.includes(normalized(word)))) {
+    return false;
+  }
+  return true;
+}
