@@ -9,6 +9,8 @@ import { getPublicEvents, type Event } from "@/lib/firestore";
 import { EVENT_CATEGORIES, type EventCategory } from "@/lib/events/types";
 import { publicEventQueryRange } from "@/lib/events/query-range";
 import { detectWeeklyRecurrence } from "@/lib/events/recurrence";
+import { useAuth } from "@/lib/auth";
+import { useSavedEventIds } from "@/lib/personalization";
 
 type EventsView = "agenda" | "calendar";
 
@@ -58,6 +60,8 @@ function EventsContent() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { user } = useAuth();
+  const savedIds = useSavedEventIds(user?.uid);
 
   const updateParams = useCallback((changes: Record<string, string | null>) => {
     const next = new URLSearchParams(searchParams.toString());
@@ -287,7 +291,7 @@ function EventsContent() {
                   <h3 id={`events-day-${date}`}>{readableDate(date)}</h3>
                   <div className="agenda-day__events">
                     {dayEvents.map((event) => (
-                      <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} />
+                      <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} saved={savedIds.has(event.id)} />
                     ))}
                   </div>
                 </section>

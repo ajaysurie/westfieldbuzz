@@ -529,6 +529,11 @@ a {
   font-size: 0.68rem;
 }
 
+.event-card__saved {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .event-card__footer a {
   min-height: 40px;
   display: inline-flex;

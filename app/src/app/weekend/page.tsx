@@ -9,6 +9,8 @@ import { FridaySignup } from "@/components/FridaySignup";
 import { getPublicEvents, type Event } from "@/lib/firestore";
 import { detectWeeklyRecurrence } from "@/lib/events/recurrence";
 import { weekendWindow } from "@/lib/events/weekend";
+import { useAuth } from "@/lib/auth";
+import { useSavedEventIds } from "@/lib/personalization";
 
 function toDate(event: Event): Date {
   return event.date?.toDate
@@ -29,6 +31,8 @@ export default function WeekendPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const { user } = useAuth();
+  const savedIds = useSavedEventIds(user?.uid);
 
   const loadEvents = useCallback(async () => {
     setLoading(true);
@@ -117,7 +121,7 @@ export default function WeekendPage() {
                   <h3 id={`weekend-day-${date}`}>{dayHeading(date)}</h3>
                   <div className="agenda-day__events">
                     {dayEvents.map((event) => (
-                      <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} />
+                      <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} saved={savedIds.has(event.id)} />
                     ))}
                   </div>
                 </section>

@@ -158,6 +158,48 @@ describe("Friday digest delivery", () => {
     expect(repository.deliveryFor("2026-08-21", subscriber.id)?.attempt).toBe(2);
   });
 
+  it("adds the subscriber's saved events to the email when they are in the edition", async () => {
+    const repository = readyRepository();
+    const subscriber = subscriberFixture({ userId: "user-1" });
+    repository.subscribers = [subscriber];
+    repository.savedEventIds.set("user-1", ["two", "not-in-edition"]);
+    const savedLists: string[][] = [];
+    const sender = vi.fn<DigestSender>(async (input) => {
+      savedLists.push((input.props.savedEvents ?? []).map((event) => event.id));
+      return "resend-saved";
+    });
+
+    await runFridayDigest({
+      repository,
+      siteOrigin: SITE_ORIGIN,
+      tokenSecret: TOKEN_SECRET,
+      sender,
+      now: FRIDAY,
+    });
+
+    expect(savedLists[0]).toEqual(["two"]);
+  });
+
+  it("omits the saved block for subscribers without a linked account", async () => {
+    const repository = readyRepository();
+    repository.subscribers = [subscriberFixture({ userId: null })];
+    const savedLists: string[][] = [];
+    const sender = vi.fn<DigestSender>(async (input) => {
+      savedLists.push((input.props.savedEvents ?? []).map((event) => event.id));
+      return "resend-nosave";
+    });
+
+    await runFridayDigest({
+      repository,
+      siteOrigin: SITE_ORIGIN,
+      tokenSecret: TOKEN_SECRET,
+      sender,
+      now: FRIDAY,
+    });
+
+    expect(savedLists[0]).toEqual([]);
+  });
+
   it("recovers a held edition when inventory becomes healthy", async () => {
     const repository = new MemoryDigestRepository();
     repository.subscribers = [subscriberFixture()];

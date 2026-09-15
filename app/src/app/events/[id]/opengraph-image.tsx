@@ -73,21 +73,24 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         <img
           src={background}
           alt=""
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            background: "linear-gradient(180deg, rgba(23,33,43,0) 18%, rgba(23,33,43,0.88) 76%)",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            background: "linear-gradient(180deg, rgba(23,33,43,0.15) 0%, rgba(23,33,43,0.45) 42%, rgba(23,33,43,0.95) 72%)",
           }}
         />
         <div
           style={{
             position: "absolute",
             left: 56,
-            right: 56,
             bottom: 44,
+            width: 1088,
             display: "flex",
             flexDirection: "column",
             color: "white",

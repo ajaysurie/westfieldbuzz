@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   collection,
   deleteDoc,
@@ -70,6 +71,20 @@ export async function isEventSaved(userId: string, eventId: string): Promise<boo
 export async function getSavedEventIds(userId: string): Promise<string[]> {
   const snapshot = await getDocs(collection(db, "users", userId, "savedEvents"));
   return snapshot.docs.map((item) => item.id);
+}
+
+/** One saved-events read per page; EventCards read membership from the set. */
+export function useSavedEventIds(userId: string | null | undefined): Set<string> {
+  const [result, setResult] = useState<{ userId: string; ids: Set<string> } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    getSavedEventIds(userId)
+      .then((list) => { if (!cancelled) setResult({ userId, ids: new Set(list) }); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [userId]);
+  return result && result.userId === userId ? result.ids : new Set<string>();
 }
 
 export async function saveSearch(

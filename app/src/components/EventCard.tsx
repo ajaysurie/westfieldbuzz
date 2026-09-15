@@ -53,9 +53,10 @@ interface EventCardProps {
   dark?: boolean;
   showInterested?: boolean;
   recurrenceLabel?: string;
+  saved?: boolean;
 }
 
-export default function EventCard({ event, dark = false, recurrenceLabel }: EventCardProps) {
+export default function EventCard({ event, dark = false, recurrenceLabel, saved = false }: EventCardProps) {
   const startTime = formatEventTime(event.date);
   const endTime = formatEventTime(event.endDate);
   const timeRange = endTime ? `${startTime}\u2013${endTime}` : startTime;
@@ -124,7 +125,9 @@ export default function EventCard({ event, dark = false, recurrenceLabel }: Even
         </p>
         {event.description && <p className="event-card__description">{event.description}</p>}
         <div className="event-card__footer">
-          <span>{verifiedLabel(event.lastVerifiedAt)}</span>
+          {saved
+            ? <span className="event-card__saved">★ Saved · on your Friday list</span>
+            : <span>{verifiedLabel(event.lastVerifiedAt)}</span>}
           <Link href={`/events/${encodeURIComponent(event.id)}`}>Event details <span aria-hidden="true">→</span></Link>
         </div>
       </div>

@@ -8,6 +8,8 @@ import { FridaySignup } from "@/components/FridaySignup";
 import { localDateKey } from "@/components/EventCalendar";
 import { detectWeeklyRecurrence } from "@/lib/events/recurrence";
 import WeatherBanner from "@/components/WeatherBanner";
+import { useAuth } from "@/lib/auth";
+import { useSavedEventIds } from "@/lib/personalization";
 import type { Event } from "@/lib/firestore";
 import HomeSearch from "@/components/search/HomeSearch";
 
@@ -59,6 +61,8 @@ function dateHeading(key: string) {
 const SEARCH_STARTERS = ["Rainy-day ideas for kids", "Free this weekend", "A low-key date night"];
 
 export default function HomeContent({ initialEvents }: { initialEvents: SerializedHomeEvent[] }) {
+  const { user } = useAuth();
+  const savedIds = useSavedEventIds(user?.uid);
   const events = useMemo(() => initialEvents.map(hydrateEvent), [initialEvents]);
   const weekGroups = useMemo(() => {
     const groups = new Map<string, Event[]>();
@@ -101,7 +105,7 @@ export default function HomeContent({ initialEvents }: { initialEvents: Serializ
       {weekGroups.length === 0 ? <div className="state-panel"><span className="state-panel__mark" aria-hidden="true">◇</span>
         <h3>No events listed this week</h3><p>See the full calendar for events later this month.</p><Link href="/events">Browse the calendar</Link></div>
       : <div className="agenda-groups">{weekGroups.map(([date, dayEvents]) => <section key={date} className="agenda-day" aria-labelledby={`day-${date}`}>
-        <h3 id={`day-${date}`}>{dateHeading(date)}</h3><div className="agenda-day__events">{dayEvents.map((event) => <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} />)}</div>
+        <h3 id={`day-${date}`}>{dateHeading(date)}</h3><div className="agenda-day__events">{dayEvents.map((event) => <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} saved={savedIds.has(event.id)} />)}</div>
       </section>)}</div>}
     </div></section>
     <section id="friday-list" className="friday-section" aria-labelledby="friday-heading"><div className="home-shell friday-strip">

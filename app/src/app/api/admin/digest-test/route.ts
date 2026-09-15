@@ -90,9 +90,11 @@ export async function POST(request: Request) {
   oneClickUnsubscribeUrl.searchParams.set("token", token);
 
   const selection = selectDigestEvents(edition, null, false);
+  const savedEventIds = await repository.getSavedEventIds?.(actor.uid) ?? [];
   const props = emailProps({
     edition,
     eventIds: selection.eventIds,
+    savedEventIds,
     personalized: false,
     unsubscribePageUrl: unsubscribePageUrl.toString(),
     oneClickUnsubscribeUrl: oneClickUnsubscribeUrl.toString(),
