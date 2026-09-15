@@ -6,7 +6,7 @@ import {
   type SearchIntent,
 } from "@/lib/search/event-intent";
 import {
-  filterEvents,
+  hardBoundsMatch,
   queryWindowForIntent,
   type EventRepository,
   type SearchFactName,
@@ -26,6 +26,7 @@ import { createFirestoreEventRepository } from "@/lib/server/event-query/firesto
 import { applyPreferenceDefaults } from "@/lib/preference-defaults";
 import { validatePreferences } from "@/lib/server/account/preferences";
 import { composeNarrative } from "@/lib/server/search-narrative";
+import { matchEventsWithModel } from "@/lib/server/search-matcher";
 import {
   allowEventSearchIngress,
   consumeEventSearchQuota,
@@ -40,6 +41,8 @@ interface SearchDependencies {
   skipRateLimit?: boolean;
   /** Test seam for the narrative model call. */
   narrativeFetch?: typeof fetch;
+  /** Test seam for the matcher model call. */
+  matcherFetch?: typeof fetch;
   ingressLimiter?: (request: Request, now: Date) => Promise<boolean>;
   quotaLimiter?: (request: Request, now: Date) => Promise<boolean>;
 }
@@ -239,21 +242,45 @@ export async function handleEventSearch(
     );
   }
 
-  const eligible = filterEvents(events, intent);
-  const ranked = rankEvents(eligible, intent, now);
+  // Objective bounds only: dates, town, status, exclusions. The model then
+  // judges semantic fit (music, free, kids) from each event's own text,
+  // because structured fact fields are absent from most of the corpus.
+  const eligible = events.filter((event) => hardBoundsMatch(event, intent));
   const unresolved = unresolvedConstraints(intent, events);
-  const rankedItems = ranked.slice(0, 50).map((item, index) => ({
-    event: item.event,
-    rank: index + 1,
-    label: resultLabel(index),
-    reason: explainMatch(item, intent),
-  }));
-  const narrative = structuredExecution ? null : await composeNarrative({
-    query,
-    intent,
-    results: rankedItems,
-    ...(dependencies.narrativeFetch ? { fetchImpl: dependencies.narrativeFetch } : {}),
-  });
+
+  let modelMatch: Awaited<ReturnType<typeof matchEventsWithModel>> = null;
+  if (!structuredExecution && eligible.length) {
+    modelMatch = await matchEventsWithModel({
+      query,
+      candidates: eligible,
+      ...(dependencies.matcherFetch ? { fetchImpl: dependencies.matcherFetch } : {}),
+    });
+  }
+
+  const rankedItems = modelMatch
+    ? modelMatch.matches.slice(0, 50).map((item, index) => ({
+        event: item.event,
+        rank: index + 1,
+        label: resultLabel(index),
+        reason: item.reason,
+      }))
+    : rankEvents(eligible, intent, now).slice(0, 50).map((item, index) => ({
+        event: item.event,
+        rank: index + 1,
+        label: resultLabel(index),
+        reason: explainMatch(item, intent),
+      }));
+
+  const narrative = structuredExecution
+    ? null
+    : modelMatch
+      ? modelMatch.narrative
+      : await composeNarrative({
+          query,
+          intent,
+          results: rankedItems,
+          ...(dependencies.narrativeFetch ? { fetchImpl: dependencies.narrativeFetch } : {}),
+        });
   const response: EventSearchSuccess = {
     ok: true,
     query,
@@ -264,11 +291,11 @@ export async function handleEventSearch(
     ...(appliedPreferenceFields.length ? { appliedPreferenceFields } : {}),
     ...(narrative ? { narrative } : {}),
     ambiguities: intent.ambiguities,
-    suggestions: ranked.length ? [] : [...unresolved, ...noMatchSuggestions(intent)].slice(0, 3),
+    suggestions: rankedItems.length ? [] : [...unresolved, ...noMatchSuggestions(intent)].slice(0, 3),
     unresolvedConstraints: unresolved,
     meta: {
       candidateCount: events.length,
-      matchedCount: ranked.length,
+      matchedCount: rankedItems.length,
       durationMs: Date.now() - startedAt,
     },
   };
