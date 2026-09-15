@@ -139,6 +139,15 @@ async function createDatabase() {
   return getFirestore(app, process.env.NEXT_PUBLIC_FIRESTORE_DB || "westfieldbuzz-dev");
 }
 
+export async function getPublishedEventById(id: string): Promise<SearchableEvent | null> {
+  const db = await createDatabase();
+  const document = await db.collection("events").doc(id).get();
+  if (!document.exists) return null;
+  const data = document.data() ?? {};
+  if (data.publicationStatus !== "published") return null;
+  return mapEvent(document.id, data);
+}
+
 export function createFirestoreEventRepository(): EventRepository {
   return {
     async listPublishedEvents(window: EventQueryWindow) {
