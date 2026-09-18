@@ -36,6 +36,26 @@ export function normalizeWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Some feeds prefix the venue with a list marker ("- 1025 Orange Avenue
+ * Cranford NJ 07016"). A leading dash or bullet is never a legitimate part of
+ * a venue name.
+ */
+export function normalizeLocation(value: string | undefined | null): string {
+  return normalizeWhitespace(value ?? "").replace(/^[-–—•*·]+/, "").trim();
+}
+
+/**
+ * Feeds that carry no end time sometimes echo the start time, producing
+ * zero-duration listings ("8:00 PM–8:00 PM"). A zero or negative duration is a
+ * parsing artifact, not a fact — drop it so the event renders with its start
+ * time only.
+ */
+export function normalizeEndDate(date: Date, endDate: Date | null): Date | null {
+  if (!endDate || endDate.getTime() <= date.getTime()) return null;
+  return endDate;
+}
+
 export function normalizeCategory(value: string | undefined | null): EventCategory {
   if (!value) return "Community";
   const exact = EVENT_CATEGORIES.find(
@@ -50,9 +70,10 @@ export function normalizeEventFacts(input: EventFacts): EventFacts {
     ...input,
     title: normalizeWhitespace(input.title),
     description: normalizeWhitespace(input.description),
-    location: normalizeWhitespace(input.location),
+    location: normalizeLocation(input.location),
     town: normalizeWhitespace(input.town),
     category: normalizeCategory(input.category),
+    endDate: normalizeEndDate(input.date, input.endDate),
     sourceUrl: input.sourceUrl.trim(),
   };
 }

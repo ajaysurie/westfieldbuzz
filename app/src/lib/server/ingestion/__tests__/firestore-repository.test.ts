@@ -24,15 +24,58 @@ class FakeReference {
 class FakeCollection {
   constructor(private readonly db: FakeFirestore, private readonly path: string) {}
   doc(id: string) { return new FakeReference(this.db, `${this.path}/${id}`); }
-  where(field: string, _operator: string, value: unknown) {
-    return { get: async () => ({ docs: this.docs().filter((document) => document.data()[field] === value) }) };
+  where(field: string, operator: string, value: unknown) {
+    return new FakeQuery(this).where(field, operator, value);
   }
   async get() { return { docs: this.docs() }; }
-  private docs() {
+  docs() {
     const prefix = `${this.path}/`;
     return [...this.db.documents.entries()]
       .filter(([path]) => path.startsWith(prefix) && !path.slice(prefix.length).includes("/"))
       .map(([path, value]) => new FakeSnapshot(path.slice(prefix.length), value));
+  }
+}
+
+function asMillis(value: unknown): number | null {
+  if (value instanceof Date) return value.getTime();
+  if (
+    value &&
+    typeof value === "object" &&
+    "toDate" in value &&
+    typeof (value as { toDate?: unknown }).toDate === "function"
+  ) {
+    const date = (value as { toDate(): unknown }).toDate();
+    return date instanceof Date ? date.getTime() : null;
+  }
+  if (typeof value === "number") return value;
+  return null;
+}
+
+function fakeWhereMatch(fieldValue: unknown, operator: string, value: unknown): boolean {
+  if (operator === "==") return fieldValue === value;
+  const left = asMillis(fieldValue);
+  const right = asMillis(value);
+  if (left === null || right === null) return false;
+  if (operator === ">=") return left >= right;
+  if (operator === "<") return left < right;
+  if (operator === ">") return left > right;
+  if (operator === "<=") return left <= right;
+  return false;
+}
+
+class FakeQuery {
+  private filters: Array<(data: Stored) => boolean> = [];
+  constructor(private readonly collection: FakeCollection) {}
+  where(field: string, operator: string, value: unknown): this {
+    this.filters.push((data) => fakeWhereMatch(data[field], operator, value));
+    return this;
+  }
+  async get(): Promise<{ docs: FakeSnapshot[] }> {
+    return {
+      docs: this.collection.docs().filter((document) =>
+        this.filters.every((filter) => filter(document.data()))
+      ),
+    };
   }
 }
 
@@ -226,5 +269,56 @@ describe("Firestore identity claims", () => {
 
     expect(result).toMatchObject({ created: 0, candidates: 1, safetyHeld: true });
     expect(db.documentsIn("eventCandidates")[0]?.[1]).toMatchObject({ reason: "fingerprint-registry-inconsistency" });
+  });
+
+  it("holds a fuzzy cross-source duplicate for review instead of publishing it", async () => {
+    const db = new FakeFirestore();
+    const listed = observation({
+      title: "Latin Jazz at Galeria",
+      location: "Galeria, 111 Quimby St, Westfield",
+      date: new Date("2026-08-22T23:30:00.000Z"),
+      sourceId: "galeria-web",
+    });
+    db.seed("events/latin-jazz-web", listed);
+    const syndicated = observation({
+      title: "LATIN JAZZ @ GALERIA Concert Series: The Montclair Jazz Collective",
+      location: "Galeria The Art Venue & Framing Galeria West, 111 Quimby St",
+      date: new Date("2026-08-22T23:30:00.000Z"),
+      sourceId: "galeria-instagram",
+      sourceEventId: "other",
+    });
+
+    const result = await reconcile(db, source("galeria-instagram"), syndicated);
+
+    expect(result).toMatchObject({ created: 0, candidates: 1, safetyHeld: true });
+    expect(db.documentsIn("eventCandidates")[0]?.[1]).toMatchObject({
+      reason: "possible-cross-source-duplicate",
+      matchKind: "fuzzy",
+      matchingEventIds: ["latin-jazz-web"],
+    });
+    // The published event stays public; only the new observation waits.
+    expect(db.read("events/latin-jazz-web")).toMatchObject({ title: "Latin Jazz at Galeria" });
+  });
+
+  it("publishes an unrelated same-day event even when another source has events that day", async () => {
+    const db = new FakeFirestore();
+    const listed = observation({
+      title: "Latin Jazz at Galeria",
+      location: "Galeria, 111 Quimby St, Westfield",
+      date: new Date("2026-08-22T23:30:00.000Z"),
+      sourceId: "galeria-web",
+    });
+    db.seed("events/latin-jazz-web", listed);
+    const market = observation({
+      title: "Westfield Farmers Market",
+      location: "Mindowaskin Park, East Broad Street",
+      date: new Date("2026-08-22T13:00:00.000Z"),
+      sourceId: "downtown-westfield",
+      sourceEventId: "market-1",
+    });
+
+    const result = await reconcile(db, source("downtown-westfield"), market);
+
+    expect(result).toMatchObject({ created: 1, candidates: 0 });
   });
 });

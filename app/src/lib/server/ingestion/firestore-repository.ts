@@ -11,6 +11,7 @@ import {
   eventIdentityFingerprint,
   type EventIdentityFingerprint,
 } from "./identity";
+import { localDayBounds, scoreFuzzyDuplicate } from "./fuzzy-identity";
 import { planReconciliation } from "./reconcile";
 import type {
   EventSourcePolicy,
@@ -163,6 +164,10 @@ async function writeCandidate(input: {
   matchingEventIds?: string[];
   matchingSourceIds?: string[];
   identity?: EventIdentityFingerprint;
+  /** How a possible-cross-source-duplicate hold was detected. */
+  matchKind?: "exact" | "fuzzy";
+  /** Fuzzy match score (0-1) when matchKind is "fuzzy". */
+  matchScore?: number;
 }): Promise<{ holdCount: number; firstHeldAt: Date }> {
   const id = stableId(input.source.id, input.observation.sourceEventId);
   const ref = input.db.collection("eventCandidates").doc(id);
@@ -191,6 +196,10 @@ async function writeCandidate(input: {
         : {}),
       ...(input.matchingSourceIds
         ? { matchingSourceIds: input.matchingSourceIds }
+        : {}),
+      ...(input.matchKind ? { matchKind: input.matchKind } : {}),
+      ...(typeof input.matchScore === "number"
+        ? { matchScore: input.matchScore }
         : {}),
       ...(input.identity
         ? {
@@ -315,7 +324,60 @@ type CreateClaimResult =
         | "existing-event-conflict";
       matchingEventIds: string[];
       matchingSourceIds: string[];
+      /**
+       * "fuzzy" when the hold came from fuzzy-identity scoring rather than an
+       * exact fingerprint collision. Fuzzy holds never pull the matched
+       * published event; only the new observation waits for review.
+       */
+      matchKind?: "exact" | "fuzzy";
+      matchScore?: number;
     };
+
+/**
+ * Same-local-day events from other sources, scored for near-duplicate
+ * similarity. One bounded range query per new observation; scoring happens in
+ * memory over at most a day's worth of town events.
+ */
+async function findFuzzyDuplicateMatches(input: {
+  db: Firestore;
+  observation: SourceObservation;
+  sourceId: string;
+}): Promise<{ eventIds: string[]; sourceIds: string[]; bestScore: number }> {
+  const { start, end } = localDayBounds(input.observation.date);
+  const snapshot = await input.db
+    .collection("events")
+    .where("date", ">=", Timestamp.fromDate(start))
+    .where("date", "<", Timestamp.fromDate(end))
+    .get();
+  const scored: { id: string; sourceId: string; score: number }[] = [];
+  for (const document of snapshot.docs) {
+    const data = document.data();
+    if (data.sourceId === input.sourceId) continue;
+    if (data.publicationStatus === "suppressed") continue;
+    if (typeof data.sourceId !== "string") continue;
+    const result = scoreFuzzyDuplicate(
+      {
+        title: input.observation.title,
+        location: input.observation.location,
+        date: input.observation.date,
+      },
+      {
+        title: typeof data.title === "string" ? data.title : "",
+        location: typeof data.location === "string" ? data.location : "",
+        date: dateValue(data.date, input.observation.date),
+      }
+    );
+    if (result.duplicate) {
+      scored.push({ id: document.id, sourceId: data.sourceId, score: result.score });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  return {
+    eventIds: scored.map((match) => match.id),
+    sourceIds: [...new Set(scored.map((match) => match.sourceId))].sort(),
+    bestScore: scored.length > 0 ? scored[0].score : 0,
+  };
+}
 
 async function existingFingerprintMatches(input: {
   db: Firestore;
@@ -352,6 +414,27 @@ async function claimCreate(input: {
       reason: "possible-cross-source-duplicate",
       matchingEventIds: legacyMatches.eventIds,
       matchingSourceIds: legacyMatches.sourceIds,
+      matchKind: "exact",
+    };
+  }
+
+  // Exact fingerprints miss the common case: two sources describing the same
+  // event in different words ("LATIN JAZZ @ GALERIA Concert Series: ..." vs
+  // "Latin Jazz at Galeria"). Score same-day events from other sources and
+  // hold near-duplicates for review instead of publishing a visible duplicate.
+  const fuzzyMatches = await findFuzzyDuplicateMatches({
+    db: input.db,
+    observation: input.action.observation,
+    sourceId: input.source.id,
+  });
+  if (fuzzyMatches.eventIds.length) {
+    return {
+      status: "held",
+      reason: "possible-cross-source-duplicate",
+      matchingEventIds: fuzzyMatches.eventIds,
+      matchingSourceIds: fuzzyMatches.sourceIds,
+      matchKind: "fuzzy",
+      matchScore: fuzzyMatches.bestScore,
     };
   }
 
@@ -650,6 +733,22 @@ async function inspectCreateClaim(input: {
       reason: "possible-cross-source-duplicate",
       matchingEventIds: legacyMatches.eventIds,
       matchingSourceIds: legacyMatches.sourceIds,
+      matchKind: "exact",
+    };
+  }
+  const fuzzyMatches = await findFuzzyDuplicateMatches({
+    db: input.db,
+    observation: input.action.observation,
+    sourceId: input.source.id,
+  });
+  if (fuzzyMatches.eventIds.length) {
+    return {
+      status: "held",
+      reason: "possible-cross-source-duplicate",
+      matchingEventIds: fuzzyMatches.eventIds,
+      matchingSourceIds: fuzzyMatches.sourceIds,
+      matchKind: "fuzzy",
+      matchScore: fuzzyMatches.bestScore,
     };
   }
   const registry = await input.db.collection("eventFingerprintRegistry").doc(identity.hash).get();
@@ -830,14 +929,21 @@ export async function reconcileSource(input: {
         reason: result.reason,
         matchingEventIds: result.matchingEventIds,
         matchingSourceIds: result.matchingSourceIds,
+        matchKind: result.matchKind,
+        matchScore: result.matchScore,
         identity: eventIdentityFingerprint(action.observation),
       });
-      await holdAffectedEvents({
-        db: input.db,
-        eventIds: result.matchingEventIds,
-        hold,
-        checkedAt: input.checkedAt,
-      });
+      // A fuzzy signal is weaker than an exact fingerprint collision: hold the
+      // new observation for review, but never pull the already-published event
+      // out of public search on a near-match.
+      if (result.matchKind !== "fuzzy") {
+        await holdAffectedEvents({
+          db: input.db,
+          eventIds: result.matchingEventIds,
+          hold,
+          checkedAt: input.checkedAt,
+        });
+      }
     }
     for (const action of observedActions) {
       if (deadlineReached()) break;

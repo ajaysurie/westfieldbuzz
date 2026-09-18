@@ -92,6 +92,10 @@ export interface PendingEventCandidate {
   reason: string;
   matchingEventIds?: string[];
   matchingSourceIds?: string[];
+  /** How a possible-cross-source-duplicate hold was detected. */
+  matchKind?: "exact" | "fuzzy";
+  /** Fuzzy match score (0-1) when matchKind is "fuzzy". */
+  matchScore?: number;
   reviewStatus: "pending" | "approved" | "rejected" | "suppressed" | "superseded" | "reopened" | "resolved";
 }
 
