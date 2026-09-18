@@ -1,19 +1,21 @@
 # Westfield Buzz
 
 ## About
-Westfield Buzz is a community-curated service directory and events hub for Westfield, New Jersey. Residents recommend trusted local service providers (electricians, plumbers, landscapers, tutors, etc.) and share upcoming community events.
+Westfield Buzz (https://westfieldbuzz.com) is a local events guide for Westfield, New Jersey and nearby Union County towns including Summit, Cranford, Garwood, Rahway, Mountainside, and Fanwood. It aggregates public community events — concerts, festivals, markets, kids activities, sports, arts, and town programming — from municipal calendars and venue sites, deduplicates them across sources, and republishes one canonical listing per event.
 
-## Key Features
-- **Service Directory**: Browse and search 85+ local service providers recommended by neighbors
-- **Community Recommendations**: Real residents vouch for providers they've personally used
-- **Events Calendar**: Upcoming community events, markets, festivals, and activities
-- **Business Suggestions**: Community members can suggest new businesses to add
+Listings refresh automatically from source feeds. A free Friday email digest summarizes the coming week; readers can subscribe at https://westfieldbuzz.com/subscribe.
 
-## Location
-Westfield, NJ 07090 — a Great American Main Street community established in 1720.
+## Machine-readable access
+- **Events API (JSON):** `GET https://westfieldbuzz.com/api/events` — published upcoming events. Query params: `town`, `category`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `limit` (default 50, max 200). Example: `/api/events?town=Westfield&category=Music&limit=20`. Cached at the edge; no key required.
+- **Event pages:** every event has a stable URL at `https://westfieldbuzz.com/events/[id]` with schema.org Event JSON-LD (name, startDate, endDate, location, eventStatus).
+- **Sitemap:** https://westfieldbuzz.com/sitemap.xml includes published event URLs.
+- **Natural-language search:** https://westfieldbuzz.com/search accepts plain-English queries ("free kids events this weekend in Cranford").
 
-## Categories
-Electrician, Plumber, HVAC, Landscaper, House Cleaner, Handyman, Painter, Tutor, Contractor, Auto Mechanic
+## Data notes
+- Times are America/New_York.
+- `eventStatus` follows schema.org: EventScheduled, EventCancelled, EventPostponed, EventRescheduled.
+- Listings link back to the original source via `sourceUrl`; details can change, so the source is authoritative.
+- Coverage is Westfield-first; nearby-town coverage depends on what local sources publish.
 
 ## Contact
-Visit https://westfieldbuzz.com
+https://westfieldbuzz.com
