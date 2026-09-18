@@ -469,6 +469,195 @@ export const EVENT_SOURCES: EventSourcePolicy[] = [
     minimumExpectedEvents: 0,
     maxPosts: 12,
   },
+  // Source expansion sweep (Sept 2026). Each URL below was verified to serve
+  // a structured, server-rendered event listing with robots.txt allowing the
+  // event pages. Patch and TAPinto were investigated and dropped: neither
+  // publishes a machine-readable calendar, and both are already covered by
+  // the westfield-llm-search discovery source.
+  {
+    ...STANDARD_FETCH,
+    id: "ymca-westfield-llm",
+    name: "Westfield Area YMCA",
+    type: "llm-extract",
+    // Drupal events listing (13 upcoming at verification); detail pages carry
+    // explicit Date/Time/Location blocks. No ICS/RSS/API found.
+    url: "https://westfieldynj.org/events",
+    publicUrl: "https://westfieldynj.org/events",
+    town: "Westfield",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["westfieldynj.org", "www.westfieldynj.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 1,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "ucnj-cultural-llm",
+    name: "Union County Cultural Events",
+    type: "llm-extract",
+    // County-run calendar covering Rahway/Cranford/Summit and beyond: date,
+    // time, category, title, cost, venue name + address, all server-rendered
+    // WordPress. The seasonal slug (/summer26/) rotates yearly; this durable
+    // calendar page is the one to track.
+    url: "https://ucnj.org/parks-recreation/cultural-heritage-affairs/event-calendar/",
+    publicUrl: "https://ucnj.org/parks-recreation/cultural-heritage-affairs/event-calendar/",
+    town: "Union County",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["ucnj.org", "www.ucnj.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 1,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "fanwood-library-llm",
+    name: "Fanwood Memorial Library",
+    type: "llm-extract",
+    // "Upcoming Events" section on the WordPress homepage (~10 listings at
+    // verification: title, date, time, location). A "View All Events" page
+    // exists but its URL was not exposed; the tribe REST endpoint
+    // (/wp-json/tribe/events/v1/events) is worth probing as a future upgrade
+    // to wordpress-tribe-json.
+    url: "https://fanwoodlibrary.org/",
+    publicUrl: "https://fanwoodlibrary.org/",
+    town: "Fanwood",
+    autoApprove: true,
+    group: "core-libraries",
+    allowedHosts: ["fanwoodlibrary.org", "www.fanwoodlibrary.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 1,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "great-awakening-eventbrite",
+    name: "Great Awakening Brewing Company",
+    type: "eventbrite-organizer",
+    // Westfield brewery/taproom; "Top Organizer" with 420 total events and a
+    // high cadence (trivia, live music, several events/month).
+    url: "https://www.eventbrite.com/o/great-awakening-brewing-company-56039992073",
+    town: "Westfield",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["eventbrite.com", "www.eventbrite.com"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    expectedLayoutMarker: '"upcomingEvents"',
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "streetfairs-eventbrite",
+    name: "StreetFairs.org",
+    type: "eventbrite-organizer",
+    // Runs the Westfield Street Fair & Craft Show 3x/year (spring/summer/
+    // fall on South Ave W & Boulevard). Low volume, tentpole downtown events.
+    url: "https://www.eventbrite.com/o/streetfairsorg-18458243538",
+    town: "Westfield",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["eventbrite.com", "www.eventbrite.com"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    expectedLayoutMarker: '"upcomingEvents"',
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "cdc-theatre-llm",
+    name: "CDC Theatre",
+    type: "llm-extract",
+    // Cranford Dramatic Club, 78 Winans Ave, Cranford — NJ's longest
+    // continuously producing community theatre (est. 1919). Season model:
+    // ~3 musicals + a play + special events; announce ~1x/year.
+    url: "https://cdctheatre.org",
+    publicUrl: "https://cdctheatre.org",
+    town: "Cranford",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["cdctheatre.org", "www.cdctheatre.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "wcp-theatre-llm",
+    name: "Westfield Community Players",
+    type: "llm-extract",
+    // 1000 North Ave W, Westfield (est. 1934). ~4 productions/season plus
+    // auditions. Tickets via Arts-People; a dedicated adapter is only worth
+    // it if volume justifies.
+    url: "https://www.wcptheatre.org",
+    publicUrl: "https://www.wcptheatre.org",
+    town: "Westfield",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["wcptheatre.org", "www.wcptheatre.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "vivid-stage-llm",
+    name: "Vivid Stage",
+    type: "llm-extract",
+    // Professional theater in residence at the Oakes Center, 120 Morris Ave,
+    // Summit. ~2-3 mainstage productions + readings/cabarets/improv per season.
+    url: "https://www.vividstage.org",
+    publicUrl: "https://www.vividstage.org",
+    town: "Summit",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["vividstage.org", "www.vividstage.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "steeple-concerts-llm",
+    name: "Steeple Concerts at St. Paul's",
+    type: "llm-extract",
+    // Classical series at St. Paul's, Westfield; ~6 concerts/season announced
+    // on one season page. Squarespace robots.txt explicitly disallows
+    // ?format=json and ?format=ical — extract from human-readable pages only.
+    url: "https://www.steepleconcerts.org/home",
+    publicUrl: "https://www.steepleconcerts.org/home",
+    town: "Westfield",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["steepleconcerts.org", "www.steepleconcerts.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "summit-film-society-llm",
+    name: "Film Society of Summit",
+    type: "llm-extract",
+    // Nonprofit indie-film screenings at MONDO, Summit (est. 2012), often
+    // with post-screening Q&As. ~1-2/month.
+    url: "http://www.summitfilmsociety.com/",
+    publicUrl: "http://www.summitfilmsociety.com/",
+    town: "Summit",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["summitfilmsociety.com", "www.summitfilmsociety.com"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 0,
+  },
+  {
+    ...STANDARD_FETCH,
+    id: "vacnj-llm",
+    name: "Visual Arts Center of New Jersey",
+    type: "llm-extract",
+    // 68 Elm St, Summit. Exhibitions + artist talks + Studio School classes
+    // (registration catalog at artcenternj.augusoft.net). Modest volume.
+    url: "https://artcenternj.org",
+    publicUrl: "https://artcenternj.org",
+    town: "Summit",
+    autoApprove: true,
+    group: "nearby-venues",
+    allowedHosts: ["artcenternj.org", "www.artcenternj.org"],
+    expectedContentTypes: ["text/html", "application/xhtml+xml"],
+    minimumExpectedEvents: 0,
+  },
 ];
 
 export const SOURCE_GROUPS = [
@@ -524,6 +713,17 @@ const CATEGORY_MAP: Record<string, EventCategory> = {
   "Tomasello Winery Cranford": "Music",
   "The James Ward Mansion": "Community",
   "Fire Me Up Studio": "Arts & Culture",
+  "Westfield Area YMCA": "Sports & Recreation",
+  "Union County Cultural Events": "Arts & Culture",
+  "Fanwood Memorial Library": "Community",
+  "Great Awakening Brewing Company": "Music",
+  "StreetFairs.org": "Community",
+  "CDC Theatre": "Entertainment",
+  "Westfield Community Players": "Entertainment",
+  "Vivid Stage": "Entertainment",
+  "Steeple Concerts at St. Paul's": "Music",
+  "Film Society of Summit": "Entertainment",
+  "Visual Arts Center of New Jersey": "Arts & Culture",
   "Cranford Community Events": "Community",
   "Main Calendar": "Community",
   "Community Events": "Community",

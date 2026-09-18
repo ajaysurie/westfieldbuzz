@@ -35,4 +35,45 @@ describe("event source registry", () => {
       allowedHosts: ["instagram.com", "www.instagram.com", "i.instagram.com"],
     });
   });
+
+  it("pins the Sept 2026 source-expansion sweep to their hosts and auto-approves", () => {
+    const ids = [
+      "ymca-westfield-llm",
+      "ucnj-cultural-llm",
+      "fanwood-library-llm",
+      "great-awakening-eventbrite",
+      "streetfairs-eventbrite",
+      "cdc-theatre-llm",
+      "wcp-theatre-llm",
+      "vivid-stage-llm",
+      "steeple-concerts-llm",
+      "summit-film-society-llm",
+      "vacnj-llm",
+    ];
+    for (const id of ids) {
+      const source = sourceById(id);
+      expect(source).toBeDefined();
+      expect(source!.autoApprove).toBe(true);
+      expect(source!.allowedHosts.length).toBeGreaterThan(0);
+      expect(source!.url).toMatch(/^https?:\/\//);
+    }
+    expect(sourceById("ymca-westfield-llm")).toMatchObject({
+      type: "llm-extract",
+      town: "Westfield",
+      allowedHosts: ["westfieldynj.org", "www.westfieldynj.org"],
+    });
+    expect(sourceById("fanwood-library-llm")).toMatchObject({
+      type: "llm-extract",
+      group: "core-libraries",
+    });
+    for (const id of ["great-awakening-eventbrite", "streetfairs-eventbrite"]) {
+      expect(sourceById(id)).toMatchObject({
+        type: "eventbrite-organizer",
+        autoApprove: true,
+        group: "nearby-venues",
+        allowedHosts: ["eventbrite.com", "www.eventbrite.com"],
+        expectedLayoutMarker: '"upcomingEvents"',
+      });
+    }
+  });
 });
