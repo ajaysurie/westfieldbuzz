@@ -5,13 +5,11 @@
  * describe an event with byte-identical normalized facts. In practice the same
  * concert shows up as "LATIN JAZZ @ GALERIA Concert Series: ..." from one feed
  * and "Latin Jazz at Galeria" from another, at the same venue and time. This
- * module scores those near-misses so ingestion can hold them for review instead
- * of publishing a visible duplicate.
- *
- * Policy is deliberately conservative: a fuzzy signal NEVER merges or
- * publishes. It only routes the observation to the candidate review queue with
- * the matched event ids attached. A false positive costs one review click; a
- * false negative costs a duplicate on the homepage.
+ * module scores those near-misses so ingestion can resolve them automatically:
+ * high-confidence matches (tight time window, strong title and venue scores)
+ * merge into the existing event as an additional source with no human review;
+ * weaker matches are held as candidates. A false merge keeps the canonical
+ * event and only attaches provenance, so the cost stays bounded.
  */
 
 import { parseSourceDateTime } from "./time";
@@ -30,6 +28,18 @@ export const FUZZY_MIN_VENUE_SCORE = 0.6;
  */
 export const FUZZY_STRONG_VENUE_SCORE = 0.9;
 export const FUZZY_MIN_TITLE_SCORE_STRONG_VENUE = 0.3;
+/**
+ * Auto-merge gate. A fuzzy duplicate merges into the existing event with no
+ * human review only when the listings agree on start time within half an hour
+ * AND both titles and venues are strong matches. Anything weaker stays a hold
+ * (or a plain create). The tighter time window is what keeps back-to-back
+ * distinct events ("Storytime" 10:30 vs "Baby Storytime" 11:30 at the same
+ * library) from ever merging: their titles and venues score 1.0, but the
+ * 60-minute delta fails this gate.
+ */
+export const FUZZY_AUTO_MERGE_MAX_START_DELTA_MINUTES = 30;
+export const FUZZY_AUTO_MERGE_MIN_TITLE_SCORE = 0.7;
+export const FUZZY_AUTO_MERGE_MIN_VENUE_SCORE = 0.7;
 
 const STOPWORDS = new Set([
   "a", "an", "the", "at", "in", "on", "of", "for", "to", "with", "and", "or",
@@ -216,4 +226,22 @@ export function scoreFuzzyDuplicate(
     venueScore,
     startDeltaMinutes,
   };
+}
+
+/**
+ * Whether a fuzzy duplicate is safe to merge with no human review. Merging
+ * attaches the new observation to the existing event as an additional source
+ * (source alias + provenance record) instead of publishing a second event.
+ * The gate is deliberately stricter than `duplicate`: same strict day, a
+ * 30-minute start-time window, and strong title AND venue scores.
+ */
+export function isAutoMergeableFuzzyDuplicate(
+  result: FuzzyDuplicateScore
+): boolean {
+  return (
+    result.duplicate &&
+    result.startDeltaMinutes <= FUZZY_AUTO_MERGE_MAX_START_DELTA_MINUTES &&
+    result.titleScore >= FUZZY_AUTO_MERGE_MIN_TITLE_SCORE &&
+    result.venueScore >= FUZZY_AUTO_MERGE_MIN_VENUE_SCORE
+  );
 }

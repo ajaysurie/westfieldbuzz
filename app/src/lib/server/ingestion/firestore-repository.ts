@@ -11,7 +11,12 @@ import {
   eventIdentityFingerprint,
   type EventIdentityFingerprint,
 } from "./identity";
-import { localDayBounds, scoreFuzzyDuplicate } from "./fuzzy-identity";
+import {
+  isAutoMergeableFuzzyDuplicate,
+  localDayBounds,
+  scoreFuzzyDuplicate,
+  type FuzzyDuplicateScore,
+} from "./fuzzy-identity";
 import { planReconciliation } from "./reconcile";
 import type {
   EventSourcePolicy,
@@ -317,6 +322,17 @@ function revisionWriteData(input: {
 type CreateClaimResult =
   | { status: "created"; eventId: string }
   | {
+      /**
+       * The observation was a high-confidence fuzzy duplicate of an existing
+       * event, so it merged into that event as an additional source (alias +
+       * provenance record) instead of publishing a second event. Fully
+       * automatic: no review queue, no human action.
+       */
+      status: "merged";
+      eventId: string;
+      matchScore: number;
+    }
+  | {
       status: "held";
       reason:
         | "possible-cross-source-duplicate"
@@ -327,32 +343,46 @@ type CreateClaimResult =
       /**
        * "fuzzy" when the hold came from fuzzy-identity scoring rather than an
        * exact fingerprint collision. Fuzzy holds never pull the matched
-       * published event; only the new observation waits for review.
+       * published event; only the new observation waits as a candidate.
        */
       matchKind?: "exact" | "fuzzy";
       matchScore?: number;
     };
 
+/** A claim that needs a human or a candidate record: held, never auto-merged. */
+type HeldClaimResult = Exclude<
+  CreateClaimResult,
+  { status: "created" } | { status: "merged" }
+>;
+
 /**
- * Same-local-day events from other sources, scored for near-duplicate
- * similarity. One bounded range query per new observation; scoring happens in
- * memory over at most a day's worth of town events.
+ * Same-local-day events scored for near-duplicate similarity. One bounded
+ * range query per new observation; scoring happens in memory over at most a
+ * day's worth of town events.
+ *
+ * Returns the best match across every source (including the ingesting
+ * source's own just-created events, so feed noise merges too) plus the
+ * cross-source matches, which are the only ones eligible for holds. Holds
+ * stay cross-source-only: a single feed's back-to-back classes ("Yoga" 9:00
+ * vs 10:00) must publish, never silently vanish into a candidate queue.
  */
 async function findFuzzyDuplicateMatches(input: {
   db: Firestore;
   observation: SourceObservation;
   sourceId: string;
-}): Promise<{ eventIds: string[]; sourceIds: string[]; bestScore: number }> {
+}): Promise<{
+  best: { eventId: string; sourceId: string; score: FuzzyDuplicateScore } | null;
+  crossSource: { eventId: string; sourceId: string; score: FuzzyDuplicateScore }[];
+}> {
   const { start, end } = localDayBounds(input.observation.date);
   const snapshot = await input.db
     .collection("events")
     .where("date", ">=", Timestamp.fromDate(start))
     .where("date", "<", Timestamp.fromDate(end))
     .get();
-  const scored: { id: string; sourceId: string; score: number }[] = [];
+  const scored: { id: string; sourceId: string; result: FuzzyDuplicateScore }[] = [];
   for (const document of snapshot.docs) {
     const data = document.data();
-    if (data.sourceId === input.sourceId) continue;
     if (data.publicationStatus === "suppressed") continue;
     if (typeof data.sourceId !== "string") continue;
     const result = scoreFuzzyDuplicate(
@@ -368,15 +398,111 @@ async function findFuzzyDuplicateMatches(input: {
       }
     );
     if (result.duplicate) {
-      scored.push({ id: document.id, sourceId: data.sourceId, score: result.score });
+      scored.push({ id: document.id, sourceId: data.sourceId, result });
     }
   }
-  scored.sort((a, b) => b.score - a.score);
+  scored.sort((a, b) => b.result.score - a.result.score);
+  const crossSource = scored.filter((match) => match.sourceId !== input.sourceId);
   return {
-    eventIds: scored.map((match) => match.id),
-    sourceIds: [...new Set(scored.map((match) => match.sourceId))].sort(),
-    bestScore: scored.length > 0 ? scored[0].score : 0,
+    best: scored.length > 0
+      ? { eventId: scored[0].id, sourceId: scored[0].sourceId, score: scored[0].result }
+      : null,
+    crossSource: crossSource.map((match) => ({
+      eventId: match.id,
+      sourceId: match.sourceId,
+      score: match.result,
+    })),
   };
+}
+
+/**
+ * Merge a high-confidence fuzzy duplicate into its canonical event. The new
+ * observation does not become an event; instead it attaches to the existing
+ * one as an additional source:
+ *
+ * - the observation's sourceEventId joins the event's sourceEventAliases, so
+ *   the merge stays auditable (which listings were folded into this event);
+ * - an eventSources provenance record + revision capture the new source's
+ *   facts for audit;
+ * - the observation's fingerprint is claimed in the registry for the
+ *   canonical event, so an identical observation on the next run re-attaches
+ *   through the registry pre-check instead of re-scoring the day.
+ *
+ * The canonical event's own facts (title, time, venue) are never overwritten.
+ * If the event vanished between the scan and the transaction, the caller
+ * falls back to a hold.
+ */
+async function mergeFuzzyDuplicate(input: {
+  db: Firestore;
+  source: EventSourcePolicy;
+  action: CreateReconciliationAction;
+  checkedAt: Date;
+  identity: EventIdentityFingerprint;
+  eventId: string;
+  matchScore: number;
+}): Promise<Extract<CreateClaimResult, { status: "merged" | "held" }>> {
+  const eventRef = input.db.collection("events").doc(input.eventId);
+  const registryRef = input.db.collection("eventFingerprintRegistry").doc(input.identity.hash);
+  const sourceRef = input.db.collection("eventSources")
+    .doc(sourceRecordId(input.source.id, input.action.observation.sourceEventId));
+  const revisionRef = sourceRef.collection("revisions").doc(evidenceHash(input.action.observation));
+
+  const merged = await input.db.runTransaction(async (transaction) => {
+    const event = await transaction.get(eventRef);
+    if (!event.exists) return false;
+    const data = event.data() ?? {};
+    const aliases = Array.isArray(data.sourceEventAliases)
+      ? (data.sourceEventAliases as unknown[]).filter(
+          (alias): alias is string => typeof alias === "string"
+        )
+      : [];
+    if (!aliases.includes(input.action.observation.sourceEventId)) {
+      aliases.push(input.action.observation.sourceEventId);
+    }
+    const priorRegistry = await transaction.get(registryRef);
+    transaction.set(eventRef, {
+      sourceEventAliases: aliases,
+      lastSeenAt: Timestamp.fromDate(input.checkedAt),
+      lastVerifiedAt: Timestamp.fromDate(input.checkedAt),
+      freshnessStatus: "current",
+    }, { merge: true });
+    transaction.set(sourceRef, sourceWriteData({
+      source: input.source,
+      observation: input.action.observation,
+      eventId: input.eventId,
+      checkedAt: input.checkedAt,
+      identity: input.identity,
+      create: false,
+    }), { merge: true });
+    transaction.set(revisionRef, revisionWriteData({
+      observation: input.action.observation,
+      checkedAt: input.checkedAt,
+      identity: input.identity,
+    }), { merge: true });
+    transaction.set(registryRef, {
+      version: input.identity.version,
+      fingerprint: input.identity.hash,
+      evidence: input.identity.evidence,
+      eventId: input.eventId,
+      sourceId: input.source.id,
+      sourceEventId: input.action.observation.sourceEventId,
+      createdAt: priorRegistry.data()?.createdAt ?? FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+    return true;
+  });
+
+  if (!merged) {
+    return {
+      status: "held",
+      reason: "possible-cross-source-duplicate",
+      matchingEventIds: [input.eventId],
+      matchingSourceIds: [],
+      matchKind: "fuzzy",
+      matchScore: input.matchScore,
+    };
+  }
+  return { status: "merged", eventId: input.eventId, matchScore: input.matchScore };
 }
 
 async function existingFingerprintMatches(input: {
@@ -403,6 +529,27 @@ async function claimCreate(input: {
   checkedAt: Date;
 }): Promise<CreateClaimResult> {
   const identity = eventIdentityFingerprint(input.action.observation);
+
+  // A previous run already attached this exact observation to a canonical
+  // event: the fuzzy merge claims the observation's fingerprint in the
+  // registry. Re-attach idempotently instead of re-scoring the whole day.
+  const priorClaim = await input.db.collection("eventFingerprintRegistry").doc(identity.hash).get();
+  const priorEventId = priorClaim.exists ? priorClaim.data()?.eventId : undefined;
+  if (typeof priorEventId === "string" && priorEventId) {
+    const priorEvent = await input.db.collection("events").doc(priorEventId).get();
+    if (priorEvent.exists) {
+      return mergeFuzzyDuplicate({
+        db: input.db,
+        source: input.source,
+        action: input.action,
+        checkedAt: input.checkedAt,
+        identity,
+        eventId: priorEventId,
+        matchScore: 1,
+      });
+    }
+  }
+
   const legacyMatches = await existingFingerprintMatches({
     db: input.db,
     fingerprint: identity,
@@ -420,21 +567,34 @@ async function claimCreate(input: {
 
   // Exact fingerprints miss the common case: two sources describing the same
   // event in different words ("LATIN JAZZ @ GALERIA Concert Series: ..." vs
-  // "Latin Jazz at Galeria"). Score same-day events from other sources and
-  // hold near-duplicates for review instead of publishing a visible duplicate.
+  // "Latin Jazz at Galeria"). Score same-day events and auto-merge
+  // high-confidence near-duplicates into the canonical event: no second
+  // event, no review queue, no human action. Weaker cross-source matches are
+  // held as candidates without touching the published event.
   const fuzzyMatches = await findFuzzyDuplicateMatches({
     db: input.db,
     observation: input.action.observation,
     sourceId: input.source.id,
   });
-  if (fuzzyMatches.eventIds.length) {
+  if (fuzzyMatches.best && isAutoMergeableFuzzyDuplicate(fuzzyMatches.best.score)) {
+    return mergeFuzzyDuplicate({
+      db: input.db,
+      source: input.source,
+      action: input.action,
+      checkedAt: input.checkedAt,
+      identity,
+      eventId: fuzzyMatches.best.eventId,
+      matchScore: fuzzyMatches.best.score.score,
+    });
+  }
+  if (fuzzyMatches.crossSource.length > 0) {
     return {
       status: "held",
       reason: "possible-cross-source-duplicate",
-      matchingEventIds: fuzzyMatches.eventIds,
-      matchingSourceIds: fuzzyMatches.sourceIds,
+      matchingEventIds: fuzzyMatches.crossSource.map((match) => match.eventId),
+      matchingSourceIds: [...new Set(fuzzyMatches.crossSource.map((match) => match.sourceId))].sort(),
       matchKind: "fuzzy",
-      matchScore: fuzzyMatches.bestScore,
+      matchScore: fuzzyMatches.crossSource[0].score.score,
     };
   }
 
@@ -527,7 +687,7 @@ async function claimCreate(input: {
 
 type ObservedUpdateResult =
   | { status: "updated" }
-  | Exclude<CreateClaimResult, { status: "created" }>;
+  | HeldClaimResult;
 
 async function persistObservedUpdate(input: {
   db: Firestore;
@@ -722,6 +882,14 @@ async function inspectCreateClaim(input: {
   action: CreateReconciliationAction;
 }): Promise<Exclude<CreateClaimResult, { status: "created" }> | null> {
   const identity = eventIdentityFingerprint(input.action.observation);
+  const priorClaim = await input.db.collection("eventFingerprintRegistry").doc(identity.hash).get();
+  const priorEventId = priorClaim.exists ? priorClaim.data()?.eventId : undefined;
+  if (typeof priorEventId === "string" && priorEventId) {
+    const priorEvent = await input.db.collection("events").doc(priorEventId).get();
+    if (priorEvent.exists) {
+      return { status: "merged", eventId: priorEventId, matchScore: 1 };
+    }
+  }
   const legacyMatches = await existingFingerprintMatches({
     db: input.db,
     fingerprint: identity,
@@ -741,14 +909,21 @@ async function inspectCreateClaim(input: {
     observation: input.action.observation,
     sourceId: input.source.id,
   });
-  if (fuzzyMatches.eventIds.length) {
+  if (fuzzyMatches.best && isAutoMergeableFuzzyDuplicate(fuzzyMatches.best.score)) {
+    return {
+      status: "merged",
+      eventId: fuzzyMatches.best.eventId,
+      matchScore: fuzzyMatches.best.score.score,
+    };
+  }
+  if (fuzzyMatches.crossSource.length > 0) {
     return {
       status: "held",
       reason: "possible-cross-source-duplicate",
-      matchingEventIds: fuzzyMatches.eventIds,
-      matchingSourceIds: fuzzyMatches.sourceIds,
+      matchingEventIds: fuzzyMatches.crossSource.map((match) => match.eventId),
+      matchingSourceIds: [...new Set(fuzzyMatches.crossSource.map((match) => match.sourceId))].sort(),
       matchKind: "fuzzy",
-      matchScore: fuzzyMatches.bestScore,
+      matchScore: fuzzyMatches.crossSource[0].score.score,
     };
   }
   const registry = await input.db.collection("eventFingerprintRegistry").doc(identity.hash).get();
@@ -788,7 +963,7 @@ async function inspectObservedUpdate(input: {
   db: Firestore;
   source: EventSourcePolicy;
   action: ExistingObservedReconciliationAction;
-}): Promise<Exclude<CreateClaimResult, { status: "created" }> | null> {
+}): Promise<HeldClaimResult | null> {
   const identity = eventIdentityFingerprint(input.action.observation);
   const registry = await input.db.collection("eventFingerprintRegistry").doc(identity.hash).get();
   if (!registry.exists || registry.data()?.eventId === input.action.eventId) return null;
@@ -837,13 +1012,14 @@ export async function reconcileSource(input: {
     missing: number;
     stale: number;
     candidates: number;
+    merged: number;
     safetyHeld: boolean;
   }) => ({ ...values, incomplete: true });
   if (!input.source.autoApprove) {
     if (input.write) {
       for (const observation of input.observations) {
         if (deadlineReached()) {
-          return incompleteResult({ actions: [], created: 0, updated: 0, verified: 0, missing: 0, stale: 0, candidates: 0, safetyHeld: true });
+          return incompleteResult({ actions: [], created: 0, updated: 0, verified: 0, missing: 0, stale: 0, candidates: 0, merged: 0, safetyHeld: true });
         }
         await writeCandidate({
           db: input.db,
@@ -861,6 +1037,7 @@ export async function reconcileSource(input: {
       missing: 0,
       stale: 0,
       candidates: input.observations.length,
+      merged: 0,
       safetyHeld: false,
     };
   }
@@ -886,15 +1063,16 @@ export async function reconcileSource(input: {
   );
   const claimHolds: Array<{
     action: CreateReconciliationAction;
-    result: Exclude<CreateClaimResult, { status: "created" }>;
+    result: HeldClaimResult;
   }> = [];
   const observedActions = plan.actions.filter(
     (action): action is ExistingObservedReconciliationAction => action.type === "update" || action.type === "verify"
   );
   const observedHolds: Array<{
     action: ExistingObservedReconciliationAction;
-    result: Exclude<CreateClaimResult, { status: "created" }>;
+    result: HeldClaimResult;
   }> = [];
+  const mergedCreates: CreateReconciliationAction[] = [];
 
   if (input.write) {
     for (const action of plan.actions) {
@@ -920,6 +1098,10 @@ export async function reconcileSource(input: {
         checkedAt: input.checkedAt,
       });
       if (result.status === "created") continue;
+      if (result.status === "merged") {
+        mergedCreates.push(action);
+        continue;
+      }
       claimHolds.push({ action, result });
       const hold = await writeCandidate({
         db: input.db,
@@ -990,7 +1172,12 @@ export async function reconcileSource(input: {
         source: input.source,
         action,
       });
-      if (result) claimHolds.push({ action, result });
+      if (!result) continue;
+      if (result.status === "merged") {
+        mergedCreates.push(action);
+        continue;
+      }
+      claimHolds.push({ action, result });
     }
     for (const action of observedActions) {
       const result = await inspectObservedUpdate({
@@ -1008,11 +1195,13 @@ export async function reconcileSource(input: {
     actions: plan.actions.filter((action) =>
       !claimHolds.some((hold) => hold.action === action)
       && !observedHolds.some((hold) => hold.action === action)
+      && !mergedCreates.some((mergedAction) => mergedAction === action)
     ),
-    created: plan.created - claimHolds.length,
+    created: plan.created - claimHolds.length - mergedCreates.length,
     updated: plan.updated - observedHolds.filter((entry) => entry.action.type === "update").length,
     verified: plan.verified - observedHolds.filter((entry) => entry.action.type === "verify").length,
     candidates: plan.safetyHeld + claimHolds.length + observedHolds.length,
+    merged: mergedCreates.length,
     safetyHeld:
       plan.safetyHeld > 0 || claimHolds.length > 0 || observedHolds.length > 0
       || (input.complete && input.observations.length === 0 && existing.length > 0),
@@ -1023,7 +1212,7 @@ export async function reconcileSource(input: {
   // 207 partial run without claiming writes that we deliberately skipped.
   return incompleteResult({
     ...result,
-    created: Math.min(result.created, createActions.length - claimHolds.length),
+    created: Math.min(result.created, createActions.length - claimHolds.length - mergedCreates.length),
     updated: Math.min(result.updated, observedActions.filter((action) => action.type === "update").length),
     verified: Math.min(result.verified, observedActions.filter((action) => action.type === "verify").length),
     missing: 0,

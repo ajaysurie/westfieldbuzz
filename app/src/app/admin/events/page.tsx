@@ -4,30 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
 import { useAuth } from "@/lib/auth";
-import { getEvents, createEvent, suppressEvent, restoreEvent, getPendingEventCandidates, reviewCandidate, type Event, type PendingEventCandidate } from "@/lib/firestore";
+import { getEvents, createEvent, suppressEvent, restoreEvent, type Event } from "@/lib/firestore";
 import { EVENT_CATEGORIES, type EventCategory } from "@/lib/events/types";
-
-const CANDIDATE_REASON_LABELS: Record<string, string> = {
-  "possible-cross-source-duplicate": "Possible duplicate",
-  "ambiguous-source-event-alias": "Ambiguous source",
-  "fingerprint-registry-inconsistency": "Identity conflict",
-  "existing-event-conflict": "Already exists",
-  "source-requires-review": "Needs review",
-};
-
-function candidateDateLabel(candidate: PendingEventCandidate): string {
-  const raw = candidate.date;
-  const date = raw && typeof raw.toDate === "function" ? raw.toDate() : null;
-  return date ? date.toLocaleString("en-US", { timeZone: "America/New_York" }) : "Date unknown";
-}
-
-function matchLabel(candidate: PendingEventCandidate): string | null {
-  if (candidate.reason !== "possible-cross-source-duplicate") return null;
-  if (candidate.matchKind === "fuzzy" && typeof candidate.matchScore === "number") {
-    return `Fuzzy match ${Math.round(candidate.matchScore * 100)}%`;
-  }
-  return "Exact match";
-}
 
 export default function AdminEventsPage() {
   return (
@@ -41,9 +19,6 @@ function EventsAdmin() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [candidates, setCandidates] = useState<PendingEventCandidate[]>([]);
-  const [candidatesLoading, setCandidatesLoading] = useState(true);
-  const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState<{
     title: string;
@@ -71,38 +46,11 @@ function EventsAdmin() {
     setLoading(false);
   }, []);
 
-  const loadCandidates = useCallback(async () => {
-    try {
-      setCandidates(await getPendingEventCandidates());
-    } catch {
-      setCandidates([]);
-    } finally {
-      setCandidatesLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     // Firestore is an external system; this effect performs the initial sync.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadEvents();
-    void loadCandidates();
-  }, [loadEvents, loadCandidates]);
-
-  async function handleReview(
-    candidateId: string,
-    action: "approve" | "reject" | "suppress"
-  ) {
-    if (!user || reviewingId) return;
-    const verb = action === "approve" ? "Publish" : action === "reject" ? "Reject" : "Suppress";
-    if (!confirm(`${verb} this candidate?`)) return;
-    setReviewingId(candidateId);
-    try {
-      await reviewCandidate(await user.getIdToken(), { kind: "event", id: candidateId, action });
-      await loadCandidates();
-    } finally {
-      setReviewingId(null);
-    }
-  }
+  }, [loadEvents]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -263,73 +211,6 @@ function EventsAdmin() {
           </button>
         </form>
       )}
-
-      {candidatesLoading ? null : candidates.length > 0 ? (
-        <section className="mb-10">
-          <h2
-            className="mb-4 text-[1.1rem]"
-            style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
-          >
-            Needs review ({candidates.length})
-          </h2>
-          <div className="flex flex-col gap-4">
-            {candidates.map((candidate) => {
-              const label = matchLabel(candidate);
-              return (
-                <div
-                  key={candidate.id}
-                  className="rounded-[10px] border border-black/6 bg-paper-pure p-6"
-                >
-                  <div className="mb-1 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-black/6 px-3 py-1 text-[0.72rem] font-semibold text-ink">
-                      {CANDIDATE_REASON_LABELS[candidate.reason] ?? candidate.reason}
-                    </span>
-                    {label && (
-                      <span className="rounded-full bg-black/6 px-3 py-1 text-[0.72rem] font-medium text-ink-muted">
-                        {label}
-                      </span>
-                    )}
-                  </div>
-                  <h3
-                    className="text-[1.05rem]"
-                    style={{ fontFamily: "var(--font-display)", fontWeight: 400 }}
-                  >
-                    {candidate.title}
-                  </h3>
-                  <p className="text-[0.82rem] text-ink-muted">
-                    {candidateDateLabel(candidate)} &middot; {candidate.sourceName ?? candidate.sourceId}
-                  </p>
-                  {candidate.matchingEventIds && candidate.matchingEventIds.length > 0 && (
-                    <p className="mt-1 text-[0.8rem] text-ink-muted">
-                      Possible match:{" "}
-                      {candidate.matchingEventIds.map((eventId, index) => (
-                        <span key={eventId}>
-                          {index > 0 && ", "}
-                          <Link href={`/events/${eventId}`} className="underline">
-                            View event
-                          </Link>
-                        </span>
-                      ))}
-                    </p>
-                  )}
-                  <div className="mt-3 flex gap-4">
-                    {(["approve", "reject", "suppress"] as const).map((action) => (
-                      <button
-                        key={action}
-                        onClick={() => handleReview(candidate.id, action)}
-                        disabled={reviewingId === candidate.id}
-                        className="text-[0.82rem] font-medium text-ink-muted transition-colors hover:text-sienna disabled:opacity-50"
-                      >
-                        {action === "approve" ? "Publish" : action === "reject" ? "Reject" : "Suppress"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
 
       {loading ? (
         <p className="text-ink-muted">Loading events...</p>

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isAutoMergeableFuzzyDuplicate,
   scoreFuzzyDuplicate,
   titleSimilarity,
   venueSimilarity,
@@ -122,5 +123,44 @@ describe("titleSimilarity", () => {
 
   it("ignores case, punctuation, and stopwords", () => {
     expect(titleSimilarity("MOANA SING-ALONG", "Moana Sing-Along: Popcorn & Pajamas")).toBe(1);
+  });
+});
+
+describe("isAutoMergeableFuzzyDuplicate", () => {
+  it("auto-merges the same concert described differently at the same time", () => {
+    expect(isAutoMergeableFuzzyDuplicate(scoreFuzzyDuplicate(latinJazzA, latinJazzB))).toBe(true);
+  });
+
+  it("does not auto-merge a weak-title match like FestiFall", () => {
+    // duplicate=true (strong venue path) but the title score is far below the
+    // merge bar, so this stays a hold instead of merging.
+    const result = scoreFuzzyDuplicate(festiFallA, festiFallB);
+    expect(result.duplicate).toBe(true);
+    expect(isAutoMergeableFuzzyDuplicate(result)).toBe(false);
+  });
+
+  it("does not auto-merge back-to-back distinct events at the same venue", () => {
+    const storytime = {
+      title: "Storytime",
+      location: "Westfield Memorial Library, 550 East Broad Street",
+      date: new Date("2026-09-20T14:30:00.000Z"),
+    };
+    const baby = {
+      title: "Baby Storytime",
+      location: "Westfield Memorial Library, 550 East Broad Street",
+      date: new Date("2026-09-20T15:30:00.000Z"),
+    };
+    const result = scoreFuzzyDuplicate(storytime, baby);
+    expect(result.duplicate).toBe(true);
+    expect(result.titleScore).toBe(1);
+    expect(result.venueScore).toBe(1);
+    expect(isAutoMergeableFuzzyDuplicate(result)).toBe(false);
+  });
+
+  it("auto-merges a 30-minute listing skew but not a 31-minute one", () => {
+    const plus30 = { ...latinJazzB, date: new Date("2026-09-20T00:00:00.000Z") }; // 8:00 PM ET
+    const plus31 = { ...latinJazzB, date: new Date("2026-09-20T00:01:00.000Z") };
+    expect(isAutoMergeableFuzzyDuplicate(scoreFuzzyDuplicate(latinJazzA, plus30))).toBe(true);
+    expect(isAutoMergeableFuzzyDuplicate(scoreFuzzyDuplicate(latinJazzA, plus31))).toBe(false);
   });
 });

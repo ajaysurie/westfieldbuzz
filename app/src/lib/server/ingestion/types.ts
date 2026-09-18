@@ -132,6 +132,8 @@ export interface SourceRunResult {
   missing: number;
   stale: number;
   candidates: number;
+  /** Observations auto-merged into an existing event as a fuzzy duplicate. */
+  merged: number;
   safetyHeld: boolean;
   errors: string[];
   warnings: string[];
