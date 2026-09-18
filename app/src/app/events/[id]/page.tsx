@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import EventDetailClient from "./EventDetailClient";
 import { getPublishedEventById } from "@/lib/server/event-query/firestore-event-repository";
+import { buildEventJsonLd } from "@/lib/seo/event-jsonld";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -44,5 +45,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function EventDetailPage({ params }: Props) {
   const { id } = await params;
-  return <EventDetailClient id={decodeURIComponent(id)} />;
+  const eventId = decodeURIComponent(id);
+  let jsonLd: string | null = null;
+  try {
+    const event = await getPublishedEventById(eventId);
+    if (event) jsonLd = JSON.stringify(buildEventJsonLd(event));
+  } catch {
+    // Admin credentials are absent in local dev; the client still renders.
+  }
+  return (
+    <>
+      {jsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd }}
+        />
+      ) : null}
+      <EventDetailClient id={eventId} />
+    </>
+  );
 }
