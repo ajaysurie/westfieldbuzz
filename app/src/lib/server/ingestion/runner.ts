@@ -38,6 +38,7 @@ export interface IngestionRunResult {
     missing: number;
     stale: number;
     candidates: number;
+    merged: number;
     safetyHeld: boolean;
     errors: number;
   };
@@ -139,6 +140,7 @@ async function persistSourceHealth(input: {
       missing: input.result.missing,
       stale: input.result.stale,
       candidates: input.result.candidates,
+      merged: input.result.merged,
       errors: input.result.errors,
       warnings: input.result.warnings,
       safetyHeld: input.result.safetyHeld,
@@ -249,6 +251,7 @@ async function runSource(input: {
       missing: reconciliation.missing,
       stale: reconciliation.stale,
       candidates: reconciliation.candidates,
+      merged: reconciliation.merged,
       safetyHeld: reconciliation.safetyHeld || Boolean(anomaly),
       errors,
       warnings: [...fetched.warnings, ...local.warnings],
@@ -267,6 +270,7 @@ async function runSource(input: {
       missing: 0,
       stale: 0,
       candidates: 0,
+      merged: 0,
       safetyHeld: true,
       errors: [error instanceof Error ? error.message : String(error)],
       warnings: [],
@@ -312,6 +316,7 @@ function deadlineHeldResult(source: EventSourcePolicy): SourceRunResult {
     missing: 0,
     stale: 0,
     candidates: 0,
+    merged: 0,
     safetyHeld: true,
     errors: ["Global crawl deadline exhausted before source could start"],
     warnings: [],
@@ -333,6 +338,7 @@ function totals(results: SourceRunResult[]): IngestionRunResult["totals"] {
       missing: summary.missing + result.missing,
       stale: summary.stale + result.stale,
       candidates: summary.candidates + result.candidates,
+      merged: summary.merged + result.merged,
       safetyHeld: summary.safetyHeld || result.safetyHeld,
       errors: summary.errors + result.errors.length,
     }),
@@ -344,6 +350,7 @@ function totals(results: SourceRunResult[]): IngestionRunResult["totals"] {
       missing: 0,
       stale: 0,
       candidates: 0,
+      merged: 0,
       safetyHeld: false,
       errors: 0,
     }
