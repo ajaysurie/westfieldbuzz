@@ -13,6 +13,7 @@ export interface EventSourcePolicy {
     | "llm-extract"
     | "llm-search"
     | "instagram-profile"
+    | "agent-push"
     | "squarespace-json"
     | "wordpress-mec-html"
     | "wordpress-tribe-json";
