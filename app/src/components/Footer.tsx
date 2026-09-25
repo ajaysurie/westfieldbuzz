@@ -16,8 +16,10 @@ export default function Footer() {
             <Link href="/">This week</Link>
             <Link href="/events">Calendar</Link>
             <Link href="/#friday-list">Get the Friday list</Link>
+            <Link href="/sources">Sources</Link>
           </div>
           <div>
+            <Link href="/agents">For agents</Link>
             <Link href="/privacy">Privacy</Link>
             <Link href="/data-deletion">Data deletion</Link>
           </div>

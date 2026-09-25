@@ -9,6 +9,8 @@ const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: BASE_URL, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },
   { url: `${BASE_URL}/events`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
   { url: `${BASE_URL}/search`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+  { url: `${BASE_URL}/sources`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
+  { url: `${BASE_URL}/agents`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.4 },
   { url: `${BASE_URL}/login`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.3 },
   { url: `${BASE_URL}/privacy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
   { url: `${BASE_URL}/data-deletion`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.2 },
