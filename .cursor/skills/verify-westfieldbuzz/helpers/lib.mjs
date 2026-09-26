@@ -98,18 +98,41 @@ export function pidAlive(pid) {
   }
 }
 
+export function parseNetstatListenPid(stdout, port, host = DEFAULT_HOST) {
+  if (!stdout) return null;
+  for (const line of stdout.split("\n")) {
+    if (!/\bLISTEN\b/.test(line)) continue;
+    const match = line.match(/(\d+\.\d+\.\d+\.\d+|::|::1):(\d+)\s+\S+\s+LISTEN\s+(\d+)\//);
+    if (!match) continue;
+    const listenHost = match[1];
+    const listenPort = Number(match[2]);
+    const pid = Number(match[3]);
+    if (listenPort !== port) continue;
+    if (host && listenHost !== "0.0.0.0" && listenHost !== "::" && listenHost !== host && !(host === "127.0.0.1" && listenHost === "::1")) {
+      continue;
+    }
+    if (Number.isInteger(pid) && pid > 0) return pid;
+  }
+  return null;
+}
+
 export function listeningPid(port, host = DEFAULT_HOST) {
   const ss = spawnSync("ss", ["-lptn", `sport = :${port}`], { encoding: "utf8" });
   if (ss.status === 0 && ss.stdout) {
     const match = ss.stdout.match(/pid=(\d+)/);
     if (match) return Number(match[1]);
   }
-  const lsof = spawnSync("lsof", ["-t", `-iTCP@${host}:${port}`, "-sTCP:LISTEN"], {
+  const lsof = spawnSync("lsof", ["-t", `-iTCP:${port}`, "-sTCP:LISTEN"], {
     encoding: "utf8",
   });
   if (lsof.status === 0 && lsof.stdout.trim()) {
     const pid = Number(lsof.stdout.trim().split(/\s+/)[0]);
     if (Number.isInteger(pid) && pid > 0) return pid;
+  }
+  const netstat = spawnSync("netstat", ["-lptn"], { encoding: "utf8" });
+  if (netstat.status === 0) {
+    const pid = parseNetstatListenPid(netstat.stdout, port, host);
+    if (pid) return pid;
   }
   return null;
 }
