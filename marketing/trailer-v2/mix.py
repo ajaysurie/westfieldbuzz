@@ -11,7 +11,7 @@ import numpy as np
 from scipy.io import wavfile
 from scipy.signal import butter, fftconvolve, sosfilt
 
-from timeline import DROP, DURATION, END, MUSIC, REVEAL, SFX, VOICES
+from timeline import DROP, DURATION, END, FINAL, MUSIC, REVEAL, SFX, TAG, VOICES
 
 SR = 48000
 ROOT = Path(__file__).parent
@@ -127,9 +127,11 @@ def main():
     t = np.arange(N) / SR
     gate = np.ones(N)
     gate[(t >= DROP) & (t < REVEAL)] = 0
-    tail = (t >= END - 0.6) & (t < END)
-    gate[tail] = np.linspace(1, 0, tail.sum())
-    gate[t >= END] = 0
+    for stop in (END, FINAL):
+        tail = (t >= stop - 0.6) & (t < stop)
+        gate[tail] = np.linspace(1, 0, tail.sum())
+    gate[(t >= END) & (t < TAG)] = 0
+    gate[t >= FINAL] = 0
     mix *= gate[:, None]
 
     peak = np.max(np.abs(mix))

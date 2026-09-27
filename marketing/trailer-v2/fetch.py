@@ -39,6 +39,7 @@ TASKS = {
     "3e205bec-c852-4153-9253-c07047bf55c2": "audio/vo05",
     "6f8ba6d1-43cb-4928-bda0-ef887f811b33": "audio/vo06",
     "668cecbe-72a7-4b89-9149-9a30116e1953": "audio/vo07",
+    "043a92ae-63fe-44e6-bab9-1629fdf14f29": "audio/vo08",
     "d7ec254c-411d-4050-b7a5-f35b0beb364a": "audio/mom-line",
     "d0cc6deb-84c5-4e00-a058-722a042b8137": "audio/dad-line",
     "a1cc07d9-911e-41c5-abda-a31c98e5a09b": "audio/kid-a",

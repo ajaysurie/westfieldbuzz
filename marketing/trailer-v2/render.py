@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from timeline import CAPTIONS, DURATION, FPS, H, NOTIFICATIONS, SHOTS, STAMPS, TABS, W
+from timeline import AGENT_PROMPT, AGENT_REPLY, CAPTIONS, DURATION, FPS, H, NOTIFICATIONS, SHOTS, STAMPS, TABS, W
 
 ROOT = Path(__file__).parent
 V1 = ROOT.parent / "launch-video"
@@ -186,11 +186,15 @@ def centered(draw, y, text, font, fill, spacing=0, **kw):
 # ---------- generated shots ----------
 
 @lru_cache(maxsize=None)
-def title_base(text):
+def title_base(text, top=None):
     im = Image.new("RGB", (W, H), (0, 0, 0))
     d = ImageDraw.Draw(im)
-    font = dm_sans(118, "Bold")
-    centered(d, H / 2 - 80, text, font, (238, 232, 220), spacing=22)
+    size, spacing = 118, 22
+    while spaced_width(d, text, dm_sans(size, "Bold"), spacing) > W - 140:
+        size, spacing = size - 4, spacing - 1
+    centered(d, H / 2 - 80, text, dm_sans(size, "Bold"), (238, 232, 220), spacing=spacing)
+    if top:
+        centered(d, H / 2 - 170, top, dm_sans(44, "Medium"), (160, 156, 148), spacing=12)
     return im
 
 
@@ -198,7 +202,7 @@ def title_frame(shot, t):
     p = (t - shot["t0"]) / (shot["t1"] - shot["t0"])
     z = 1.0 + 0.05 * p
     bw, bh = W / z, H / z
-    im = title_base(shot["text"]).resize((W, H), Image.BICUBIC, box=((W - bw) / 2, (H - bh) / 2, (W + bw) / 2, (H + bh) / 2))
+    im = title_base(shot["text"], shot.get("top")).resize((W, H), Image.BICUBIC, box=((W - bw) / 2, (H - bh) / 2, (W + bw) / 2, (H + bh) / 2))
     a = np.asarray(im).astype(np.float32)
     fade = min(1.0, (t - shot["t0"]) / 0.12, (shot["t1"] - t) / 0.1)
     return (a * max(fade, 0)).astype(np.uint8)
@@ -281,6 +285,62 @@ def logo_base():
 
 def logo_frame(shot, t):
     return np.asarray(logo_base())
+
+
+def agent_frame(shot, t):
+    im = Image.new("RGB", (W, H), (16, 20, 26))
+    d = ImageDraw.Draw(im)
+    el = t - shot["t0"]
+    muted = (140, 146, 156)
+    centered(d, 330, "YOUR AI AGENT", dm_sans(40, "Bold"), muted, spacing=12)
+    d.line([(80, 420), (W - 80, 420)], fill=(40, 46, 56), width=2)
+
+    body = dm_sans(64, "Medium")
+    prompt_chars = int(len(AGENT_PROMPT) * min(1.0, max(0.0, (el - 0.15) / 0.9)))
+    typed = AGENT_PROMPT[:prompt_chars]
+    y = 560
+    if typed:
+        lines = wrap(d, AGENT_PROMPT, body, W - 300)
+        shown, left = [], len(typed)
+        for line in lines:
+            shown.append(line[:left])
+            left = max(0, left - len(line) - 1)
+        bw = max(d.textlength(l, font=body) for l in lines) + 80
+        bh = len(lines) * 82 + 64
+        d.rounded_rectangle([W - 70 - bw, y, W - 70, y + bh], radius=50, fill=ACCENT)
+        for k, line in enumerate(shown):
+            d.text((W - 70 - bw + 40, y + 30 + k * 82), line, font=body, fill=PAPER)
+        y += bh + 70
+
+    reply_at = 1.35
+    if el >= reply_at:
+        thinking = el < reply_at + 0.35
+        lines = [] if thinking else [l for p in AGENT_REPLY for l in wrap(d, p, body, W - 240)]
+        bw = W - 140 if lines else 200
+        bh = (len(lines) * 82 + 170) if lines else 120
+        d.rounded_rectangle([70, y, 70 + bw, y + bh], radius=50, fill=PAPER)
+        if thinking:
+            for k in range(3):
+                on = int((el - reply_at) / 0.1) % 3 == k
+                d.ellipse([112 + k * 44, y + 46, 142 + k * 44, y + 76], fill=INK if on else (170, 170, 175))
+        else:
+            for k, line in enumerate(lines):
+                d.text((110, y + 34 + k * 82), line, font=body, fill=INK)
+            chip_y = y + 50 + len(lines) * 82
+            chip = "Source: Westfield Buzz"
+            cf = dm_sans(36, "Bold")
+            cw = d.textlength(chip, font=cf) + 48
+            d.rounded_rectangle([110, chip_y, 110 + cw, chip_y + 68], radius=34, fill=(232, 226, 212))
+            d.text((134, chip_y + 13), chip, font=cf, fill=ACCENT)
+
+    if el >= 2.3:
+        a = ease_out((el - 2.3) / 0.3)
+        f = dm_sans(66, "Bold")
+        col = tuple(int(lerp(16, c, a)) for c in GOLD)
+        centered(d, 1500, "westfieldbuzz.com/agents", f, col)
+        centered(d, 1600, "Events API  \u00b7  llms.txt  \u00b7  no key needed", dm_sans(40, "Medium"),
+                 tuple(int(lerp(16, c, a)) for c in muted))
+    return np.asarray(im)
 
 
 # ---------- overlays ----------
@@ -393,7 +453,7 @@ def composite(frame: Image.Image, layer: Image.Image, alpha: float) -> Image.Ima
 
 RENDERERS = {
     "title": title_frame, "clip": clip_frame, "still": still_frame, "tabs": tabs_frame,
-    "app": app_frame, "card": card_frame, "logo": logo_frame,
+    "app": app_frame, "card": card_frame, "logo": logo_frame, "agent": agent_frame,
 }
 
 

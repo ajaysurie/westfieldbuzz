@@ -26,13 +26,21 @@ SHOTS = [
     dict(t0=41.4, t1=45.4, kind="clip", src="hero-walk", ss=0.0, speed=0.85, look="warm"),
     dict(t0=45.4, t1=47.8, kind="card"),
     dict(t0=47.8, t1=50.4, kind="logo"),
-    dict(t0=50.4, t1=51.0, kind="black"),
+    dict(t0=50.4, t1=50.8, kind="black"),
+    dict(t0=50.8, t1=52.8, kind="title", top="ALSO AVAILABLE TO", text="YOUR AI AGENT."),
+    dict(t0=52.8, t1=56.6, kind="agent"),
+    dict(t0=56.6, t1=57.2, kind="black"),
 ]
 DURATION = SHOTS[-1]["t1"]
 
 DROP = 35.4
 REVEAL = 36.4
 END = 50.4
+TAG = 50.8
+FINAL = 56.6
+
+AGENT_PROMPT = "What's happening in Westfield this weekend?"
+AGENT_REPLY = ["The Fall Street Fair is this Saturday, downtown.", "It is not in March."]
 
 # (t0, t1, text, style)
 CAPTIONS = [
@@ -94,6 +102,7 @@ VOICES = [
     ("kid-a", 0.05, 29.45, None, 3, "kid"),
     ("kid-b", 0.0, 29.52, None, 2, "kid"),
     ("vo07", 0.0, 36.6, None, 0, "narrator"),
+    ("vo08", 0.0, 51.0, None, 0, "narrator"),
 ]
 
 # (name, src_start, dst_start, dst_end, gain_db)
@@ -105,6 +114,7 @@ MUSIC = [
     ("music-resolve", 3.4, REVEAL, 41.4, 0),
     ("music-resolve", 68.3, 41.4, 47.8, -1),
     ("music-resolve", 89.0, 47.8, END, -1),
+    ("music-resolve", 92.0, 52.8, FINAL, -9),
 ]
 
 # (name, dst_start, gain_db)
@@ -122,4 +132,5 @@ SFX = [
     ("sfx-paper-slam", 32.3, -2),
     ("sfx-whoosh", 33.6, -8),
     ("sfx-riser", DROP - 4.05, -4),
+    ("sfx-boom", TAG, -6),
 ]
