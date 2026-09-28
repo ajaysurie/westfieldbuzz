@@ -730,6 +730,12 @@ a {
   flex: 1;
   padding: 0 13px;
   background: rgba(255,255,255,0.93);
+  color: var(--ink);
+}
+
+.friday-signup input::placeholder {
+  color: var(--ink-muted);
+  opacity: 1;
 }
 
 .friday-signup button {
