@@ -12,7 +12,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from timeline import AGENT_PROMPT, AGENT_REPLY, CAPTIONS, DURATION, FPS, H, NOTIFICATIONS, SHOTS, STAMPS, TABS, W
+from timeline import (
+    AGENT_PROMPT, AGENT_REPLY, CAPTIONS, DURATION, FH, FORMAT, FPS, FW, H, NOTIFICATIONS, SHOTS, STAMPS, TABS, W,
+)
 
 ROOT = Path(__file__).parent
 V1 = ROOT.parent / "launch-video"
@@ -23,6 +25,12 @@ INK = (23, 33, 43)
 PAPER = (247, 243, 235)
 ACCENT = (27, 58, 92)
 GOLD = (212, 168, 67)
+
+DESKTOP = FORMAT == "desktop"
+
+
+def pick(vertical, desktop):
+    return desktop if DESKTOP else vertical
 
 
 def dm_sans(size, weight="Bold"):
@@ -64,29 +72,29 @@ def grade(a: np.ndarray, look: str) -> np.ndarray:
 
 
 def _vignette():
-    y, x = np.mgrid[0:H, 0:W].astype(np.float32)
-    d = np.sqrt(((x - W / 2) / (W / 2)) ** 2 + ((y - H / 2) / (H / 2)) ** 2)
+    y, x = np.mgrid[0:FH, 0:FW].astype(np.float32)
+    d = np.sqrt(((x - FW / 2) / (FW / 2)) ** 2 + ((y - FH / 2) / (FH / 2)) ** 2)
     return np.clip(1.0 - 0.35 * np.clip(d - 0.55, 0, None) ** 1.6, 0, 1)[..., None]
 
 
 VIGNETTE = _vignette()
 _ys = np.linspace(0, 1, H, dtype=np.float32)[:, None, None]
-SCRIM_BOTTOM = 1 - np.clip((_ys - 0.62) / 0.08, 0, 1)
+SCRIM_BOTTOM = 1 - np.clip((_ys - pick(0.62, 0.72)) / 0.08, 0, 1)
 RNG = np.random.default_rng(7)
-GRAIN = [RNG.normal(0, 4.0, (H // 2, W // 2, 1)).astype(np.float32) for _ in range(6)]
+GRAIN = [RNG.normal(0, 4.0, (FH // 2, FW // 2, 1)).astype(np.float32) for _ in range(6)]
 
 
 # ---------- sources ----------
 
 class ClipReader:
-    """Streams one shot's frames from ffmpeg, already retimed and scaled to W x H."""
+    """Streams one shot's frames from ffmpeg, already retimed and scaled to FW x FH."""
 
     def __init__(self, shot):
         n = int(round((shot["t1"] - shot["t0"]) * FPS)) + 2
         speed = shot.get("speed", 1.0)
         vf = f"setpts=(PTS-STARTPTS)/{speed}"
         vf += f",minterpolate=fps={FPS}:mi_mode=blend" if speed != 1.0 else f",fps={FPS}"
-        vf += f",scale={W}:{H}:flags=lanczos"
+        vf += f",scale={FW}:{FH}:flags=lanczos"
         self.proc = subprocess.Popen(
             ["ffmpeg", "-v", "error", "-ss", str(shot["ss"]), "-i", str(ROOT / "clips" / f"{shot['src']}.mp4"),
              "-vf", vf, "-frames:v", str(n), "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
@@ -95,9 +103,9 @@ class ClipReader:
         self.last = None
 
     def next(self):
-        buf = self.proc.stdout.read(W * H * 3)
-        if len(buf) == W * H * 3:
-            self.last = np.frombuffer(buf, np.uint8).reshape(H, W, 3)
+        buf = self.proc.stdout.read(FW * FH * 3)
+        if len(buf) == FW * FH * 3:
+            self.last = np.frombuffer(buf, np.uint8).reshape(FH, FW, 3)
         return self.last
 
     def close(self):
@@ -118,8 +126,8 @@ def clip_frame(shot, t):
     z = 1.0 + 0.035 * p
     if z > 1.001:
         im = Image.fromarray(a)
-        bw, bh = W / z, H / z
-        im = im.resize((W, H), Image.BICUBIC, box=((W - bw) / 2, (H - bh) / 2, (W + bw) / 2, (H + bh) / 2))
+        bw, bh = FW / z, FH / z
+        im = im.resize((FW, FH), Image.BICUBIC, box=((FW - bw) / 2, (FH - bh) / 2, (FW + bw) / 2, (FH + bh) / 2))
         a = np.asarray(im)
     return a
 
@@ -127,7 +135,7 @@ def clip_frame(shot, t):
 @lru_cache(maxsize=None)
 def still_source(path):
     im = Image.open(ROOT / path).convert("RGB")
-    scale = max(W / im.width, H / im.height) * 1.25
+    scale = max(FW / im.width, FH / im.height) * 1.25
     return im.resize((int(im.width * scale), int(im.height * scale)), Image.LANCZOS)
 
 
@@ -135,21 +143,38 @@ def still_frame(shot, t):
     im = still_source(shot["src"])
     p = ease_in_out((t - shot["t0"]) / (shot["t1"] - shot["t0"]))
     z = lerp(*shot["zoom"], p)
-    bw, bh = W * 1.25 / z, H * 1.25 / z
+    bw, bh = FW * 1.25 / z, FH * 1.25 / z
     cx, cy = im.width / 2, im.height / 2
-    return np.asarray(im.resize((W, H), Image.BICUBIC, box=(cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2)))
+    return np.asarray(im.resize((FW, FH), Image.BICUBIC, box=(cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2)))
 
 
 @lru_cache(maxsize=1)
 def app_source():
-    return Image.open(STILLS / "app-home.png").convert("RGB")
+    path = ROOT / "stills" / "site-desktop.jpg" if DESKTOP else STILLS / "app-home.png"
+    return Image.open(path).convert("RGB")
 
 
 def app_frame(shot, t):
     im = app_source()
     p = ease_in_out((t - shot["t0"] - 0.5) / (shot["t1"] - shot["t0"] - 0.7))
-    y = lerp(*shot["scroll"], p)
+    y = lerp(*shot[pick("scroll", "desktop_scroll")], p)
+    if DESKTOP:
+        cw = 1440
+        x0 = (im.width - cw) / 2
+        return np.asarray(im.resize((W, H), Image.BICUBIC, box=(x0, y, x0 + cw, y + cw * H / W)))
     return np.asarray(im.resize((W, H), Image.BICUBIC, box=(0, y, im.width, y + H * im.width / W)))
+
+
+def pillarbox(a: np.ndarray) -> np.ndarray:
+    """Centre a 9:16 footage frame over a colour wash sampled from it (no shapes ghost into the sides)."""
+    src = Image.fromarray(a)
+    wash = src.resize((24, 14), Image.BOX).filter(ImageFilter.GaussianBlur(1.5)).resize((W, H), Image.BICUBIC)
+    out = np.asarray(wash).astype(np.float32) * 0.86
+    fw = round(FW * H / FH)
+    fg = np.asarray(src.resize((fw, H), Image.LANCZOS))
+    x0 = (W - fw) // 2
+    out[:, x0 : x0 + fw] = fg
+    return out.astype(np.uint8)
 
 
 # ---------- text helpers ----------
@@ -235,16 +260,20 @@ def tabs_frame(shot, t):
     el = t - shot["t0"]
     shown = min(len(TABS), 1 + int(el / 0.2))
     count = 6 + int(41 * ease_in_out(el / (shot["t1"] - shot["t0"] - 0.3)))
-    d.text((60, 120), f"{count} Tabs", font=dm_sans(64, "Bold"), fill=(240, 240, 244))
-    d.text((W - 60 - d.textlength("Done", font=dm_sans(44, "Medium")), 132), "Done", font=dm_sans(44, "Medium"), fill=(120, 170, 255))
+    cols, scale, col_w, row_h, top = pick((2, 1.0, 490, 370, 260), (4, 0.8, 400, 300, 200))
+    x0 = (W - cols * col_w) / 2 + 10
+    hy = pick(120, 70)
+    d.text((x0, hy), f"{count} Tabs", font=dm_sans(64, "Bold"), fill=(240, 240, 244))
+    done_f = dm_sans(44, "Medium")
+    d.text((W - x0 - d.textlength("Done", font=done_f), hy + 12), "Done", font=done_f, fill=(120, 170, 255))
     for i in range(shown):
         pop = ease_out((el - i * 0.2) / 0.18)
         card = tab_card(i)
-        s = 0.85 + 0.15 * pop
+        s = scale * (0.85 + 0.15 * pop)
         c = card.resize((int(card.width * s), int(card.height * s)), Image.BICUBIC)
-        col, row = i % 2, i // 2
-        cx = 60 + col * 490 + 235
-        cy = 260 + row * 370 + 170
+        col, row = i % cols, i // cols
+        cx = x0 + col * col_w + col_w / 2 - 10
+        cy = top + row * row_h + card.height * scale / 2
         im.paste(c, (int(cx - c.width / 2), int(cy - c.height / 2)), c)
     a = np.asarray(im).astype(np.float32)
     return (a * SCRIM_BOTTOM + np.array([22, 23, 27], np.float32) * (1 - SCRIM_BOTTOM)).astype(np.uint8)
@@ -254,9 +283,10 @@ def tabs_frame(shot, t):
 def card_base():
     im = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(im)
-    centered(d, 700, "Your weekend,", serif(170), INK)
-    centered(d, 880, "solved.", serif(210, italic=True), ACCENT)
-    d.line([(W / 2 - 60, 1180), (W / 2 + 60, 1180)], fill=GOLD, width=4)
+    cy = H / 2
+    centered(d, cy - 260, "Your weekend,", serif(170), INK)
+    centered(d, cy - 80, "solved.", serif(210, italic=True), ACCENT)
+    d.line([(W / 2 - 60, cy + 220), (W / 2 + 60, cy + 220)], fill=GOLD, width=4)
     return im
 
 
@@ -273,13 +303,14 @@ def logo_base():
     logo = Image.open(STILLS / "logo.png").convert("RGBA")
     lw = 900
     logo = logo.resize((lw, int(logo.height * lw / logo.width)), Image.LANCZOS)
-    im.paste(logo, ((W - lw) // 2, 640), logo)
+    cy = H // 2
+    im.paste(logo, ((W - lw) // 2, cy - 320), logo)
     d = ImageDraw.Draw(im)
-    btn_w, btn_h, by = 560, 150, 1060
+    btn_w, btn_h, by = 560, 150, cy + 100
     d.rounded_rectangle([(W - btn_w) / 2, by, (W + btn_w) / 2, by + btn_h], radius=75, fill=ACCENT)
     f = dm_sans(64, "Bold")
     d.text(((W - d.textlength("Get the List", font=f)) / 2, by + 34), "Get the List", font=f, fill=PAPER)
-    centered(d, 1260, "westfieldbuzz.com", dm_sans(44, "Medium"), INK)
+    centered(d, cy + 300, "westfieldbuzz.com", dm_sans(44, "Medium"), INK)
     return im
 
 
@@ -292,53 +323,55 @@ def agent_frame(shot, t):
     d = ImageDraw.Draw(im)
     el = t - shot["t0"]
     muted = (140, 146, 156)
-    centered(d, 330, "YOUR AI AGENT", dm_sans(40, "Bold"), muted, spacing=12)
-    d.line([(80, 420), (W - 80, 420)], fill=(40, 46, 56), width=2)
+    L, R = pick((70, W - 70), ((W - 1100) // 2, (W + 1100) // 2))
+    head_y, line_y, y, url_y = pick((330, 420, 560, 1500), (90, 170, 230, 880))
+    lh = pick(82, 70)
+    centered(d, head_y, "YOUR AI AGENT", dm_sans(40, "Bold"), muted, spacing=12)
+    d.line([(L + 10, line_y), (R - 10, line_y)], fill=(40, 46, 56), width=2)
 
-    body = dm_sans(64, "Medium")
+    body = dm_sans(pick(64, 56), "Medium")
     prompt_chars = int(len(AGENT_PROMPT) * min(1.0, max(0.0, (el - 0.15) / 0.9)))
     typed = AGENT_PROMPT[:prompt_chars]
-    y = 560
     if typed:
-        lines = wrap(d, AGENT_PROMPT, body, W - 300)
+        lines = wrap(d, AGENT_PROMPT, body, R - L - 160)
         shown, left = [], len(typed)
         for line in lines:
             shown.append(line[:left])
             left = max(0, left - len(line) - 1)
         bw = max(d.textlength(l, font=body) for l in lines) + 80
-        bh = len(lines) * 82 + 64
-        d.rounded_rectangle([W - 70 - bw, y, W - 70, y + bh], radius=50, fill=ACCENT)
+        bh = len(lines) * lh + 64
+        d.rounded_rectangle([R - bw, y, R, y + bh], radius=50, fill=ACCENT)
         for k, line in enumerate(shown):
-            d.text((W - 70 - bw + 40, y + 30 + k * 82), line, font=body, fill=PAPER)
-        y += bh + 70
+            d.text((R - bw + 40, y + 30 + k * lh), line, font=body, fill=PAPER)
+        y += bh + pick(70, 50)
 
     reply_at = 1.35
     if el >= reply_at:
         thinking = el < reply_at + 0.35
-        lines = [] if thinking else [l for p in AGENT_REPLY for l in wrap(d, p, body, W - 240)]
-        bw = W - 140 if lines else 200
-        bh = (len(lines) * 82 + 170) if lines else 120
-        d.rounded_rectangle([70, y, 70 + bw, y + bh], radius=50, fill=PAPER)
+        lines = [] if thinking else [l for p in AGENT_REPLY for l in wrap(d, p, body, R - L - 100)]
+        bw = R - L if lines else 200
+        bh = (len(lines) * lh + 170) if lines else 120
+        d.rounded_rectangle([L, y, L + bw, y + bh], radius=50, fill=PAPER)
         if thinking:
             for k in range(3):
                 on = int((el - reply_at) / 0.1) % 3 == k
-                d.ellipse([112 + k * 44, y + 46, 142 + k * 44, y + 76], fill=INK if on else (170, 170, 175))
+                d.ellipse([L + 42 + k * 44, y + 46, L + 72 + k * 44, y + 76], fill=INK if on else (170, 170, 175))
         else:
             for k, line in enumerate(lines):
-                d.text((110, y + 34 + k * 82), line, font=body, fill=INK)
-            chip_y = y + 50 + len(lines) * 82
+                d.text((L + 40, y + 34 + k * lh), line, font=body, fill=INK)
+            chip_y = y + 50 + len(lines) * lh
             chip = "Source: Westfield Buzz"
             cf = dm_sans(36, "Bold")
             cw = d.textlength(chip, font=cf) + 48
-            d.rounded_rectangle([110, chip_y, 110 + cw, chip_y + 68], radius=34, fill=(232, 226, 212))
-            d.text((134, chip_y + 13), chip, font=cf, fill=ACCENT)
+            d.rounded_rectangle([L + 40, chip_y, L + 40 + cw, chip_y + 68], radius=34, fill=(232, 226, 212))
+            d.text((L + 64, chip_y + 13), chip, font=cf, fill=ACCENT)
 
     if el >= 2.3:
         a = ease_out((el - 2.3) / 0.3)
         f = dm_sans(66, "Bold")
         col = tuple(int(lerp(16, c, a)) for c in GOLD)
-        centered(d, 1500, "westfieldbuzz.com/agents", f, col)
-        centered(d, 1600, "Events API  \u00b7  llms.txt  \u00b7  no key needed", dm_sans(40, "Medium"),
+        centered(d, url_y, "westfieldbuzz.com/agents", f, col)
+        centered(d, url_y + 100, "Events API  \u00b7  llms.txt  \u00b7  no key needed", dm_sans(40, "Medium"),
                  tuple(int(lerp(16, c, a)) for c in muted))
     return np.asarray(im)
 
@@ -349,19 +382,21 @@ def agent_frame(shot, t):
 def caption_layer(text, style):
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
+    k = pick(1.0, 0.8)
     if style == "chant":
-        font, fill, lh, anchor = dm_sans(96, "Black"), (255, 214, 90, 255), 108, 0.72
+        size, font_fn, fill, lh, anchor = 96, lambda s: dm_sans(s, "Black"), (255, 214, 90, 255), 108, pick(0.72, 0.80)
     elif style == "warm":
-        font, fill, lh, anchor = serif(112), PAPER + (255,), 118, 0.76
+        size, font_fn, fill, lh, anchor = 112, serif, PAPER + (255,), 118, pick(0.76, 0.82)
     elif style == "whisper":
-        font, fill, lh, anchor = serif(92, italic=True), (240, 236, 228, 255), 100, 0.80
+        size, font_fn, fill, lh, anchor = 92, lambda s: serif(s, italic=True), (240, 236, 228, 255), 100, pick(0.80, 0.86)
     elif style == "slam":
-        font, fill, lh, anchor = dm_sans(120, "Black"), (255, 255, 255, 255), 128, 0.50
+        size, font_fn, fill, lh, anchor = 120, lambda s: dm_sans(s, "Black"), (255, 255, 255, 255), 128, 0.50
     elif style == "quote":
-        font, fill, lh, anchor = serif(84, italic=True), (255, 255, 255, 255), 92, 0.20
+        size, font_fn, fill, lh, anchor = 84, lambda s: serif(s, italic=True), (255, 255, 255, 255), 92, pick(0.20, 0.16)
     else:
-        font, fill, lh, anchor = dm_sans(78, "ExtraBold"), (255, 255, 255, 255), 92, 0.76
-    lines = wrap(d, text, font, W - 160)
+        size, font_fn, fill, lh, anchor = 78, lambda s: dm_sans(s, "ExtraBold"), (255, 255, 255, 255), 92, pick(0.76, 0.84)
+    font, lh = font_fn(int(size * k)), int(lh * k)
+    lines = wrap(d, text, font, min(W - 160, 1500))
     top = int(H * anchor) - (len(lines) * lh) // 2
     if style in ("warm", "slam"):
         widest = max(d.textlength(l, font=font) for l in lines)
@@ -398,7 +433,7 @@ def stamp_layer(text):
     font = dm_sans(40, "Bold")
     spacing = 6
     w = spaced_width(d, text, font, spacing)
-    y = 220
+    y = pick(220, 70)
     d.rectangle([(W - w) / 2 - 28, y - 16, (W + w) / 2 + 28, y + 62], fill=(0, 0, 0, 150))
     centered(d, y, text, font, (255, 255, 255, 235), spacing=spacing)
     return layer
@@ -406,8 +441,8 @@ def stamp_layer(text):
 
 @lru_cache(maxsize=None)
 def notification_card(app, text):
-    cw = W - 80
-    body_f, app_f = dm_sans(38, "Medium"), dm_sans(28, "Bold")
+    cw = pick(W - 80, 600)
+    body_f, app_f = dm_sans(pick(38, 34), "Medium"), dm_sans(28, "Bold")
     tmp = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
     lines = wrap(tmp, text, body_f, cw - 150)
     ch = 90 + len(lines) * 48
@@ -425,13 +460,13 @@ def notification_card(app, text):
 
 def notifications_layer(t):
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    y = 150
+    x, y = pick((40, 150), (W // 2 + 330, 140))
     for at, app, text in NOTIFICATIONS:
         if t < at:
             break
         card = notification_card(app, text)
         p = ease_out((t - at) / 0.18)
-        layer.alpha_composite(card, (40, int(y - (1 - p) * 120)))
+        layer.alpha_composite(card, (x, int(y - (1 - p) * 120)))
         y += card.height + 18
     return layer
 
@@ -469,6 +504,8 @@ def render_frame(i):
         g = GRAIN[i % len(GRAIN)]
         a = a + np.repeat(np.repeat(g, 2, axis=0), 2, axis=1)
         a = np.clip(a, 0, 255).astype(np.uint8)
+        if DESKTOP:
+            a = pillarbox(a)
     frame = Image.fromarray(a)
 
     if shot.get("notifications"):

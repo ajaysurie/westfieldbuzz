@@ -1,6 +1,15 @@
-"""Edit decision list for the v2 trailer. All times in seconds."""
+"""Edit decision list for the v2 trailer. All times in seconds.
 
-W, H, FPS = 1080, 1920, 24
+TRAILER_FORMAT=desktop renders 1920x1080: generated shots and captions are laid out
+natively, footage (9:16 Runway clips) is centred over a colour wash.
+"""
+
+import os
+
+FORMAT = os.environ.get("TRAILER_FORMAT", "vertical")
+FPS = 24
+FW, FH = 1080, 1920
+W, H = (1920, 1080) if FORMAT == "desktop" else (FW, FH)
 
 # kind: title | clip | still | tabs | app | card | logo | black
 # clip: src (clips/<src>.mp4), ss (source in-point), speed (<1 = slow motion), look (colour grade)
@@ -21,7 +30,7 @@ SHOTS = [
     dict(t0=32.3, t1=33.7, kind="clip", src="pdf", ss=1.5, look="warm"),
     dict(t0=33.7, t1=35.4, kind="clip", src="standoff", ss=1.5, look="warm"),
     dict(t0=35.4, t1=36.4, kind="black"),
-    dict(t0=36.4, t1=39.0, kind="app", scroll=(0, 1500)),
+    dict(t0=36.4, t1=39.0, kind="app", scroll=(0, 1500), desktop_scroll=(0, 600)),
     dict(t0=39.0, t1=41.4, kind="clip", src="relief", ss=0.8, look="warm"),
     dict(t0=41.4, t1=45.4, kind="clip", src="hero-walk", ss=0.0, speed=0.85, look="warm"),
     dict(t0=45.4, t1=47.8, kind="card"),
