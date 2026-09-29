@@ -98,8 +98,12 @@ export function cleanTitle(value: string | null | undefined): string {
     .join(" ");
 }
 
-/** "6:00 PM–8:00 PM", or just "6:00 PM" when the end is missing or equal. */
+/**
+ * "6:00 PM–8:00 PM"; just "6:00 PM" when the end is missing or equal; "All
+ * day" for the midnight-to-11:59 PM span sources use for undated times.
+ */
 export function formatTimeRange(start: string, end: string): string {
   if (!start) return "";
+  if (start === "12:00 AM" && (!end || end === "11:59 PM")) return "All day";
   return end && end !== start ? `${start}–${end}` : start;
 }

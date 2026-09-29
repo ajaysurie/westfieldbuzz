@@ -26,6 +26,9 @@ export interface EventJsonLd {
     };
   };
   image?: string;
+  isAccessibleForFree?: boolean;
+  offers?: { "@type": "Offer"; price: number; priceCurrency: "USD"; url?: string };
+  typicalAgeRange?: string;
 }
 
 const STATUS_TO_SCHEMA: Record<SearchableEvent["status"], string> = {
@@ -46,7 +49,7 @@ export function buildEventJsonLd(
   event: Pick<
     SearchableEvent,
     "id" | "title" | "description" | "date" | "endDate" | "location" | "town" | "status" | "sourceUrl" | "imageUrl"
-  >,
+  > & Partial<Pick<SearchableEvent, "isFree" | "costAmount" | "minAge" | "maxAge">>,
   siteOrigin = SITE_ORIGIN,
 ): EventJsonLd {
   const locationName = event.location?.trim() || event.town?.trim() || "Westfield area";
@@ -72,5 +75,13 @@ export function buildEventJsonLd(
   if (description) jsonLd.description = description.slice(0, 500);
   if (event.endDate) jsonLd.endDate = event.endDate;
   if (event.imageUrl) jsonLd.image = event.imageUrl;
+  if (event.isFree != null) jsonLd.isAccessibleForFree = event.isFree;
+  const price = event.isFree ? 0 : event.costAmount;
+  if (price != null) {
+    jsonLd.offers = { "@type": "Offer", price, priceCurrency: "USD", ...(event.sourceUrl ? { url: event.sourceUrl } : {}) };
+  }
+  if (event.minAge != null || event.maxAge != null) {
+    jsonLd.typicalAgeRange = `${event.minAge ?? 0}-${event.maxAge ?? ""}`;
+  }
   return jsonLd;
 }

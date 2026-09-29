@@ -15,5 +15,13 @@ describe("public/llms.txt", () => {
     expect(llmsTxt).toContain("/api/events");
     expect(llmsTxt).toContain("/events/[id]");
     expect(llmsTxt).toContain("JSON-LD");
+    expect(llmsTxt).toContain("/calendar.ics");
+    expect(llmsTxt).toContain("/openapi.json");
+  });
+
+  it("tells agents how to report problems with every accepted reason", async () => {
+    const { FEEDBACK_REASONS } = await import("@/lib/feedback");
+    expect(llmsTxt).toContain("POST https://www.westfieldbuzz.com/api/feedback");
+    for (const reason of Object.keys(FEEDBACK_REASONS)) expect(llmsTxt).toContain(`"${reason}"`);
   });
 });

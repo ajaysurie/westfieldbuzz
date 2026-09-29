@@ -9,7 +9,7 @@ import { SITE_ORIGIN } from "@/lib/site";
 
 const SEARCH_TIME_ZONE = "America/New_York";
 const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
+export const MAX_LIMIT = 200;
 // Town, category, and exact ET days filter in memory, so fetch the whole
 // window and apply the caller's limit afterward.
 const WINDOW_FETCH_LIMIT = 1000;
@@ -111,15 +111,20 @@ function toPublicEvent(event: SearchableEvent, siteOrigin: string): PublicEvent 
   return publicEvent;
 }
 
+export type PublicEventsResult =
+  | { ok: true; events: SearchableEvent[] }
+  | { ok: false; response: Response };
+
 /**
- * GET /api/events — public machine-readable feed of published upcoming events.
- * Query params: town, category, from (YYYY-MM-DD), to (YYYY-MM-DD), limit.
+ * Shared query for the JSON API and the calendar feed. Query params: town,
+ * category, from (YYYY-MM-DD), to (YYYY-MM-DD), limit.
  */
-export async function handlePublicEvents(
-  request: Request,
+export async function queryPublicEvents(
+  url: URL,
   deps: PublicEventsDeps,
-): Promise<Response> {
-  const url = new URL(request.url);
+  defaultLimit = DEFAULT_LIMIT,
+): Promise<PublicEventsResult> {
+  const fail = (response: Response): PublicEventsResult => ({ ok: false, response });
   const params: PublicEventsQuery = {
     town: url.searchParams.get("town") ?? undefined,
     category: url.searchParams.get("category") ?? undefined,
@@ -129,7 +134,6 @@ export async function handlePublicEvents(
   };
 
   const now = deps.now ?? new Date();
-  const siteOrigin = deps.siteOrigin ?? SITE_ORIGIN;
 
   let category: EventCategory | undefined;
   if (params.category) {
@@ -137,30 +141,30 @@ export async function handlePublicEvents(
       (candidate) => candidate.toLowerCase() === params.category!.toLowerCase(),
     );
     if (!match) {
-      return badRequest(
+      return fail(badRequest(
         `Unknown category. Valid values: ${EVENT_CATEGORIES.join(", ")}`,
-      );
+      ));
     }
     category = match as EventCategory;
   }
 
   if (params.from && !DATE_PARAM.test(params.from)) {
-    return badRequest("Invalid from date. Use YYYY-MM-DD.");
+    return fail(badRequest("Invalid from date. Use YYYY-MM-DD."));
   }
   if (params.to && !DATE_PARAM.test(params.to)) {
-    return badRequest("Invalid to date. Use YYYY-MM-DD.");
+    return fail(badRequest("Invalid to date. Use YYYY-MM-DD."));
   }
   const fromDay = params.from ?? todayEt(now);
   const toDay = params.to ?? addDays(fromDay, DEFAULT_SEARCH_HORIZON_DAYS);
   if (toDay < fromDay) {
-    return badRequest("to must be on or after from.");
+    return fail(badRequest("to must be on or after from."));
   }
 
-  let limit = DEFAULT_LIMIT;
+  let limit = defaultLimit;
   if (params.limit !== undefined) {
     const parsed = Number(params.limit);
     if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_LIMIT) {
-      return badRequest(`limit must be an integer between 1 and ${MAX_LIMIT}.`);
+      return fail(badRequest(`limit must be an integer between 1 and ${MAX_LIMIT}.`));
     }
     limit = parsed;
   }
@@ -177,10 +181,10 @@ export async function handlePublicEvents(
       limit: WINDOW_FETCH_LIMIT,
     });
   } catch {
-    return Response.json(
+    return fail(Response.json(
       { error: "Events are temporarily unavailable. Try again shortly." },
       { status: 503 },
-    );
+    ));
   }
 
   const filtered = events
@@ -193,6 +197,19 @@ export async function handlePublicEvents(
     })
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .slice(0, limit);
+  return { ok: true, events: filtered };
+}
+
+/** GET /api/events — public machine-readable feed of published upcoming events. */
+export async function handlePublicEvents(
+  request: Request,
+  deps: PublicEventsDeps,
+): Promise<Response> {
+  const result = await queryPublicEvents(new URL(request.url), deps);
+  if (!result.ok) return result.response;
+  const filtered = result.events;
+  const now = deps.now ?? new Date();
+  const siteOrigin = deps.siteOrigin ?? SITE_ORIGIN;
 
   return Response.json(
     {

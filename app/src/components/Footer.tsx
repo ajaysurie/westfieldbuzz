@@ -15,6 +15,7 @@ export default function Footer() {
           <div>
             <Link href="/">This week</Link>
             <Link href="/events">Calendar</Link>
+            <a href="webcal://www.westfieldbuzz.com/calendar.ics">Subscribe in your calendar</a>
             <Link href="/#friday-list">Get the Friday list</Link>
             <Link href="/sources">Sources</Link>
             <Link href="/feedback">Suggest an event or fix</Link>

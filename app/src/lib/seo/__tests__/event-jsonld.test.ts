@@ -82,6 +82,23 @@ describe("buildEventJsonLd", () => {
     expect(jsonLd.description).toBeUndefined();
   });
 
+  it("adds free, price, and age facts when the source listed them", () => {
+    expect(buildEventJsonLd(baseEvent({ isFree: true, minAge: 3, maxAge: 5 }))).toMatchObject({
+      isAccessibleForFree: true,
+      offers: { "@type": "Offer", price: 0, priceCurrency: "USD", url: "https://example.com/event" },
+      typicalAgeRange: "3-5",
+    });
+    expect(buildEventJsonLd(baseEvent({ isFree: false, costAmount: 15, minAge: 21 }))).toMatchObject({
+      isAccessibleForFree: false,
+      offers: { price: 15 },
+      typicalAgeRange: "21-",
+    });
+    const unknown = buildEventJsonLd(baseEvent());
+    expect(unknown).not.toHaveProperty("offers");
+    expect(unknown).not.toHaveProperty("isAccessibleForFree");
+    expect(unknown).not.toHaveProperty("typicalAgeRange");
+  });
+
   it("falls back to the town when the venue name is blank", () => {
     const jsonLd = buildEventJsonLd(baseEvent({ location: "  " }));
 

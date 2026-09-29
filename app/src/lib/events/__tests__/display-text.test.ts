@@ -67,6 +67,12 @@ describe("cleanTitle", () => {
 });
 
 describe("formatTimeRange", () => {
+  it("labels midnight-to-11:59 PM spans as all day", () => {
+    expect(formatTimeRange("12:00 AM", "11:59 PM")).toBe("All day");
+    expect(formatTimeRange("12:00 AM", "")).toBe("All day");
+    expect(formatTimeRange("12:00 AM", "2:00 AM")).toBe("12:00 AM\u20132:00 AM");
+  });
+
   it("collapses zero-length ranges", () => {
     expect(formatTimeRange("6:00 PM", "6:00 PM")).toBe("6:00 PM");
     expect(formatTimeRange("6:00 PM", "")).toBe("6:00 PM");

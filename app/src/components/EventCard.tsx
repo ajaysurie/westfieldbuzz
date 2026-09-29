@@ -81,7 +81,7 @@ export default function EventCard({ event, dark = false, recurrenceLabel, saved 
             className="event-card__time-tile"
             style={{ background: categoryColors.bg, color: categoryColors.text }}
           >
-            {startTime || "All day"}
+            {timeRange === "All day" || !startTime ? "All day" : startTime}
           </span>
         )}
       </Link>
