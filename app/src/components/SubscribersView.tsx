@@ -14,8 +14,10 @@ type Filter = SubscriberStatus | "all";
 export interface SubscribersData {
   items: SubscriberListItem[];
   counts: SubscriberCounts;
-  truncated: boolean;
 }
+
+/** Rows drawn at once. Counts and the CSV always cover everyone. */
+const VISIBLE_ROWS = 500;
 
 function formatDay(iso: string | null): string {
   if (!iso) return "";
@@ -61,12 +63,6 @@ export default function SubscribersView({ data }: { data: SubscribersData }) {
         {counts.pending > 0 && ` ${counts.pending} more haven't confirmed yet.`}
       </p>
 
-      {data.truncated && (
-        <p role="status" className="mb-4 rounded-[10px] border border-black/6 bg-paper-pure p-4 text-[0.85rem] text-ink-light">
-          This shows the newest {data.items.length.toLocaleString("en-US")} sign-ups. There are more in Firestore.
-        </p>
-      )}
-
       <div className="category-filters" role="group" aria-label="Filter subscribers">
         {filters.map((option) => (
           <button key={option.key} type="button" aria-pressed={filter === option.key} onClick={() => setFilter(option.key)}>
@@ -76,7 +72,11 @@ export default function SubscribersView({ data }: { data: SubscribersData }) {
       </div>
 
       <div className="mb-4 flex items-center justify-between gap-3">
-        <p className="text-[0.8rem] text-ink-muted">{shown.length} shown</p>
+        <p className="text-[0.8rem] text-ink-muted">
+          {shown.length > VISIBLE_ROWS
+            ? `Showing the newest ${VISIBLE_ROWS} of ${shown.length}. The CSV has all ${shown.length}.`
+            : `${shown.length} shown`}
+        </p>
         <button
           type="button"
           onClick={download}
@@ -92,7 +92,7 @@ export default function SubscribersView({ data }: { data: SubscribersData }) {
         <p className="text-[0.85rem] text-ink-muted">No one in this group yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {shown.map((item) => (
+          {shown.slice(0, VISIBLE_ROWS).map((item) => (
             <li key={item.email} className="rounded-[10px] border border-black/6 bg-paper-pure px-4 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                 <span className="break-all text-[0.9rem] text-ink">{item.email}</span>

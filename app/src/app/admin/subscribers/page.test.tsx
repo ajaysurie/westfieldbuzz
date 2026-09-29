@@ -23,7 +23,6 @@ const payload = {
   ok: true,
   items,
   counts: { active: 2, pending: 1, unsubscribed: 1, suppressed: 0, total: 4 },
-  truncated: false,
 };
 
 describe("AdminSubscribersPage", () => {
@@ -79,10 +78,25 @@ describe("AdminSubscribersPage", () => {
     click.mockRestore();
   });
 
-  it("notes when the list is cut off", async () => {
-    stubFetch({ ...payload, truncated: true });
+  it("draws at most 500 rows but keeps the counts and the CSV complete", async () => {
+    const many = Array.from({ length: 600 }, (_, index) => ({
+      email: `r${index}@example.com`, status: "active", source: "website",
+      signedUpAt: "2026-09-01T14:00:00.000Z", confirmedAt: null, unsubscribedAt: null,
+    }));
+    stubFetch({ ok: true, items: many, counts: { active: 600, pending: 0, unsubscribed: 0, suppressed: 0, total: 600 } });
+    let blob: Blob | undefined;
+    URL.createObjectURL = vi.fn((value: Blob | MediaSource) => { blob = value as Blob; return "blob:test"; });
+    URL.revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+
     render(<AdminSubscribersPage />);
-    expect(await screen.findByRole("status")).toHaveTextContent("newest 4 sign-ups");
+    expect(await screen.findByText(/Showing the newest 500 of 600/)).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(500);
+    expect(screen.getByRole("button", { name: "Active · 600" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Download CSV" }));
+    expect((await blob!.text()).split("\r\n")).toHaveLength(602); // header + 600 rows + trailing newline
+    click.mockRestore();
   });
 
   it("shows the server's message when loading fails", async () => {

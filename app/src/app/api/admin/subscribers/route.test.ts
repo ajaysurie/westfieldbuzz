@@ -17,7 +17,6 @@ import { GET } from "./route";
 const list = {
   items: [{ email: "reader@example.com", status: "active", source: "website", signedUpAt: null, confirmedAt: null, unsubscribedAt: null }],
   counts: { active: 1, pending: 0, unsubscribed: 0, suppressed: 0, total: 1 },
-  truncated: false,
 };
 
 function request(headers: Record<string, string> = { authorization: "Bearer token" }) {

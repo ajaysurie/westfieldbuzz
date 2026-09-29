@@ -30,11 +30,12 @@ export function countSubscribers(items: SubscriberListItem[]): SubscriberCounts 
 }
 
 /**
- * A CSV cell. Quoted per RFC 4180, and a leading = + - @ or tab/CR is
- * neutralized so a spreadsheet never runs an address as a formula.
+ * A CSV cell. Quoted per RFC 4180, and a formula character (= + - @) at the
+ * start, even after whitespace, or a leading tab/CR is neutralized so a
+ * spreadsheet never runs a field as a formula.
  */
 export function csvCell(value: string): string {
-  const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+  const safe = /^\s*[=+\-@]|^[\t\r]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 

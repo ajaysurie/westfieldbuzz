@@ -42,6 +42,10 @@ describe("csvCell", () => {
     expect(csvCell("+1@example.com")).toBe("'+1@example.com");
     expect(csvCell("-x@example.com")).toBe("'-x@example.com");
     expect(csvCell("@cmd")).toBe("'@cmd");
+    expect(csvCell(" =SUM(1)")).toBe("' =SUM(1)");
+    expect(csvCell("  \t+cmd")).toBe("'  \t+cmd");
+    expect(csvCell("\t=1")).toBe("'\t=1");
+    expect(csvCell("name=value@example.com")).toBe("name=value@example.com");
   });
 });
 
