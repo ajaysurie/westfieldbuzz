@@ -146,4 +146,54 @@ describe("POST /api/event-search", () => {
     expect(body).not.toContain("super-secret");
     expect(body).not.toContain("FIREBASE_PRIVATE_KEY");
   });
+
+  it("loads events while parsing and reuses them when the intent fits the default window", async () => {
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    const listPublishedEvents = vi.fn(async () => [
+      eventFixture({ id: "jazz", title: "Friday Night Jazz", date: "2026-08-21T23:00:00.000Z", category: "Music" }),
+    ]);
+    let listedBeforeParse = false;
+    const parser = {
+      async parse() {
+        listedBeforeParse = listPublishedEvents.mock.calls.length === 1;
+        return { ...emptySearchIntent(), dateWindow: { startDate: "2026-08-21", endDate: "2026-08-21" } };
+      },
+    };
+    const response = await handleEventSearch(request({ query: "jazz Friday" }), {
+      repository: { listPublishedEvents },
+      parser,
+      now: NOW,
+      skipRateLimit: true,
+    });
+    const payload = await response.json();
+    expect(payload.ok).toBe(true);
+    expect(listedBeforeParse).toBe(true);
+    expect(listPublishedEvents).toHaveBeenCalledTimes(1);
+    expect(payload.meta.timings).toEqual({
+      parseMs: expect.any(Number),
+      retrieveMs: expect.any(Number),
+      matchMs: expect.any(Number),
+    });
+  });
+
+  it("fetches again when the intent's dates fall outside the prefetched window", async () => {
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    const listPublishedEvents = vi.fn(async () => []);
+    const parser = {
+      async parse() {
+        return { ...emptySearchIntent(), dateWindow: { startDate: "2027-03-01", endDate: "2027-03-02" } };
+      },
+    };
+    await handleEventSearch(request({ query: "March" }), {
+      repository: { listPublishedEvents },
+      parser,
+      now: NOW,
+      skipRateLimit: true,
+    });
+    expect(listPublishedEvents).toHaveBeenCalledTimes(2);
+    const second = (listPublishedEvents.mock.calls[1] as unknown as [{ from: Date }])[0];
+    expect(second.from.toISOString().slice(0, 7)).toBe("2027-03");
+  });
 });

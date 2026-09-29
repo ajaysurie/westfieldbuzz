@@ -9,6 +9,7 @@ import {
   type SearchIntent,
 } from "@/lib/search/event-intent";
 import { EVENT_CATEGORIES } from "@/lib/events/types";
+import { fastThinkingConfig } from "@/lib/server/gemini";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const DEFAULT_MODEL = "gpt-5.6-luna";
@@ -272,6 +273,7 @@ export function createGeminiIntentParser(fetcher: FetchLike = fetch): IntentPars
                 temperature: 0,
                 responseMimeType: "application/json",
                 responseSchema: geminiSchema(jsonSchema()),
+                ...fastThinkingConfig(model),
               },
             }),
             signal: controller.signal,

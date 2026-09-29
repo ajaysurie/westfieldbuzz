@@ -235,4 +235,30 @@ describe("SearchExperience", () => {
     const body = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
     expect(body).toEqual({ mode: "structured", intent: secondIntent });
   });
+
+  it("puts the searched sentence in the URL so refresh and sharing return to it", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValue(new Response(JSON.stringify(successPayload("trivia")), { status: 200 }));
+    render(<SearchExperience />);
+    fireEvent.change(screen.getByLabelText("Describe the event you want"), { target: { value: "trivia night" } });
+    fireEvent.submit(screen.getByLabelText("Describe the event you want").closest("form")!);
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(new URL(window.location.href).searchParams.get("q")).toBe("trivia night");
+  });
+
+  it("shows which step a slow search is on", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const pending = deferred<Response>();
+      vi.spyOn(global, "fetch").mockImplementation(() => pending.promise);
+      render(<SearchExperience initialQuery="jazz" />);
+      expect(await screen.findByText("Understanding your request…")).toBeInTheDocument();
+      await act(async () => { vi.advanceTimersByTime(2_500); });
+      expect(screen.getByText("Checking upcoming events…")).toBeInTheDocument();
+      await act(async () => { vi.advanceTimersByTime(2_500); });
+      expect(screen.getByText("Picking the best matches…")).toBeInTheDocument();
+      pending.resolve(new Response(JSON.stringify(successPayload("jazz")), { status: 200 }));
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

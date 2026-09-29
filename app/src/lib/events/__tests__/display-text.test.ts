@@ -35,6 +35,7 @@ describe("cleanLocation", () => {
   it("removes leading separators left by scrapers", () => {
     expect(cleanLocation("- 270 East Broad Street Westfield NJ 07090")).toBe("270 East Broad Street Westfield NJ 07090");
     expect(cleanLocation(" · Galeria, ")).toBe("Galeria");
+    expect(cleanLocation("425 Springfield Avenue, Summit , NJ 07901")).toBe("425 Springfield Avenue, Summit, NJ 07901");
   });
 });
 

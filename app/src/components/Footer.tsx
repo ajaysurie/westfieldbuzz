@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 export default function Footer() {
   return (
@@ -9,6 +10,9 @@ export default function Footer() {
           <p>Local events around Westfield and nearby towns.</p>
           <p className="site-footer__credit">
             Built by <a href="https://www.ajaysurie.com" target="_blank" rel="noopener noreferrer">Ajay Surie</a>, Westfield dad &amp; resident.
+          </p>
+          <p className="site-footer__credit">
+            Say hello: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
           </p>
         </div>
         <nav aria-label="Footer navigation">

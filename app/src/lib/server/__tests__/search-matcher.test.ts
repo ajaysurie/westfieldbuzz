@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { matchEventsWithModel } from "../search-matcher";
+import { matchEventsWithModel, selectPromptCandidates } from "../search-matcher";
 import type { SearchableEvent } from "@/lib/search/event-retrieval";
 
 function candidate(id: string, title: string): SearchableEvent {
@@ -43,7 +43,70 @@ function geminiResponse(payload: unknown): Response {
 
 const candidates = [candidate("a", "Jazz Night"), candidate("b", "Book Sale")];
 
+describe("selectPromptCandidates", () => {
+  const many = Array.from({ length: 70 }, (_, index) => candidate(`e${index}`, `Library program ${index}`));
+  many[65] = candidate("halloween", "Halloween Parade");
+  many[66] = { ...candidate("family", "Pumpkin Patch"), category: "Family & Kids" };
+
+  it("keeps late matches that date order alone would cut", () => {
+    const chosen = selectPromptCandidates(many, { keywords: ["Halloween"], categories: ["Family & Kids"] }, 60);
+    expect(chosen).toHaveLength(60);
+    expect(chosen.map((event) => event.id)).toContain("halloween");
+    expect(chosen.map((event) => event.id)).toContain("family");
+  });
+
+  it("returns the chosen events in their original date order", () => {
+    const chosen = selectPromptCandidates(many, { keywords: ["halloween"], categories: [] }, 60);
+    const positions = chosen.map((event) => many.indexOf(event));
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it("passes small candidate lists through unchanged", () => {
+    expect(selectPromptCandidates(candidates, { keywords: ["zzz"], categories: [] }, 60)).toBe(candidates);
+  });
+
+  it("ranks a later keyword match above earlier category-only matches", () => {
+    const concerts = Array.from({ length: 70 }, (_, index) => ({ ...candidate(`c${index}`, `Concert ${index}`), category: "Music" as const }));
+    const halloween = { ...candidate("halloween-show", "Halloween Show"), category: "Entertainment" as const };
+    const chosen = selectPromptCandidates([...concerts, halloween], { keywords: ["halloween"], categories: ["Music"] }, 60);
+    expect(chosen.map((event) => event.id)).toContain("halloween-show");
+  });
+
+  it("matches keywords only in text the model is shown", () => {
+    const hidden = Array.from({ length: 60 }, (_, index) => ({
+      ...candidate(`hidden${index}`, `Program ${index}`),
+      description: `${"x".repeat(300)} halloween`,
+      tags: ["halloween"],
+    }));
+    const visible = candidate("visible", "Halloween Parade");
+    const chosen = selectPromptCandidates([...hidden, visible], { keywords: ["halloween"], categories: [] }, 60);
+    expect(chosen.map((event) => event.id)).toContain("visible");
+  });
+});
+
 describe("matchEventsWithModel", () => {
+  it("unlinks a citation that spans a whole sentence instead of the event name", async () => {
+    const fetchImpl = vi.fn(async () =>
+      geminiResponse({
+        matches: [{ eventId: "a", reason: "jazz" }],
+        narrative: [
+          { text: "For live music this Friday night, check out Jazz Night at the Rialto downtown.", eventId: "a" },
+        ],
+      })
+    );
+    const result = await matchEventsWithModel({ query: "q", candidates, fetchImpl, apiKey: "k" });
+    expect(result?.narrative).toEqual([
+      { text: "For live music this Friday night, check out Jazz Night at the Rialto downtown." },
+    ]);
+  });
+
+  it("asks for low thinking so search stays fast", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => geminiResponse({ matches: [] }));
+    await matchEventsWithModel({ query: "q", candidates, fetchImpl, apiKey: "k", model: "gemini-3.7-flash" });
+    const body = JSON.parse(fetchImpl.mock.calls[0]![1]!.body as string);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low" });
+  });
+
   it("returns grounded matches in model order with reasons", async () => {
     const fetchImpl = vi.fn(async () =>
       geminiResponse({

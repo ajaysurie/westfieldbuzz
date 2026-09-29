@@ -3,6 +3,7 @@ import {
   validateNarrative,
   type NarrativeSegment,
 } from "./search-narrative";
+import { fastThinkingConfig } from "@/lib/server/gemini";
 
 /**
  * Match candidates to a request with the model, not with field filters.
@@ -82,6 +83,17 @@ function candidateLine(event: SearchableEvent): string {
   return `id=${event.id} | ${event.title} | ${when} | ${event.location}, ${event.town} | ${event.category} | ${cost} | ${description}`;
 }
 
+/**
+ * A citation should link the event's name, not the whole sentence around it.
+ * When the model links a segment much longer than the title, keep the words
+ * and drop the link.
+ */
+function linkOnlyNames(segment: NarrativeSegment, byId: Map<string, SearchableEvent>): NarrativeSegment {
+  if (!segment.eventId) return segment;
+  const title = byId.get(segment.eventId)?.title ?? "";
+  return segment.text.length > title.length + 25 ? { text: segment.text } : segment;
+}
+
 function parseMatchPayload(
   payload: unknown,
   candidates: SearchableEvent[]
@@ -112,13 +124,46 @@ function parseMatchPayload(
       label: "",
       reason: "",
     })));
+    narrative = narrative?.map((segment) => linkOnlyNames(segment, byId)) ?? null;
   }
   return { matches, narrative };
+}
+
+/**
+ * The prompt holds MAX_CANDIDATES_IN_PROMPT events. Taking the first N by date
+ * would drop every later match on an undated query ("Halloween events" over a
+ * 90-day window), so candidates are ranked into tiers, earliest first within
+ * each: keyword and category, keyword only, category only, then the rest. A
+ * keyword is the specific topic, so it outranks a broad category. Keywords are
+ * matched only against text the prompt shows the model (title and the
+ * truncated description), so a slot never goes to an event whose match the
+ * model cannot see. Returned in date order.
+ */
+export function selectPromptCandidates(
+  candidates: SearchableEvent[],
+  hints: { keywords: string[]; categories: string[] },
+  max = MAX_CANDIDATES_IN_PROMPT
+): SearchableEvent[] {
+  if (candidates.length <= max) return candidates;
+  const words = hints.keywords.map((word) => word.trim().toLowerCase()).filter((word) => word.length > 1);
+  const tier = (event: SearchableEvent) => {
+    const visible = `${event.title} ${event.description.slice(0, MAX_DESCRIPTION_CHARS)}`.toLowerCase();
+    const keyword = words.some((word) => visible.includes(word)) ? 2 : 0;
+    const category = hints.categories.includes(event.category) ? 1 : 0;
+    return keyword + category;
+  };
+  const ranked = candidates
+    .map((event, index) => ({ event, index, tier: tier(event) }))
+    .sort((a, b) => b.tier - a.tier || a.index - b.index);
+  const chosen = new Set(ranked.slice(0, max).map(({ event }) => event));
+  return candidates.filter((event) => chosen.has(event));
 }
 
 export async function matchEventsWithModel(input: {
   query: string;
   candidates: SearchableEvent[];
+  /** Parsed intent terms used to choose which candidates fit in the prompt. */
+  hints?: { keywords: string[]; categories: string[] };
   fetchImpl?: typeof fetch;
   apiKey?: string;
   model?: string;
@@ -127,7 +172,7 @@ export async function matchEventsWithModel(input: {
   if (!apiKey || input.candidates.length === 0) return null;
   const model = input.model ?? process.env.WESTFIELDBUZZ_LLM_MODEL ?? DEFAULT_MODEL;
   const fetchImpl = input.fetchImpl ?? fetch;
-  const candidates = input.candidates.slice(0, MAX_CANDIDATES_IN_PROMPT);
+  const candidates = selectPromptCandidates(input.candidates, input.hints ?? { keywords: [], categories: [] });
 
   const prompt = [
     "You are matching local events to a person's request for a guide around Westfield, NJ.",
@@ -137,7 +182,7 @@ export async function matchEventsWithModel(input: {
     "Rules:",
     "- Only return ids from the list. Never invent an event, time, price, or fact.",
     "- reason is one short clause (under 12 words) grounded in that event's own text.",
-    "- Optionally add a one-or-two sentence narrative naming the best picks; cite them with their ids.",
+    "- Optionally add a one-or-two sentence narrative naming the best picks. Split it into segments: each event's name is its own segment carrying that eventId, and all other words go in segments without an eventId.",
     "",
     "CANDIDATES:",
     ...candidates.map(candidateLine),
@@ -155,6 +200,7 @@ export async function matchEventsWithModel(input: {
             temperature: 0.2,
             responseMimeType: "application/json",
             responseSchema: RESPONSE_SCHEMA,
+            ...fastThinkingConfig(model),
           },
         }),
         signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),

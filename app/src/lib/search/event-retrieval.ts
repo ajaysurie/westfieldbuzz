@@ -92,6 +92,16 @@ function localBoundary(date: string, endOfDay = false): Date {
   return guess;
 }
 
+/** Today through the default horizon: the window for a search with no dates. */
+export function defaultQueryWindow(now = new Date()): EventQueryWindow {
+  const today = localDateString(now);
+  return {
+    from: localBoundary(today),
+    to: addDays(localBoundary(today, true), DEFAULT_SEARCH_HORIZON_DAYS),
+    limit: MAX_RETRIEVED_EVENTS,
+  };
+}
+
 export function queryWindowForIntent(
   intent: SearchIntent,
   now = new Date()

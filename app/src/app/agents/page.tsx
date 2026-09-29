@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { EVENT_CATEGORIES } from "@/lib/events/types";
 import { FEEDBACK_REASONS } from "@/lib/feedback";
+import { CONTACT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "For Agents",
@@ -255,10 +256,10 @@ export default function AgentsPage() {
           <p>
             Questions about the data? Email{" "}
             <a
-              href="mailto:ajay@ajaysurie.com"
+              href={`mailto:${CONTACT_EMAIL}`}
               style={{ color: "var(--accent)" }}
             >
-              ajay@ajaysurie.com
+              {CONTACT_EMAIL}
             </a>
             .
           </p>
