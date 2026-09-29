@@ -278,7 +278,7 @@ export async function handleEventSearch(
   const retrieveMs = Date.now() - retrieveStartedAt;
   const matchStartedAt = Date.now();
   const eligible = events.filter((event) => hardBoundsMatch(event, intent));
-  const unresolved = unresolvedConstraints(intent, events);
+  const unresolved = unresolvedConstraints(intent, eligible);
 
   let modelMatch: Awaited<ReturnType<typeof matchEventsWithModel>> = null;
   if (!structuredExecution && eligible.length) {
@@ -328,7 +328,9 @@ export async function handleEventSearch(
     suggestions: rankedItems.length ? [] : [...unresolved, ...noMatchSuggestions(intent)].slice(0, 3),
     unresolvedConstraints: unresolved,
     meta: {
-      candidateCount: events.length,
+      // Events that fit the dates, towns, and status, i.e. what was checked.
+      // Not events.length: that is the whole prefetched 90-day window.
+      candidateCount: eligible.length,
       matchedCount: rankedItems.length,
       durationMs: Date.now() - startedAt,
       timings: { parseMs, retrieveMs, matchMs },

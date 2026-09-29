@@ -152,6 +152,7 @@ describe("POST /api/event-search", () => {
     delete process.env.OPENAI_API_KEY;
     const listPublishedEvents = vi.fn(async () => [
       eventFixture({ id: "jazz", title: "Friday Night Jazz", date: "2026-08-21T23:00:00.000Z", category: "Music" }),
+      eventFixture({ id: "later", title: "Autumn Fair", date: "2026-09-12T15:00:00.000Z", category: "Community" }),
     ]);
     let listedBeforeParse = false;
     const parser = {
@@ -170,6 +171,8 @@ describe("POST /api/event-search", () => {
     expect(payload.ok).toBe(true);
     expect(listedBeforeParse).toBe(true);
     expect(listPublishedEvents).toHaveBeenCalledTimes(1);
+    // Counts events inside the parsed window, not the whole prefetched window.
+    expect(payload.meta.candidateCount).toBe(1);
     expect(payload.meta.timings).toEqual({
       parseMs: expect.any(Number),
       retrieveMs: expect.any(Number),
