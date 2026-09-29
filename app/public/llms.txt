@@ -1,16 +1,21 @@
 # Westfield Buzz
 
 ## About
-Westfield Buzz (https://westfieldbuzz.com) is a local events guide for Westfield, New Jersey and nearby Union County towns including Summit, Cranford, Garwood, Rahway, Mountainside, and Fanwood. It aggregates public community events — concerts, festivals, markets, kids activities, sports, arts, and town programming — from municipal calendars and venue sites, deduplicates them across sources, and republishes one canonical listing per event.
+Westfield Buzz (https://www.westfieldbuzz.com) is a local events guide for Westfield, New Jersey and nearby Union County towns including Summit, Cranford, Garwood, Rahway, Mountainside, and Fanwood. It aggregates public community events — concerts, festivals, markets, kids activities, sports, arts, and town programming — from municipal calendars and venue sites, deduplicates them across sources, and republishes one canonical listing per event.
 
-Listings refresh automatically from source feeds. A free Friday email digest summarizes the coming week; readers can subscribe at https://westfieldbuzz.com/subscribe.
+Listings refresh automatically from source feeds. A free Friday email digest summarizes the coming week; readers can subscribe at https://www.westfieldbuzz.com/subscribe.
 
 ## Machine-readable access
-- **Events API (JSON):** `GET https://westfieldbuzz.com/api/events` — published upcoming events. Query params: `town`, `category`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `limit` (default 50, max 200). Example: `/api/events?town=Westfield&category=Music&limit=20`. Cached at the edge; no key required. Full parameter docs: https://westfieldbuzz.com/agents
-- **Event pages:** every event has a stable URL at `https://westfieldbuzz.com/events/[id]` with schema.org Event JSON-LD (name, startDate, endDate, location, eventStatus).
-- **Sitemap:** https://westfieldbuzz.com/sitemap.xml includes published event URLs.
-- **Natural-language search:** https://westfieldbuzz.com/search accepts plain-English queries ("free kids events this weekend in Cranford").
-- **Sources:** https://westfieldbuzz.com/sources lists every public calendar, venue, and organization the listings come from.
+- **Events API (JSON):** `GET https://www.westfieldbuzz.com/api/events` — published upcoming events, soonest first. Query params: `town`, `category`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD, at most 92 days after `from`), `limit` (default 50, max 200). Example: `/api/events?town=Westfield&category=Music&limit=20`. Each event includes `isFree`, `costAmount`, `minAge`, `maxAge`, `registration`, and `environment` (null when the source did not list them). Cached at the edge; no key required. Full docs: https://www.westfieldbuzz.com/agents
+- **OpenAPI spec:** https://www.westfieldbuzz.com/openapi.json describes the API, calendar feed, and feedback endpoint.
+- **Calendar feed (iCalendar):** `https://www.westfieldbuzz.com/calendar.ics` — subscribable; takes the same filters as the API, e.g. `/calendar.ics?town=Cranford&category=Family%20%26%20Kids`.
+- **Event pages:** every event has a stable URL at `https://www.westfieldbuzz.com/events/[id]` with schema.org Event JSON-LD (name, startDate, endDate, location, eventStatus, and offers / isAccessibleForFree / typicalAgeRange when listed).
+- **Sitemap:** https://www.westfieldbuzz.com/sitemap.xml includes published event URLs.
+- **Natural-language search:** https://www.westfieldbuzz.com/search accepts plain-English queries ("free kids events this weekend in Cranford").
+- **Sources:** https://www.westfieldbuzz.com/sources lists every public calendar, venue, and organization the listings come from.
+
+## Report problems
+- **Feedback API:** `POST https://www.westfieldbuzz.com/api/feedback` with JSON `{"eventId": "<id from /api/events>", "reason": "wrong-details" | "cancelled" | "duplicate" | "not-local" | "other", "message": "..."}`. To suggest an event we don't list: `{"reason": "missing-event", "message": "name, date, link"}`. Returns 202; a person reads every report.
 
 ## Data notes
 - Times are America/New_York.
@@ -19,4 +24,4 @@ Listings refresh automatically from source feeds. A free Friday email digest sum
 - Coverage is Westfield-first; nearby-town coverage depends on what local sources publish.
 
 ## Contact
-https://westfieldbuzz.com
+https://www.westfieldbuzz.com/feedback

@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { getPublicEvents } from "@/lib/firestore";
 import HomeContent from "./HomeContent";
 import type { SerializedHomeEvent } from "./HomeContent";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 function homeWindow(now = new Date()) {
   const from = new Date(now);
@@ -26,6 +31,7 @@ export default async function Home() {
     interestedCount: event.interestedCount,
     createdBy: event.createdBy,
     imageUrl: event.imageUrl,
+    isFree: event.isFree ?? null,
     status: event.status,
     availability: event.availability,
     publicationStatus: event.publicationStatus,

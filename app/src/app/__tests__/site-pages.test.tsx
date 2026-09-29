@@ -24,8 +24,8 @@ describe("sources and agents pages", () => {
   it("includes /sources and /agents in the sitemap", async () => {
     const entries = await sitemap();
     const urls = entries.map((entry) => entry.url);
-    expect(urls).toContain("https://westfieldbuzz.com/sources");
-    expect(urls).toContain("https://westfieldbuzz.com/agents");
+    expect(urls).toContain("https://www.westfieldbuzz.com/sources");
+    expect(urls).toContain("https://www.westfieldbuzz.com/agents");
   });
 
   it("links the new pages from llms.txt", () => {
@@ -33,7 +33,7 @@ describe("sources and agents pages", () => {
       join(__dirname, "..", "..", "..", "public", "llms.txt"),
       "utf8",
     );
-    expect(llmsTxt).toContain("https://westfieldbuzz.com/sources");
-    expect(llmsTxt).toContain("https://westfieldbuzz.com/agents");
+    expect(llmsTxt).toContain("https://www.westfieldbuzz.com/sources");
+    expect(llmsTxt).toContain("https://www.westfieldbuzz.com/agents");
   });
 });

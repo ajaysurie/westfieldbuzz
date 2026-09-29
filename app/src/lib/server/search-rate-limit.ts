@@ -17,6 +17,11 @@ export function trustedClientIp(request: Request): string {
   return normalized.slice(0, 128) || "unknown";
 }
 
+/** Keyed hash of the caller's trusted IP, for per-client rate-limit documents. */
+export function hashedClientKey(request: Request): string {
+  return hashClient(trustedClientIp(request), rateLimitSecret());
+}
+
 function rateLimitSecret(): string {
   const secret = process.env.SEARCH_RATE_LIMIT_SECRET ?? process.env.EMAIL_TOKEN_SECRET;
   if (!secret) throw new Error("SEARCH_RATE_LIMIT_SECRET is required");

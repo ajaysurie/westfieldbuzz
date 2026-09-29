@@ -27,6 +27,8 @@ import type {
 } from "./events/types";
 import { normalizeCategory } from "./events/normalize";
 import { isWithinVerificationAge } from "./events/freshness";
+import { readCostAndAge } from "@/lib/events/doc-facts";
+import { cleanDescription, cleanLocation, cleanTitle } from "@/lib/events/display-text";
 
 // ===== Types =====
 
@@ -47,6 +49,10 @@ export interface Event {
   sourceUrl?: string;
   imageUrl?: string;
   town?: string;
+  costAmount?: number | null;
+  isFree?: boolean | null;
+  minAge?: number | null;
+  maxAge?: number | null;
   status?: EventStatus;
   availability?: EventAvailability;
   publicationStatus?: EventPublicationStatus;
@@ -110,6 +116,10 @@ function eventFromSnapshot(id: string, data: Record<string, unknown>): Event {
   return {
     ...data,
     id,
+    title: cleanTitle(typeof data.title === "string" ? data.title : ""),
+    description: cleanDescription(typeof data.description === "string" ? data.description : ""),
+    location: cleanLocation(typeof data.location === "string" ? data.location : ""),
+    ...readCostAndAge(data),
     category: normalizeCategory(typeof data.category === "string" ? data.category : undefined),
     status: data.status === "cancelled" || data.status === "postponed"
       || data.status === "rescheduled" || data.status === "weather-dependent"

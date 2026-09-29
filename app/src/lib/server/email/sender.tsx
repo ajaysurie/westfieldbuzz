@@ -16,6 +16,11 @@ function senderAddress(): string {
   return process.env.EMAIL_FROM ?? "Westfield Buzz <hello@westfieldbuzz.com>";
 }
 
+/** Digest replies are the main reader feedback channel; they must reach a person. */
+export function replyToAddress(): string {
+  return process.env.EMAIL_REPLY_TO ?? "hello@westfieldbuzz.com";
+}
+
 export class EmailProviderTimeoutError extends Error {
   constructor() {
     super("EMAIL_PROVIDER_TIMEOUT");
@@ -72,6 +77,7 @@ export async function sendFridayDigest(input: {
       from: senderAddress(),
       to: input.email,
       subject: `${input.props.issueLabel}: Your Westfield Buzz Friday list`,
+      replyTo: replyToAddress(),
       html,
       text: fridayDigestText(input.props),
       headers: {

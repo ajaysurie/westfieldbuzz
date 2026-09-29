@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Event Sources",
   description:
     "Where Westfield Buzz gets its events: local libraries, town calendars, venues, and arts organizations across Westfield and nearby towns.",
+  alternates: { canonical: "/sources" },
 };
 
 /**

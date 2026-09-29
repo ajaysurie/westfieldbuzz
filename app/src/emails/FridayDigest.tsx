@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { townSuffix } from "../lib/events/display-text";
 
 export interface DigestEventItem {
   id: string;
@@ -102,7 +103,7 @@ export function FridayDigest({
                   </a>
                 </h2>
                 <p style={{ margin: 0, color: colors.muted, fontSize: 14 }}>
-                  {event.location} · {event.town}
+                  {[event.location, townSuffix(event.location, event.town)].filter(Boolean).join(" · ")}
                 </p>
               </article>
             ))}
@@ -118,6 +119,9 @@ export function FridayDigest({
           </section>
 
           <footer style={{ padding: "20px 32px 28px", borderTop: "1px solid #ece5d9", color: colors.muted, fontSize: 12, lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 8px" }}>
+              Know an event we missed, or spot a mistake? Just reply to this email.
+            </p>
             <p style={{ margin: 0 }}>
               You received this Friday list from Westfield Buzz. <a href={unsubscribePageUrl} style={{ color: colors.muted }}>Unsubscribe</a>.
             </p>
@@ -143,11 +147,12 @@ export function fridayDigestText(props: FridayDigestProps): string {
     ...props.events.flatMap((event) => [
       `${event.when}${event.statusLabel ? ` · ${event.statusLabel}` : ""}`,
       event.title,
-      `${event.location} · ${event.town}`,
+      [event.location, townSuffix(event.location, event.town)].filter(Boolean).join(" · "),
       event.url,
       "",
     ]),
     `Full calendar: ${props.calendarUrl}`,
+    "Know an event we missed, or spot a mistake? Just reply to this email.",
     `Unsubscribe: ${props.unsubscribePageUrl}`,
   ];
   return lines.join("\n");

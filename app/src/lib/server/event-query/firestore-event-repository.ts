@@ -5,6 +5,8 @@ import type {
   EventRepository,
   SearchableEvent,
 } from "@/lib/search/event-retrieval";
+import { readCostAndAge } from "@/lib/events/doc-facts";
+import { cleanDescription, cleanLocation, cleanTitle } from "@/lib/events/display-text";
 
 export class EventRepositoryConfigurationError extends Error {
   constructor() {
@@ -57,34 +59,21 @@ function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | 
   if (!date || !verified || typeof data.title !== "string") {
     return null;
   }
-  const cost = data.cost && typeof data.cost === "object"
-    ? (data.cost as Record<string, unknown>)
-    : null;
-  const age = data.ageRange && typeof data.ageRange === "object"
-    ? (data.ageRange as Record<string, unknown>)
-    : null;
   const environment = data.environment === "indoor" || data.environment === "outdoor"
     ? data.environment
     : null;
   const registration = data.registration === "required" || data.registration === "drop-in"
     ? data.registration
     : null;
-  const costAmount = finiteNumber(data.costAmount) ?? finiteNumber(cost?.amount);
-  const isFree = typeof data.isFree === "boolean"
-    ? data.isFree
-    : cost?.type === "free"
-      ? true
-      : costAmount != null
-        ? costAmount === 0
-        : null;
+  const { costAmount, isFree, minAge, maxAge } = readCostAndAge(data);
 
   const mapped: SearchableEvent = {
     id,
-    title: data.title,
-    description: typeof data.description === "string" ? data.description : "",
+    title: cleanTitle(data.title),
+    description: cleanDescription(typeof data.description === "string" ? data.description : ""),
     date: date.toISOString(),
     endDate: toDate(data.endDate)?.toISOString() ?? null,
-    location: typeof data.location === "string" ? data.location : "",
+    location: cleanLocation(typeof data.location === "string" ? data.location : ""),
     town: typeof data.town === "string" ? data.town : "",
     category: normalizeCategory(typeof data.category === "string" ? data.category : undefined),
     status: data.status === "rescheduled" ? "rescheduled"
@@ -101,8 +90,8 @@ function mapEvent(id: string, data: Record<string, unknown>): SearchableEvent | 
     sourceId: typeof data.sourceId === "string" ? data.sourceId : "",
     lastVerifiedAt: verified.toISOString(),
     tags: strings(data.tags),
-    minAge: finiteNumber(data.minAge) ?? finiteNumber(age?.min),
-    maxAge: finiteNumber(data.maxAge) ?? finiteNumber(age?.max),
+    minAge,
+    maxAge,
     costAmount,
     isFree,
     environment,

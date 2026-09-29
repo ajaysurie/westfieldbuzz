@@ -65,8 +65,22 @@ describe("GET /api/events", () => {
     expect(response.status).toBe(200);
     expect(body.events.map((event) => event.id)).toEqual(["c", "a", "b"]);
     expect(body.count).toBe(3);
-    expect(body.events[0]!.url).toBe("https://westfieldbuzz.com/events/c");
+    expect(body.events[0]!.url).toBe("https://www.westfieldbuzz.com/events/c");
     expect(response.headers.get("Cache-Control")).toContain("s-maxage=3600");
+  });
+
+  it("returns cost, age, and setting facts, omitting unknown availability", async () => {
+    const repository = stubRepository([
+      stubEvent({ id: "kids", isFree: true, costAmount: 0, minAge: 3, maxAge: 5, registration: "required", environment: "indoor", availability: "unknown" }),
+    ]);
+    const response = await handlePublicEvents(new Request("https://westfieldbuzz.com/api/events"), {
+      repository,
+      now: new Date("2026-09-18T12:00:00Z"),
+    });
+    const [event] = ((await response.json()) as { events: Array<Record<string, unknown>> }).events;
+
+    expect(event).toMatchObject({ isFree: true, costAmount: 0, minAge: 3, maxAge: 5, registration: "required", environment: "indoor" });
+    expect(event).not.toHaveProperty("availability");
   });
 
   it("filters by town case-insensitively", async () => {
@@ -94,6 +108,27 @@ describe("GET /api/events", () => {
     expect(body.count).toBe(2);
   });
 
+  it("applies limit after filtering, not to the store fetch", async () => {
+    // Like Firestore: earliest-first, truncated to the requested fetch size.
+    const stored = [
+      stubEvent({ id: "yesterday", date: "2026-09-17T19:00:00-04:00" }),
+      stubEvent({ id: "cranford-1", date: "2026-09-18T19:00:00-04:00", town: "Cranford" }),
+      stubEvent({ id: "cranford-2", date: "2026-09-19T19:00:00-04:00", town: "Cranford" }),
+      stubEvent({ id: "cranford-3", date: "2026-09-20T19:00:00-04:00", town: "Cranford" }),
+      stubEvent({ id: "summit", date: "2026-09-21T19:00:00-04:00", town: "Summit" }),
+    ];
+    const repository: EventRepository = {
+      listPublishedEvents: vi.fn(async (window) => stored.slice(0, window.limit)),
+    };
+    const response = await handlePublicEvents(
+      new Request("https://westfieldbuzz.com/api/events?town=Summit&limit=1"),
+      { repository, now: new Date("2026-09-18T12:00:00Z") },
+    );
+    const body = (await response.json()) as { events: Array<{ id: string }> };
+
+    expect(body.events.map((event) => event.id)).toEqual(["summit"]);
+  });
+
   it("rejects an unknown category", async () => {
     const { response } = await get("/api/events?category=Plumbing");
 
@@ -103,6 +138,13 @@ describe("GET /api/events", () => {
   it("rejects malformed dates and inverted windows", async () => {
     expect((await get("/api/events?from=next-friday")).response.status).toBe(400);
     expect((await get("/api/events?from=2026-09-21&to=2026-09-20")).response.status).toBe(400);
+  });
+
+  it("rejects windows longer than the maximum", async () => {
+    expect((await get("/api/events?from=2026-09-18&to=2026-12-19")).response.status).toBe(200);
+    const { response, body } = await get("/api/events?from=2026-09-18&to=2026-12-20");
+    expect(response.status).toBe(400);
+    expect((body as unknown as { error: string }).error).toContain("92 days");
   });
 
   it("rejects an out-of-range limit", async () => {

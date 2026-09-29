@@ -85,6 +85,21 @@ export default function AdminPage() {
           <DigestTest />
 
           <Link
+            href="/admin/feedback"
+            className="rounded-[10px] border border-black/6 bg-paper-pure p-6 no-underline transition-all hover:shadow-md"
+          >
+            <h3
+              className="mb-1 text-[1.1rem]"
+              style={{ fontFamily: "var(--font-display)", fontWeight: 400, color: "var(--ink)" }}
+            >
+              Feedback
+            </h3>
+            <p className="text-[0.85rem] text-ink-muted">
+              Listing reports and event suggestions from readers and agents
+            </p>
+          </Link>
+
+          <Link
             href="/admin/events"
             className="rounded-[10px] border border-black/6 bg-paper-pure p-6 no-underline transition-all hover:shadow-md"
           >
