@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Timestamp } from "firebase/firestore";
 import type { Event } from "@/lib/firestore";
-import { EVENT_CATEGORY_COLORS as CATEGORY_COLORS, eventCategoryImage } from "@/lib/event-categories";
-import EventStatusBadge from "@/components/EventStatusBadge";
+import { EVENT_CATEGORY_COLORS as CATEGORY_COLORS } from "@/lib/event-categories";
+import EventStatusBadge, { hasNoteworthyStatus } from "@/components/EventStatusBadge";
+import { formatTimeRange, townSuffix } from "@/lib/events/display-text";
 
 function toDate(timestamp: Timestamp | null | undefined): Date | null {
   if (!timestamp) return null;
@@ -38,16 +38,6 @@ function mapsUrl(event: Event) {
   return `https://maps.google.com/?q=${encodeURIComponent(destination)}`;
 }
 
-function verifiedLabel(timestamp: Timestamp | undefined): string {
-  const date = toDate(timestamp);
-  if (!date) return "Source verification pending";
-  return `Verified ${date.toLocaleDateString("en-US", {
-    timeZone: "America/New_York",
-    month: "short",
-    day: "numeric",
-  })}`;
-}
-
 interface EventCardProps {
   event: Event;
   dark?: boolean;
@@ -59,8 +49,10 @@ interface EventCardProps {
 export default function EventCard({ event, dark = false, recurrenceLabel, saved = false }: EventCardProps) {
   const startTime = formatEventTime(event.date);
   const endTime = formatEventTime(event.endDate);
-  const timeRange = endTime ? `${startTime}\u2013${endTime}` : startTime;
-  const categoryImage = eventCategoryImage(event.category);
+  const timeRange = formatTimeRange(startTime, endTime);
+  const town = townSuffix(event.location, event.town);
+  const categoryColors = CATEGORY_COLORS[event.category] ?? { bg: "#e8eef2", text: "#31506b" };
+  const statusProps = { status: event.status, availability: event.availability, freshness: event.freshnessStatus };
   const hasPhoto = typeof event.imageUrl === "string" && /^https?:\/\//i.test(event.imageUrl);
 
   return (
@@ -83,25 +75,24 @@ export default function EventCard({ event, dark = false, recurrenceLabel, saved 
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
           />
         ) : (
-          <Image src={categoryImage} alt="" fill sizes="(max-width: 760px) 104px, 154px" />
+          // Without a source photo, the art column shows the start time on the
+          // category color instead of repeating one stock illustration.
+          <span
+            className="event-card__time-tile"
+            style={{ background: categoryColors.bg, color: categoryColors.text }}
+          >
+            {startTime || "All day"}
+          </span>
         )}
       </Link>
       <div className="event-card__body">
         <div className="event-card__topline">
-          <EventStatusBadge
-            status={event.status}
-            availability={event.availability}
-            freshness={event.freshnessStatus}
-            compact
-          />
           <span className="event-card__chips">
+            {hasNoteworthyStatus(statusProps) && <EventStatusBadge {...statusProps} compact />}
             {event.category && (
               <span
                 className="event-card__category"
-                style={{
-                  background: CATEGORY_COLORS[event.category]?.bg || "#e8eef2",
-                  color: CATEGORY_COLORS[event.category]?.text || "#31506b",
-                }}
+                style={{ background: categoryColors.bg, color: categoryColors.text }}
               >
                 {event.category}
               </span>
@@ -121,13 +112,13 @@ export default function EventCard({ event, dark = false, recurrenceLabel, saved 
           <a href={mapsUrl(event)} target="_blank" rel="noopener noreferrer">
             {event.location}
           </a>
-          {event.town ? ` · ${event.town}` : ""}
+          {town ? ` · ${town}` : ""}
         </p>
         {event.description && <p className="event-card__description">{event.description}</p>}
         <div className="event-card__footer">
           {saved
             ? <span className="event-card__saved">★ Saved · on your Friday list</span>
-            : <span>{verifiedLabel(event.lastVerifiedAt)}</span>}
+            : <span />}
           <Link href={`/events/${encodeURIComponent(event.id)}`}>Event details <span aria-hidden="true">→</span></Link>
         </div>
       </div>

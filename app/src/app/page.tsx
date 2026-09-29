@@ -31,6 +31,7 @@ export default async function Home() {
     interestedCount: event.interestedCount,
     createdBy: event.createdBy,
     imageUrl: event.imageUrl,
+    isFree: event.isFree ?? null,
     status: event.status,
     availability: event.availability,
     publicationStatus: event.publicationStatus,

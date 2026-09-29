@@ -31,6 +31,11 @@ export function getEventStatusPresentation({
   return { label: "Scheduled", tone: "good" };
 }
 
+/** True when the status is worth interrupting a reader for, i.e. not plain "Scheduled". */
+export function hasNoteworthyStatus(props: Omit<EventStatusBadgeProps, "compact">): boolean {
+  return getEventStatusPresentation(props).label !== "Scheduled";
+}
+
 export default function EventStatusBadge(props: EventStatusBadgeProps) {
   const presentation = getEventStatusPresentation(props);
 

@@ -14,6 +14,7 @@ import {
   type DigestPreferences,
   type DigestSelection,
 } from "./digest";
+import { cleanLocation, cleanTitle } from "@/lib/events/display-text";
 
 const SEND_LEASE_MINUTES = 15;
 const UNSUBSCRIBE_TOKEN_DAYS = 395;
@@ -169,10 +170,10 @@ function eventFromDocument(id: string, data: FirebaseFirestore.DocumentData): Di
   const costAmount = finiteNumber(data.costAmount) ?? finiteNumber(cost?.amount);
   return {
     id,
-    title: data.title,
+    title: cleanTitle(data.title),
     date: date.toISOString(),
     endDate: toDate(data.endDate)?.toISOString() ?? null,
-    location: typeof data.location === "string" ? data.location : "",
+    location: cleanLocation(typeof data.location === "string" ? data.location : ""),
     town: typeof data.town === "string" ? data.town : "Westfield",
     category: category(data.category),
     status: data.status === "cancelled" || data.status === "postponed"

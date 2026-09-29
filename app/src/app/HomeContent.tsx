@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { Timestamp } from "firebase/firestore";
 import EventCard from "@/components/EventCard";
 import { FridaySignup } from "@/components/FridaySignup";
@@ -12,11 +12,12 @@ import { useAuth } from "@/lib/auth";
 import { useSavedEventIds } from "@/lib/personalization";
 import type { Event } from "@/lib/firestore";
 import HomeSearch from "@/components/search/HomeSearch";
+import { agendaFilterOptions, matchesAgendaFilter, type AgendaFilterKey } from "@/lib/events/agenda-filters";
 
 export type SerializedHomeEvent = Pick<Event,
   "id" | "title" | "description" | "location" | "town" | "category" |
   "interestedCount" | "createdBy" | "imageUrl" | "status" | "availability" |
-  "publicationStatus" | "freshnessStatus"
+  "publicationStatus" | "freshnessStatus" | "isFree"
 > & {
   date: string;
   endDate: string | null;
@@ -39,6 +40,7 @@ function hydrateEvent(event: SerializedHomeEvent): Event {
     interestedCount: event.interestedCount,
     createdBy: event.createdBy,
     imageUrl: event.imageUrl,
+    isFree: event.isFree,
     status: event.status,
     availability: event.availability,
     publicationStatus: event.publicationStatus,
@@ -64,14 +66,17 @@ export default function HomeContent({ initialEvents }: { initialEvents: Serializ
   const { user } = useAuth();
   const savedIds = useSavedEventIds(user?.uid);
   const events = useMemo(() => initialEvents.map(hydrateEvent), [initialEvents]);
+  const filterOptions = useMemo(() => agendaFilterOptions(events), [events]);
+  const [filter, setFilter] = useState<AgendaFilterKey>("all");
   const weekGroups = useMemo(() => {
     const groups = new Map<string, Event[]>();
     for (const event of events) {
+      if (!matchesAgendaFilter(event, filter)) continue;
       const key = localDateKey(eventDate(event));
       groups.set(key, [...(groups.get(key) ?? []), event]);
     }
     return Array.from(groups.entries()).slice(0, 4);
-  }, [events]);
+  }, [events, filter]);
   const recurrenceLabels = useMemo(
     () => detectWeeklyRecurrence(events.map((event) => ({
       id: event.id,
@@ -101,9 +106,12 @@ export default function HomeContent({ initialEvents }: { initialEvents: Serializ
     <section className="week-preview" aria-labelledby="week-heading"><div className="home-shell">
       <div className="section-heading"><div><p className="eyebrow">The local agenda</p><h2 id="week-heading">This week, in order</h2></div>
         <Link href="/events">Open the full calendar <span aria-hidden="true">→</span></Link></div>
+      {filterOptions.length > 1 && <div className="category-filters" role="group" aria-label="Filter this week">
+        {filterOptions.map((option) => <button key={option.key} type="button" aria-pressed={filter === option.key} onClick={() => setFilter(option.key)}>{option.label}</button>)}
+      </div>}
       <WeatherBanner startKey={localDateKey(startOfToday())} endKey={localDateKey(new Date(startOfToday().getTime() + 6 * 86400000))} />
       {weekGroups.length === 0 ? <div className="state-panel"><span className="state-panel__mark" aria-hidden="true">◇</span>
-        <h3>No events listed this week</h3><p>See the full calendar for events later this month.</p><Link href="/events">Browse the calendar</Link></div>
+        <h3>{filter === "all" ? "No events listed this week" : "Nothing matches this filter this week"}</h3><p>See the full calendar for events later this month.</p><Link href="/events">Browse the calendar</Link></div>
       : <div className="agenda-groups">{weekGroups.map(([date, dayEvents]) => <section key={date} className="agenda-day" aria-labelledby={`day-${date}`}>
         <h3 id={`day-${date}`}>{dateHeading(date)}</h3><div className="agenda-day__events">{dayEvents.map((event) => <EventCard key={event.id} event={event} recurrenceLabel={recurrenceLabels.get(event.id)} saved={savedIds.has(event.id)} />)}</div>
       </section>)}</div>}

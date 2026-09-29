@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import EventDetailActions from "@/components/EventDetailActions";
-import EventStatusBadge from "@/components/EventStatusBadge";
+import EventStatusBadge, { hasNoteworthyStatus } from "@/components/EventStatusBadge";
 import { formatEventDate, formatEventTime } from "@/components/EventCard";
 import { getPublishedEventById, type Event } from "@/lib/firestore";
+import { formatTimeRange, townSuffix } from "@/lib/events/display-text";
+import { costAndAgeLabel } from "@/lib/events/doc-facts";
 
 function dateValue(value: Event["lastVerifiedAt"]): Date | null {
   if (!value) return null;
@@ -62,8 +64,18 @@ export default function EventDetailClient({ id }: { id: string }) {
     return <DetailState title="This event is not available">It may have been removed, unpublished, or given a new calendar listing.</DetailState>;
   }
 
-  const startTime = formatEventTime(event.date);
-  const endTime = formatEventTime(event.endDate);
+  const timeRange = formatTimeRange(formatEventTime(event.date), formatEventTime(event.endDate));
+  const when = [formatEventDate(event.date), timeRange].filter(Boolean).join(" · ");
+  const town = townSuffix(event.location, event.town);
+  const where = [event.location, town].filter(Boolean).join(", ") || event.town || "Venue to be confirmed";
+  const costAndAge = costAndAgeLabel({
+    isFree: event.isFree ?? null,
+    costAmount: event.costAmount ?? null,
+    minAge: event.minAge ?? null,
+    maxAge: event.maxAge ?? null,
+  });
+  const statusProps = { status: event.status, availability: event.availability, freshness: event.freshnessStatus };
+  const hasPhoto = typeof event.imageUrl === "string" && /^https?:\/\//i.test(event.imageUrl);
   const verified = dateValue(event.lastVerifiedAt);
   const sourceHost = event.sourceUrl
     ? (() => {
@@ -79,24 +91,30 @@ export default function EventDetailClient({ id }: { id: string }) {
         <Link href="/events" className="detail-back"><span aria-hidden="true">←</span> Back to calendar</Link>
         <div className="detail-grid">
           <article className="detail-main">
-            <div className="detail-hero">
-              <img src="/event-cats/westfield-hero.png" alt="" aria-hidden="true" />
-              <span>{event.town || "Around Westfield"}</span>
-            </div>
+            {hasPhoto && (
+              <div className="detail-hero">
+                {/* Source photos come from many venue CDNs; see EventCard. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={event.imageUrl} alt="" aria-hidden="true" />
+                <span>{event.town || "Around Westfield"}</span>
+              </div>
+            )}
             <div className="detail-content">
-              <EventStatusBadge status={event.status} availability={event.availability} freshness={event.freshnessStatus} />
+              {hasNoteworthyStatus(statusProps) && <EventStatusBadge {...statusProps} />}
               <h1>{event.title}</h1>
-              <p className="detail-summary">{event.description || "The source has not supplied a full description yet."}</p>
+              <p className="detail-when">{when}</p>
+              <p className="detail-where">{where}</p>
+              {event.description && <p className="detail-summary">{event.description}</p>}
 
               <EventDetailActions event={event} />
 
               <dl className="detail-facts">
                 <div><dt>Date</dt><dd>{formatEventDate(event.date)}</dd></div>
-                <div><dt>Time</dt><dd>{startTime}{endTime ? `–${endTime}` : ""}</dd></div>
+                <div><dt>Time</dt><dd>{timeRange || "Time to be confirmed"}</dd></div>
                 <div><dt>Venue</dt><dd>{event.location || "Venue to be confirmed"}</dd></div>
                 <div><dt>Town</dt><dd>{event.town || "Westfield area"}</dd></div>
                 <div><dt>Category</dt><dd>{event.category || "Community"}</dd></div>
-                <div><dt>Cost & audience</dt><dd>Not listed by the source</dd></div>
+                <div><dt>Cost & audience</dt><dd>{costAndAge || "Not listed by the source"}</dd></div>
               </dl>
 
               <section className="detail-description" aria-labelledby="about-event">
@@ -128,7 +146,6 @@ export default function EventDetailClient({ id }: { id: string }) {
             </section>
 
             <section className="detail-side-card detail-map">
-              <div className="detail-map__art" aria-hidden="true"><span>●</span></div>
               <div>
                 <h2>{event.location || "Venue to be confirmed"}</h2>
                 <p>{event.town || "Westfield area"}, New Jersey</p>
