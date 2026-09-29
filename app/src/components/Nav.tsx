@@ -34,7 +34,7 @@ export default function Nav() {
     { href: "/", label: "This week", active: pathname === "/" },
     { href: "/weekend", label: "Weekend", active: pathname === "/weekend" },
     { href: "/events", label: "Calendar", active: pathname.startsWith("/events") },
-    { href: "/#friday-list", label: "Get the list", active: false },
+    { href: "/subscribe", label: "Get the list", active: pathname.startsWith("/subscribe") },
   ];
 
   return (
