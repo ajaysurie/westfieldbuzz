@@ -1,10 +1,6 @@
 import Link from "next/link";
+import { FRIDAY_EXPECTATIONS } from "@/lib/friday";
 
-const expectations = [
-  { label: "When", value: "Fridays, morning" },
-  { label: "What", value: "5–8 verified events" },
-  { label: "Off switch", value: "One click, in every email" },
-];
 
 export default async function SubscriptionConfirmedPage({
   searchParams,
@@ -53,7 +49,7 @@ export default async function SubscriptionConfirmedPage({
             gap: 10,
           }}
         >
-          {expectations.map((item) => (
+          {FRIDAY_EXPECTATIONS.map((item) => (
             <div
               key={item.label}
               style={{
