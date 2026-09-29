@@ -69,6 +69,20 @@ describe("GET /api/events", () => {
     expect(response.headers.get("Cache-Control")).toContain("s-maxage=3600");
   });
 
+  it("returns cost, age, and setting facts, omitting unknown availability", async () => {
+    const repository = stubRepository([
+      stubEvent({ id: "kids", isFree: true, costAmount: 0, minAge: 3, maxAge: 5, registration: "required", environment: "indoor", availability: "unknown" }),
+    ]);
+    const response = await handlePublicEvents(new Request("https://westfieldbuzz.com/api/events"), {
+      repository,
+      now: new Date("2026-09-18T12:00:00Z"),
+    });
+    const [event] = ((await response.json()) as { events: Array<Record<string, unknown>> }).events;
+
+    expect(event).toMatchObject({ isFree: true, costAmount: 0, minAge: 3, maxAge: 5, registration: "required", environment: "indoor" });
+    expect(event).not.toHaveProperty("availability");
+  });
+
   it("filters by town case-insensitively", async () => {
     const { body } = await get("/api/events?town=cranford");
 

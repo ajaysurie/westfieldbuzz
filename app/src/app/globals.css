@@ -1571,3 +1571,130 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+/* Feedback form: event pages and /feedback */
+.detail-feedback {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.detail-feedback summary {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.feedback-form {
+  display: grid;
+  gap: 8px;
+  max-width: 520px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+}
+
+.feedback-form fieldset {
+  margin: 0 0 6px;
+  padding: 0;
+  border: 0;
+}
+
+.feedback-form legend,
+.feedback-form > label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.feedback-form__reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.feedback-form__reasons label {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper-pure);
+  color: var(--ink-light);
+  cursor: pointer;
+}
+
+.feedback-form__reasons label:has(input:checked) {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.feedback-form__reasons input {
+  accent-color: var(--accent);
+}
+
+.feedback-form textarea,
+.feedback-form input[type="email"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+}
+
+.feedback-form button {
+  justify-self: start;
+  margin-top: 6px;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: white;
+}
+
+.feedback-form__trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.feedback-form__error {
+  margin: 0;
+  color: #a33;
+}
+
+.feedback-form__sent {
+  margin: 10px 0 0;
+  color: var(--ink-light);
+  font-size: 0.85rem;
+}
+
+.feedback-page {
+  max-width: 640px;
+  padding-bottom: 60px;
+}
+
+.feedback-page h1 {
+  margin: 8px 0 12px;
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+}
+
+.feedback-page__lede,
+.feedback-page__agents {
+  color: var(--ink-light);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.feedback-page__agents {
+  margin-top: 28px;
+  font-size: 0.8rem;
+}

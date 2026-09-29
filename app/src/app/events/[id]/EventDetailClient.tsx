@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import EventDetailActions from "@/components/EventDetailActions";
+import FeedbackForm from "@/components/FeedbackForm";
 import EventStatusBadge, { hasNoteworthyStatus } from "@/components/EventStatusBadge";
 import { formatEventDate, formatEventTime } from "@/components/EventCard";
 import { getPublishedEventById, type Event } from "@/lib/firestore";
@@ -124,6 +125,11 @@ export default function EventDetailClient({ id }: { id: string }) {
                   especially when registration, weather, or limited capacity may apply.
                 </p>
               </section>
+
+              <details className="detail-feedback">
+                <summary>Something wrong with this listing?</summary>
+                <FeedbackForm eventId={event.id} />
+              </details>
             </div>
           </article>
 

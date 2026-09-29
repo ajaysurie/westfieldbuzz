@@ -17,6 +17,7 @@ export default function Footer() {
             <Link href="/events">Calendar</Link>
             <Link href="/#friday-list">Get the Friday list</Link>
             <Link href="/sources">Sources</Link>
+            <Link href="/feedback">Suggest an event or fix</Link>
           </div>
           <div>
             <Link href="/agents">For agents</Link>

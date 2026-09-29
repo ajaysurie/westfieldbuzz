@@ -28,6 +28,6 @@ describe("event trust presentation", () => {
     expect(calendar).toContain("DTSTART;TZID=America/New_York:20260821T190000");
     expect(calendar).toContain("SUMMARY:Music\\, Mocktails & More");
     expect(calendar).toContain("Source: https://example.com/event");
-    expect(calendar).toContain("URL:https://westfieldbuzz.com/events/evt-1");
+    expect(calendar).toContain("URL:https://www.westfieldbuzz.com/events/evt-1");
   });
 });

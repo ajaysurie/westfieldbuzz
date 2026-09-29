@@ -25,7 +25,15 @@ export interface PublicEvent {
   town: string;
   category: EventCategory;
   status: SearchableEvent["status"];
-  availability: SearchableEvent["availability"];
+  /** Omitted when the source does not say. */
+  availability?: Exclude<SearchableEvent["availability"], "unknown">;
+  /** Null means the source did not list it. */
+  isFree: boolean | null;
+  costAmount: number | null;
+  minAge: number | null;
+  maxAge: number | null;
+  registration: SearchableEvent["registration"];
+  environment: SearchableEvent["environment"];
   sourceUrl: string;
   imageUrl?: string;
   lastVerifiedAt: string;
@@ -89,10 +97,16 @@ function toPublicEvent(event: SearchableEvent, siteOrigin: string): PublicEvent 
     town: event.town,
     category: event.category,
     status: event.status,
-    availability: event.availability,
+    isFree: event.isFree,
+    costAmount: event.costAmount,
+    minAge: event.minAge,
+    maxAge: event.maxAge,
+    registration: event.registration,
+    environment: event.environment,
     sourceUrl: event.sourceUrl,
     lastVerifiedAt: event.lastVerifiedAt,
   };
+  if (event.availability !== "unknown") publicEvent.availability = event.availability;
   if (event.imageUrl) publicEvent.imageUrl = event.imageUrl;
   return publicEvent;
 }

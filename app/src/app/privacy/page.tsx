@@ -52,6 +52,12 @@ export default function PrivacyPage() {
             views, device type, country). This data is anonymous and not tied to
             your account.
           </p>
+          <p className="mt-2">
+            If you send feedback or suggest an event, we store what you wrote,
+            the listing it refers to, your browser&rsquo;s user agent, and the
+            email address you give us (optional). We use it only to fix
+            listings and, if you asked, to reply.
+          </p>
         </section>
 
         <section>
