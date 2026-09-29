@@ -1,5 +1,6 @@
 import type { SearchIntent } from "@/lib/search/event-intent";
 import type { SearchResultItem } from "@/lib/search/search-contract";
+import { fastThinkingConfig } from "@/lib/server/gemini";
 
 /**
  * Compose the one-or-two-sentence answer that opens a search response.
@@ -92,6 +93,7 @@ export async function composeNarrative(input: {
             temperature: 0.4,
             responseMimeType: "application/json",
             responseSchema: RESPONSE_SCHEMA,
+            ...fastThinkingConfig(model),
           },
         }),
         signal: AbortSignal.timeout(NARRATIVE_TIMEOUT_MS),

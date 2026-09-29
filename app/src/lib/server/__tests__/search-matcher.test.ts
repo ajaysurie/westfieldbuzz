@@ -67,6 +67,28 @@ describe("selectPromptCandidates", () => {
 });
 
 describe("matchEventsWithModel", () => {
+  it("unlinks a citation that spans a whole sentence instead of the event name", async () => {
+    const fetchImpl = vi.fn(async () =>
+      geminiResponse({
+        matches: [{ eventId: "a", reason: "jazz" }],
+        narrative: [
+          { text: "For live music this Friday night, check out Jazz Night at the Rialto downtown.", eventId: "a" },
+        ],
+      })
+    );
+    const result = await matchEventsWithModel({ query: "q", candidates, fetchImpl, apiKey: "k" });
+    expect(result?.narrative).toEqual([
+      { text: "For live music this Friday night, check out Jazz Night at the Rialto downtown." },
+    ]);
+  });
+
+  it("asks for low thinking so search stays fast", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () => geminiResponse({ matches: [] }));
+    await matchEventsWithModel({ query: "q", candidates, fetchImpl, apiKey: "k", model: "gemini-3.7-flash" });
+    const body = JSON.parse(fetchImpl.mock.calls[0]![1]!.body as string);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "low" });
+  });
+
   it("returns grounded matches in model order with reasons", async () => {
     const fetchImpl = vi.fn(async () =>
       geminiResponse({

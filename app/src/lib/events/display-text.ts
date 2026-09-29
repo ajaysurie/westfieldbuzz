@@ -55,6 +55,7 @@ export function cleanLocation(value: string | null | undefined): string {
     .replace(/^[\s\-–—•·,;:|]+/, "")
     .replace(/[\s\-–—,;:|]+$/, "")
     .replace(/\s+/g, " ")
+    .replace(/ ,/g, ",")
     .trim();
 }
 

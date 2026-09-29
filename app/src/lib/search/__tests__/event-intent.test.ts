@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import evaluation from "./fixtures/intent-evaluation.json";
 import {
+  emptySearchIntent,
   fallbackParseIntent,
+  intentChips as chipsForIntent,
   sanitizeSearchQuery,
   validateSearchIntent,
 } from "../event-intent";
@@ -64,5 +66,15 @@ describe("deterministic event intent parsing", () => {
     expect(validateSearchIntent(valid)).toEqual(valid);
     expect(validateSearchIntent({ ...valid, version: 2 })).toBeNull();
     expect(validateSearchIntent({ ...valid, partyAges: [-1] })).toBeNull();
+  });
+});
+
+describe("intentChips date labels", () => {
+  it("shows readable days instead of ISO dates", () => {
+    const base = emptySearchIntent();
+    expect(chipsForIntent({ ...base, dateWindow: { startDate: "2026-10-02", endDate: "2026-10-02" } })[0])
+      .toEqual({ field: "dateWindow", label: "Fri, Oct 2" });
+    expect(chipsForIntent({ ...base, dateWindow: { startDate: "2026-10-03", endDate: "2026-10-04" } })[0]!.label)
+      .toBe("Sat, Oct 3 – Sun, Oct 4");
   });
 });

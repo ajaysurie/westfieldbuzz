@@ -466,12 +466,19 @@ export function fallbackParseIntent(input: {
   return intent;
 }
 
+/** "2026-10-02" → "Fri, Oct 2". Dates are calendar days, so format at noon UTC. */
+function chipDate(day: string): string {
+  const date = new Date(`${day}T12:00:00Z`);
+  if (Number.isNaN(date.valueOf())) return day;
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short", month: "short", day: "numeric" }).format(date);
+}
+
 export function intentChips(intent: SearchIntent): Array<{ field: string; label: string }> {
   const chips: Array<{ field: string; label: string }> = [];
   if (intent.dateWindow) {
     const label = intent.dateWindow.startDate === intent.dateWindow.endDate
-      ? intent.dateWindow.startDate
-      : `${intent.dateWindow.startDate} – ${intent.dateWindow.endDate}`;
+      ? chipDate(intent.dateWindow.startDate)
+      : `${chipDate(intent.dateWindow.startDate)} – ${chipDate(intent.dateWindow.endDate)}`;
     chips.push({ field: "dateWindow", label });
   }
   for (const age of intent.partyAges) chips.push({ field: "partyAges", label: `Age ${age}` });

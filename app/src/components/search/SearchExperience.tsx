@@ -28,6 +28,34 @@ import {
 } from "@/lib/personalization";
 import { consumeSearchHandoff } from "./HomeSearch";
 
+/** Search steps in server order; shown by elapsed time while a request runs. */
+const SEARCH_STEPS = [
+  { afterMs: 0, text: "Understanding your request…" },
+  { afterMs: 2_000, text: "Checking upcoming events…" },
+  { afterMs: 4_500, text: "Picking the best matches…" },
+] as const;
+
+function useSearchStep(loading: boolean, startedAt: number): string {
+  const [now, setNow] = useState(startedAt);
+  useEffect(() => {
+    if (!loading) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, [loading]);
+  // `now` lags the start until the first tick, so clamp to the first step.
+  const elapsed = loading ? Math.max(0, now - startedAt) : 0;
+  return [...SEARCH_STEPS].reverse().find((step) => elapsed >= step.afterMs)!.text;
+}
+
+/** Keep the current sentence in ?q= so refresh, back, and sharing return to it. */
+function rememberQueryInUrl(sentence: string) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (url.searchParams.get("q") === sentence) return;
+  url.searchParams.set("q", sentence);
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
 function removeIntentValue(intent: SearchIntent, field: string, label: string): SearchIntent {
   const next = structuredClone(intent);
   if (field === "dateWindow") next.dateWindow = null;
@@ -58,6 +86,8 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
   const [savePending, setSavePending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveNotice, setSaveNotice] = useState<string | null>(null);
+  const [searchStartedAt, setSearchStartedAt] = useState(0);
+  const searchStep = useSearchStep(loading, searchStartedAt);
 
   const search = useCallback(async (
     sentence: string,
@@ -68,6 +98,7 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
     activeRequest.current?.controller.abort();
     const controller = new AbortController();
     activeRequest.current = { id: requestId, controller };
+    setSearchStartedAt(Date.now());
     setLoading(true);
     setError(null);
     try {
@@ -126,13 +157,16 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
     const firstQuery = handoff || initialQuery;
     if (firstQuery.trim()) {
       setQuery(firstQuery);
+      rememberQueryInUrl(firstQuery);
       void search(firstQuery);
     }
   }, [initialQuery, search]);
 
   const submitInitial = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (query.trim()) void search(query);
+    if (!query.trim()) return;
+    rememberQueryInUrl(query);
+    void search(query);
   };
   const refine = (sentence: string) => {
     setQuery(sentence);
@@ -318,7 +352,7 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
         {!result && !error && loading && (
           <div className="rounded-2xl border border-black/8 bg-white px-6 py-12 text-center" role="status" aria-live="polite">
             <p className="font-[family-name:var(--font-display)] text-2xl text-ink">Searching the calendar…</p>
-            <p className="mt-2 text-sm text-ink-muted">Interpreting your request, then checking upcoming events.</p>
+            <p className="mt-2 text-sm text-ink-muted">{searchStep}</p>
             <div className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3" aria-hidden="true">
               {[0, 1, 2].map((index) => (
                 <div key={index} className="h-28 animate-pulse rounded-xl bg-paper-dark" />
@@ -331,13 +365,19 @@ export default function SearchExperience({ initialQuery = "" }: { initialQuery?:
             <p className="font-[family-name:var(--font-display)] text-2xl text-ink">Try a sentence, not a filter maze.</p>
             <div className="mx-auto mt-5 flex max-w-2xl flex-wrap justify-center gap-2">
               {["Free live music Friday night", "Indoors Saturday morning for a 5-year-old", "Not sports, within 15 minutes"].map((example) => (
-                <button key={example} type="button" onClick={() => { setQuery(example); void search(example); }} className="min-h-10 rounded-full border border-accent/15 bg-accent/5 px-3 text-xs font-semibold text-accent hover:bg-accent/10">{example}</button>
+                <button key={example} type="button" onClick={() => { setQuery(example); rememberQueryInUrl(example); void search(example); }} className="min-h-10 rounded-full border border-accent/15 bg-accent/5 px-3 text-xs font-semibold text-accent hover:bg-accent/10">{example}</button>
               ))}
             </div>
           </div>
         )}
+        {result && loading && (
+          <p role="status" aria-live="polite" className="mb-4 flex items-center gap-2 text-sm text-ink-muted">
+            <span aria-hidden="true" className="inline-block h-2 w-2 animate-pulse rounded-full bg-accent" />
+            {searchStep}
+          </p>
+        )}
         {result && (
-          <div className="grid gap-5">
+          <div className={`grid gap-5 transition-opacity ${loading ? "pointer-events-none opacity-50" : ""}`}>
             {result.appliedPreferenceFields?.length ? (
               <p className="search-personalized-note">
                 Using your saved {result.appliedPreferenceFields.join(", ")}.{" "}

@@ -6,9 +6,12 @@ import {
   type SearchIntent,
 } from "@/lib/search/event-intent";
 import {
+  defaultQueryWindow,
   hardBoundsMatch,
   queryWindowForIntent,
+  type EventQueryWindow,
   type EventRepository,
+  type SearchableEvent,
   type SearchFactName,
 } from "@/lib/search/event-retrieval";
 import { rankEvents } from "@/lib/search/event-ranking";
@@ -106,6 +109,22 @@ function unresolvedConstraints(intent: SearchIntent, events: Awaited<ReturnType<
     .map(([, label]) => `We do not yet have verified ${label} for these events.`);
 }
 
+/**
+ * Events for the parsed intent's window, reusing the default-window prefetch
+ * when it already covers that window completely (it was not truncated).
+ */
+async function eventsForWindow(
+  repository: EventRepository,
+  window: EventQueryWindow,
+  prefetch: { window: EventQueryWindow; events: Promise<SearchableEvent[]> } | null
+): Promise<SearchableEvent[]> {
+  if (prefetch && window.from >= prefetch.window.from && window.to <= prefetch.window.to) {
+    const events = await prefetch.events;
+    if (events.length < prefetch.window.limit) return events;
+  }
+  return repository.listPublishedEvents(window);
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
@@ -162,6 +181,9 @@ export async function handleEventSearch(
   let appliedPreferenceFields: string[] = [];
   let fallbackUsed = false;
   let parserWarning: EventSearchSuccess["parserWarning"];
+  const repository = dependencies.repository ?? createFirestoreEventRepository();
+  let prefetch: { window: EventQueryWindow; events: Promise<SearchableEvent[]> } | null = null;
+  let parseMs = 0;
 
   if (structuredExecution) {
     const validatedIntent = validateSearchIntent(body.intent);
@@ -208,12 +230,20 @@ export async function handleEventSearch(
       }
     }
 
+    // Most searches fall inside the default window, so load it while the
+    // model parses the sentence instead of after.
+    const window = defaultQueryWindow(now);
+    prefetch = { window, events: repository.listPublishedEvents(window) };
+    prefetch.events.catch(() => { /* surfaced by eventsForWindow if used */ });
+
+    const parseStartedAt = Date.now();
     const parsed = await parseIntentResilient({
       query,
       priorIntent,
       now,
       parser: dependencies.parser,
     });
+    parseMs = Date.now() - parseStartedAt;
     intent = parsed.intent;
     fallbackUsed = parsed.fallbackUsed;
     parserWarning = parsed.parserWarning;
@@ -229,10 +259,10 @@ export async function handleEventSearch(
     }
   }
 
-  const repository = dependencies.repository ?? createFirestoreEventRepository();
+  const retrieveStartedAt = Date.now();
   let events;
   try {
-    events = await repository.listPublishedEvents(queryWindowForIntent(intent, now));
+    events = await eventsForWindow(repository, queryWindowForIntent(intent, now), prefetch);
   } catch {
     return jsonFailure(
       "inventory_unavailable",
@@ -245,6 +275,8 @@ export async function handleEventSearch(
   // Objective bounds only: dates, town, status, exclusions. The model then
   // judges semantic fit (music, free, kids) from each event's own text,
   // because structured fact fields are absent from most of the corpus.
+  const retrieveMs = Date.now() - retrieveStartedAt;
+  const matchStartedAt = Date.now();
   const eligible = events.filter((event) => hardBoundsMatch(event, intent));
   const unresolved = unresolvedConstraints(intent, events);
 
@@ -282,6 +314,7 @@ export async function handleEventSearch(
           results: rankedItems,
           ...(dependencies.narrativeFetch ? { fetchImpl: dependencies.narrativeFetch } : {}),
         });
+  const matchMs = Date.now() - matchStartedAt;
   const response: EventSearchSuccess = {
     ok: true,
     query,
@@ -298,6 +331,7 @@ export async function handleEventSearch(
       candidateCount: events.length,
       matchedCount: rankedItems.length,
       durationMs: Date.now() - startedAt,
+      timings: { parseMs, retrieveMs, matchMs },
     },
   };
   return NextResponse.json(response, {

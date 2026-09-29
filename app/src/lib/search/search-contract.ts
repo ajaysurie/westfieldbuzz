@@ -28,6 +28,8 @@ export interface EventSearchSuccess {
     candidateCount: number;
     matchedCount: number;
     durationMs: number;
+    /** Per-stage server time, for diagnosing slow searches. */
+    timings?: { parseMs: number; retrieveMs: number; matchMs: number };
   };
 }
 

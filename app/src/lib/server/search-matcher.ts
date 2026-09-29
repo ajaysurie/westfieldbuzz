@@ -3,6 +3,7 @@ import {
   validateNarrative,
   type NarrativeSegment,
 } from "./search-narrative";
+import { fastThinkingConfig } from "@/lib/server/gemini";
 
 /**
  * Match candidates to a request with the model, not with field filters.
@@ -82,6 +83,17 @@ function candidateLine(event: SearchableEvent): string {
   return `id=${event.id} | ${event.title} | ${when} | ${event.location}, ${event.town} | ${event.category} | ${cost} | ${description}`;
 }
 
+/**
+ * A citation should link the event's name, not the whole sentence around it.
+ * When the model links a segment much longer than the title, keep the words
+ * and drop the link.
+ */
+function linkOnlyNames(segment: NarrativeSegment, byId: Map<string, SearchableEvent>): NarrativeSegment {
+  if (!segment.eventId) return segment;
+  const title = byId.get(segment.eventId)?.title ?? "";
+  return segment.text.length > title.length + 25 ? { text: segment.text } : segment;
+}
+
 function parseMatchPayload(
   payload: unknown,
   candidates: SearchableEvent[]
@@ -112,6 +124,7 @@ function parseMatchPayload(
       label: "",
       reason: "",
     })));
+    narrative = narrative?.map((segment) => linkOnlyNames(segment, byId)) ?? null;
   }
   return { matches, narrative };
 }
@@ -163,7 +176,7 @@ export async function matchEventsWithModel(input: {
     "Rules:",
     "- Only return ids from the list. Never invent an event, time, price, or fact.",
     "- reason is one short clause (under 12 words) grounded in that event's own text.",
-    "- Optionally add a one-or-two sentence narrative naming the best picks; cite them with their ids.",
+    "- Optionally add a one-or-two sentence narrative naming the best picks. Split it into segments: each event's name is its own segment carrying that eventId, and all other words go in segments without an eventId.",
     "",
     "CANDIDATES:",
     ...candidates.map(candidateLine),
@@ -181,6 +194,7 @@ export async function matchEventsWithModel(input: {
             temperature: 0.2,
             responseMimeType: "application/json",
             responseSchema: RESPONSE_SCHEMA,
+            ...fastThinkingConfig(model),
           },
         }),
         signal: AbortSignal.timeout(MATCH_TIMEOUT_MS),

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { EventSearchSuccess } from "@/lib/search/search-contract";
 import type { SearchableEvent } from "@/lib/search/event-retrieval";
+import { townSuffix } from "@/lib/events/display-text";
 
 const CATEGORY_IMAGES: Record<string, string> = {
   "Family & Kids": "/event-cats/family.png",
@@ -50,7 +51,7 @@ function ResultCard({ event, reason }: { event: SearchableEvent; reason: string 
   const hasPhoto = typeof event.imageUrl === "string" && /^https?:\/\//i.test(event.imageUrl);
   const metaParts = [
     event.location,
-    event.town,
+    townSuffix(event.location, event.town),
     costMetaLabel(event),
     event.driveMinutes != null ? `${event.driveMinutes} min drive` : null,
   ].filter(Boolean);
