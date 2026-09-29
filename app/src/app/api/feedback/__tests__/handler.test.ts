@@ -77,6 +77,35 @@ describe("POST /api/feedback", () => {
     expect(response.status).toBe(413);
   });
 
+  it("rejects a declared oversized body without reading it", async () => {
+    const request = post({ reason: "other", message: "short" }, { "content-length": "50000000" });
+    const text = vi.spyOn(request, "text");
+    const response = await handleFeedback(request, deps());
+    expect(response.status).toBe(413);
+    expect(text).not.toHaveBeenCalled();
+    expect(request.bodyUsed).toBe(false);
+  });
+
+  it("stops reading a streamed body at the cap", async () => {
+    let pulled = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        controller.enqueue(new Uint8Array(4096).fill(120));
+        if (pulled > 1000) controller.close();
+      },
+    });
+    const request = new Request("https://www.westfieldbuzz.com/api/feedback", {
+      method: "POST",
+      body: stream,
+      // @ts-expect-error Node requires duplex for streamed request bodies.
+      duplex: "half",
+    });
+    const response = await handleFeedback(request, deps());
+    expect(response.status).toBe(413);
+    expect(pulled).toBeLessThan(10);
+  });
+
   it("returns 503 when storage fails", async () => {
     const d = deps({ save: vi.fn(async () => { throw new Error("down"); }) });
     expect((await handleFeedback(post({ eventId: "evt-1", reason: "duplicate" }), d)).status).toBe(503);

@@ -140,6 +140,13 @@ describe("GET /api/events", () => {
     expect((await get("/api/events?from=2026-09-21&to=2026-09-20")).response.status).toBe(400);
   });
 
+  it("rejects windows longer than the maximum", async () => {
+    expect((await get("/api/events?from=2026-09-18&to=2026-12-19")).response.status).toBe(200);
+    const { response, body } = await get("/api/events?from=2026-09-18&to=2026-12-20");
+    expect(response.status).toBe(400);
+    expect((body as unknown as { error: string }).error).toContain("92 days");
+  });
+
   it("rejects an out-of-range limit", async () => {
     expect((await get("/api/events?limit=0")).response.status).toBe(400);
     expect((await get("/api/events?limit=500")).response.status).toBe(400);

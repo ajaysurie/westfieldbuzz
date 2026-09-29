@@ -53,6 +53,18 @@ describe("GET /calendar.ics", () => {
     expect(body).toContain("\r\n ");
   });
 
+  it("escapes iCalendar TEXT special characters", async () => {
+    const repository = {
+      listPublishedEvents: vi.fn(async () => [stubEvent({ title: "Jazz; Dinner, Dancing", location: "Galeria; Upstairs" })]),
+    };
+    const body = await (await handleCalendarFeed(new Request("https://www.westfieldbuzz.com/calendar.ics"), {
+      repository,
+      now: new Date("2026-09-18T12:00:00Z"),
+    })).text();
+    expect(body).toContain(String.raw`SUMMARY:Jazz\; Dinner\, Dancing`);
+    expect(body).toContain(String.raw`LOCATION:Galeria\; Upstairs\, Westfield`);
+  });
+
   it("rejects bad params like the JSON API", async () => {
     expect((await feed("/calendar.ics?category=Plumbing")).status).toBe(400);
   });

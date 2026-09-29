@@ -90,7 +90,7 @@ export default function AgentsPage() {
             <ParamRow name="from / to">
               Dates as <code style={codeStyle}>YYYY-MM-DD</code>, interpreted
               as America/New_York calendar days. Defaults to today through the
-              coming weeks.
+              next 90 days; a window can span at most 92 days.
             </ParamRow>
             <ParamRow name="limit">
               Integer from 1 to 200. Default 50.
@@ -176,7 +176,7 @@ export default function AgentsPage() {
             className="overflow-x-auto rounded bg-black/5 p-3 text-[0.8rem] leading-[1.5]"
             style={codeStyle}
           >
-{`curl -X POST https://www.westfieldbuzz.com/api/feedback \
+{String.raw`curl -X POST https://www.westfieldbuzz.com/api/feedback \
   -H 'Content-Type: application/json' \
   -d '{"eventId":"<id>","reason":"cancelled","message":"Source page says cancelled"}'`}
           </pre>

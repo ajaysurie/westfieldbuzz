@@ -11,8 +11,10 @@ const SEARCH_TIME_ZONE = "America/New_York";
 const DEFAULT_LIMIT = 50;
 export const MAX_LIMIT = 200;
 // Town, category, and exact ET days filter in memory, so fetch the whole
-// window and apply the caller's limit afterward.
+// window and apply the caller's limit afterward. MAX_WINDOW_DAYS keeps any
+// window far below the fetch cap (about 250 events at current volume).
 const WINDOW_FETCH_LIMIT = 1000;
+export const MAX_WINDOW_DAYS = 92;
 
 export interface PublicEvent {
   id: string;
@@ -159,6 +161,9 @@ export async function queryPublicEvents(
   if (toDay < fromDay) {
     return fail(badRequest("to must be on or after from."));
   }
+  if (toDay > addDays(fromDay, MAX_WINDOW_DAYS)) {
+    return fail(badRequest(`from and to can be at most ${MAX_WINDOW_DAYS} days apart.`));
+  }
 
   let limit = defaultLimit;
   if (params.limit !== undefined) {
@@ -180,6 +185,9 @@ export async function queryPublicEvents(
       to: new Date(`${addDays(toDay, 1)}T23:59:59.999Z`),
       limit: WINDOW_FETCH_LIMIT,
     });
+    if (events.length >= WINDOW_FETCH_LIMIT) {
+      console.warn(`public events window ${fromDay}..${toDay} hit the ${WINDOW_FETCH_LIMIT}-event fetch cap; later matches are dropped`);
+    }
   } catch {
     return fail(Response.json(
       { error: "Events are temporarily unavailable. Try again shortly." },

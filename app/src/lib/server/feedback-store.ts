@@ -59,13 +59,15 @@ export interface FeedbackItem {
 }
 
 /**
- * Open feedback, newest first, with the event title for context. Sorted in
- * memory so the single-field query needs no composite index.
+ * Every open report, newest first, with the event title for context. Loaded
+ * whole and sorted in memory: a limit before sorting would hide new reports
+ * behind old ones, and sorting in the query needs a composite index. The
+ * open set stays small because intake is capped at GLOBAL_PER_DAY and
+ * resolving removes items.
  */
-export async function listOpenFeedback(db: Firestore = getAdminDb(), limit = 300): Promise<FeedbackItem[]> {
+export async function listOpenFeedback(db: Firestore = getAdminDb()): Promise<FeedbackItem[]> {
   const snapshot = await db.collection("feedback")
     .where("status", "==", "open")
-    .limit(limit)
     .get();
   const eventIds = [...new Set(snapshot.docs.map((doc) => doc.data().eventId).filter((id): id is string => typeof id === "string"))];
   const events = eventIds.length

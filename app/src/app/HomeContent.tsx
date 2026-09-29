@@ -66,17 +66,27 @@ export default function HomeContent({ initialEvents }: { initialEvents: Serializ
   const { user } = useAuth();
   const savedIds = useSavedEventIds(user?.uid);
   const events = useMemo(() => initialEvents.map(hydrateEvent), [initialEvents]);
-  const filterOptions = useMemo(() => agendaFilterOptions(events), [events]);
-  const [filter, setFilter] = useState<AgendaFilterKey>("all");
-  const weekGroups = useMemo(() => {
+  // The agenda's four days are fixed before filtering, so a filter narrows
+  // what is shown on those days instead of reaching further into the week.
+  const agendaGroups = useMemo(() => {
     const groups = new Map<string, Event[]>();
     for (const event of events) {
-      if (!matchesAgendaFilter(event, filter)) continue;
       const key = localDateKey(eventDate(event));
       groups.set(key, [...(groups.get(key) ?? []), event]);
     }
     return Array.from(groups.entries()).slice(0, 4);
-  }, [events, filter]);
+  }, [events]);
+  const filterOptions = useMemo(
+    () => agendaFilterOptions(agendaGroups.flatMap(([, dayEvents]) => dayEvents)),
+    [agendaGroups]
+  );
+  const [filter, setFilter] = useState<AgendaFilterKey>("all");
+  const weekGroups = useMemo(
+    () => agendaGroups
+      .map(([date, dayEvents]) => [date, dayEvents.filter((event) => matchesAgendaFilter(event, filter))] as const)
+      .filter(([, dayEvents]) => dayEvents.length > 0),
+    [agendaGroups, filter]
+  );
   const recurrenceLabels = useMemo(
     () => detectWeeklyRecurrence(events.map((event) => ({
       id: event.id,

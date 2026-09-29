@@ -6,7 +6,7 @@ const filterParams = [
   { name: "town", in: "query", schema: { type: "string" }, description: "Town name, case-insensitive (e.g. Westfield, Summit, Cranford)." },
   { name: "category", in: "query", schema: { type: "string", enum: [...EVENT_CATEGORIES] }, description: "Case-insensitive." },
   { name: "from", in: "query", schema: { type: "string", format: "date" }, description: "First America/New_York day, YYYY-MM-DD. Defaults to today." },
-  { name: "to", in: "query", schema: { type: "string", format: "date" }, description: "Last America/New_York day, YYYY-MM-DD. Defaults to the coming weeks." },
+  { name: "to", in: "query", schema: { type: "string", format: "date" }, description: "Last America/New_York day, YYYY-MM-DD. Defaults to 90 days after from; at most 92 days after it." },
 ];
 
 const nullableNumber = { type: ["number", "null"] };

@@ -14,6 +14,33 @@ export interface FeedbackDeps {
 
 const MAX_BODY_BYTES = 8_000;
 
+/** The body as text, or null once it exceeds maxBytes; stops reading at the cap. */
+async function readBoundedBody(request: Request, maxBytes: number): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 function error(status: number, message: string): Response {
   return Response.json({ ok: false, message }, { status });
 }
@@ -31,8 +58,8 @@ export async function handleFeedback(request: Request, deps: FeedbackDeps): Prom
     return error(503, "Feedback is temporarily unavailable. Try again shortly.");
   }
 
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) return error(413, "Feedback body is too large.");
+  const raw = await readBoundedBody(request, MAX_BODY_BYTES);
+  if (raw === null) return error(413, "Feedback body is too large.");
   let body: unknown;
   try {
     body = JSON.parse(raw);

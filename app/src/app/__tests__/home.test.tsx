@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import HomeContent, { type SerializedHomeEvent } from "../HomeContent";
 
@@ -31,6 +31,29 @@ describe("homepage agenda", () => {
     render(<HomeContent initialEvents={[event]} />);
     expect(screen.getByText("Library story time")).toBeInTheDocument();
     expect(screen.queryByText("No events listed this week")).not.toBeInTheDocument();
+  });
+
+  it("filters within the agenda's four days instead of reaching past them", () => {
+    const day = (offset: number, overrides: Partial<SerializedHomeEvent>): SerializedHomeEvent => ({
+      ...event,
+      date: new Date(Date.now() + offset * 86_400_000 + 60_000).toISOString(),
+      ...overrides,
+    });
+    render(<HomeContent initialEvents={[
+      day(0, { id: "d0", title: "Day 0 in Westfield" }),
+      day(1, { id: "d1", title: "Day 1 in Cranford", town: "Cranford" }),
+      day(2, { id: "d2", title: "Day 2 in Westfield" }),
+      day(3, { id: "d3", title: "Day 3 in Westfield" }),
+      day(5, { id: "d5", title: "Day 5 in Summit", town: "Summit" }),
+    ]} />);
+
+    expect(screen.queryByText("Day 5 in Summit")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Summit" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Cranford" }));
+    expect(screen.getByText("Day 1 in Cranford")).toBeInTheDocument();
+    expect(screen.queryByText("Day 0 in Westfield")).not.toBeInTheDocument();
+    expect(screen.queryByText("Day 5 in Summit")).not.toBeInTheDocument();
   });
 
   it("uses straightforward newsletter copy", () => {
