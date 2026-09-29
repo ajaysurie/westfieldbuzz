@@ -54,7 +54,10 @@ describe("POST /api/event-search", () => {
     expect(payload.results).toEqual([]);
     expect(payload.suggestions).toContain("Include indoor and outdoor events");
     expect(JSON.stringify(payload)).not.toMatch(/sample|made up|suggested event/i);
-    expect(payload.unresolvedConstraints).toContain("We do not yet have verified indoor/outdoor setting for these events.");
+    // No events in bounds means nothing unverified; the widen-the-search
+    // suggestions keep their slots.
+    expect(payload.unresolvedConstraints).toEqual([]);
+    expect(payload.suggestions).toContain("Check nearby dates in the calendar");
   });
 
   it("validates query and prior intent limits", async () => {
@@ -152,6 +155,7 @@ describe("POST /api/event-search", () => {
     delete process.env.OPENAI_API_KEY;
     const listPublishedEvents = vi.fn(async () => [
       eventFixture({ id: "jazz", title: "Friday Night Jazz", date: "2026-08-21T23:00:00.000Z", category: "Music" }),
+      eventFixture({ id: "later", title: "Autumn Fair", date: "2026-09-12T15:00:00.000Z", category: "Community" }),
     ]);
     let listedBeforeParse = false;
     const parser = {
@@ -170,6 +174,8 @@ describe("POST /api/event-search", () => {
     expect(payload.ok).toBe(true);
     expect(listedBeforeParse).toBe(true);
     expect(listPublishedEvents).toHaveBeenCalledTimes(1);
+    // Counts events inside the parsed window, not the whole prefetched window.
+    expect(payload.meta.candidateCount).toBe(1);
     expect(payload.meta.timings).toEqual({
       parseMs: expect.any(Number),
       retrieveMs: expect.any(Number),
@@ -195,5 +201,25 @@ describe("POST /api/event-search", () => {
     expect(listPublishedEvents).toHaveBeenCalledTimes(2);
     const second = (listPublishedEvents.mock.calls[1] as unknown as [{ from: Date }])[0];
     expect(second.from.toISOString().slice(0, 7)).toBe("2027-03");
+  });
+
+  it("reports the events the model was shown, not every eligible event", async () => {
+    process.env.GEMINI_API_KEY = "test-key";
+    const events = Array.from({ length: 75 }, (_, index) =>
+      eventFixture({ id: `e${index}`, title: `Program ${index}`, date: new Date(Date.UTC(2026, 7, 20 + (index % 20), 16)).toISOString() })
+    );
+    const matcherFetch = vi.fn(async () => new Response(JSON.stringify({
+      candidates: [{ content: { parts: [{ text: JSON.stringify({ matches: [{ eventId: "e0", reason: "fits" }] }) }] } }],
+    }), { status: 200 }));
+    const response = await handleEventSearch(request({ query: "programs" }), {
+      repository: { async listPublishedEvents() { return events; } },
+      parser: { async parse() { return emptySearchIntent(); } },
+      matcherFetch,
+      now: NOW,
+      skipRateLimit: true,
+    });
+    const payload = await response.json();
+    expect(matcherFetch).toHaveBeenCalledTimes(1);
+    expect(payload.meta.candidateCount).toBe(60);
   });
 });

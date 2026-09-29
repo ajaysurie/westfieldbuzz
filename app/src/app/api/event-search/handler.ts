@@ -104,6 +104,9 @@ function requestedFacts(intent: SearchIntent): Array<[SearchFactName, string]> {
 }
 
 function unresolvedConstraints(intent: SearchIntent, events: Awaited<ReturnType<EventRepository["listPublishedEvents"]>>): string[] {
+  // With no events in bounds there is nothing unverified to report, and the
+  // warnings would crowd out the "widen the dates" suggestions.
+  if (!events.length) return [];
   return requestedFacts(intent)
     .filter(([fact]) => !events.some((event) => event.factEvidence[fact] === "known"))
     .map(([, label]) => `We do not yet have verified ${label} for these events.`);
@@ -278,7 +281,7 @@ export async function handleEventSearch(
   const retrieveMs = Date.now() - retrieveStartedAt;
   const matchStartedAt = Date.now();
   const eligible = events.filter((event) => hardBoundsMatch(event, intent));
-  const unresolved = unresolvedConstraints(intent, events);
+  const unresolved = unresolvedConstraints(intent, eligible);
 
   let modelMatch: Awaited<ReturnType<typeof matchEventsWithModel>> = null;
   if (!structuredExecution && eligible.length) {
@@ -328,7 +331,9 @@ export async function handleEventSearch(
     suggestions: rankedItems.length ? [] : [...unresolved, ...noMatchSuggestions(intent)].slice(0, 3),
     unresolvedConstraints: unresolved,
     meta: {
-      candidateCount: events.length,
+      // What was actually checked: the events in bounds, or the subset the
+      // model was shown. Not events.length, the whole prefetched window.
+      candidateCount: modelMatch ? modelMatch.checkedCount : eligible.length,
       matchedCount: rankedItems.length,
       durationMs: Date.now() - startedAt,
       timings: { parseMs, retrieveMs, matchMs },

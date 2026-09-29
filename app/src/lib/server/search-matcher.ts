@@ -63,6 +63,8 @@ export interface EventMatch {
 export interface ModelMatchResult {
   matches: EventMatch[];
   narrative: NarrativeSegment[] | null;
+  /** How many candidates the model was shown (the prompt holds at most 60). */
+  checkedCount: number;
 }
 
 function candidateLine(event: SearchableEvent): string {
@@ -126,7 +128,7 @@ function parseMatchPayload(
     })));
     narrative = narrative?.map((segment) => linkOnlyNames(segment, byId)) ?? null;
   }
-  return { matches, narrative };
+  return { matches, narrative, checkedCount: candidates.length };
 }
 
 /**
