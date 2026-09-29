@@ -4,6 +4,7 @@ import SearchExperience from "@/components/search/SearchExperience";
 export const metadata: Metadata = {
   title: "Find local events",
   description: "Describe what you want to do near Westfield and find source-backed local events.",
+  alternates: { canonical: "/search" },
 };
 
 export default async function SearchPage({

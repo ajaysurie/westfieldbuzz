@@ -5,11 +5,14 @@ import {
   type SearchableEvent,
 } from "@/lib/search/event-retrieval";
 import { eventPageUrl } from "@/lib/seo/event-jsonld";
+import { SITE_ORIGIN } from "@/lib/site";
 
 const SEARCH_TIME_ZONE = "America/New_York";
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
-const FETCH_MULTIPLIER = 3;
+// Town, category, and exact ET days filter in memory, so fetch the whole
+// window and apply the caller's limit afterward.
+const WINDOW_FETCH_LIMIT = 1000;
 
 export interface PublicEvent {
   id: string;
@@ -112,7 +115,7 @@ export async function handlePublicEvents(
   };
 
   const now = deps.now ?? new Date();
-  const siteOrigin = deps.siteOrigin ?? "https://westfieldbuzz.com";
+  const siteOrigin = deps.siteOrigin ?? SITE_ORIGIN;
 
   let category: EventCategory | undefined;
   if (params.category) {
@@ -157,7 +160,7 @@ export async function handlePublicEvents(
     events = await deps.repository.listPublishedEvents({
       from: new Date(`${addDays(fromDay, -1)}T00:00:00Z`),
       to: new Date(`${addDays(toDay, 1)}T23:59:59.999Z`),
-      limit: Math.min(limit * FETCH_MULTIPLIER, 1000),
+      limit: WINDOW_FETCH_LIMIT,
     });
   } catch {
     return Response.json(

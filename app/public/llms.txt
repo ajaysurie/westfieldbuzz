@@ -1,16 +1,16 @@
 # Westfield Buzz
 
 ## About
-Westfield Buzz (https://westfieldbuzz.com) is a local events guide for Westfield, New Jersey and nearby Union County towns including Summit, Cranford, Garwood, Rahway, Mountainside, and Fanwood. It aggregates public community events — concerts, festivals, markets, kids activities, sports, arts, and town programming — from municipal calendars and venue sites, deduplicates them across sources, and republishes one canonical listing per event.
+Westfield Buzz (https://www.westfieldbuzz.com) is a local events guide for Westfield, New Jersey and nearby Union County towns including Summit, Cranford, Garwood, Rahway, Mountainside, and Fanwood. It aggregates public community events — concerts, festivals, markets, kids activities, sports, arts, and town programming — from municipal calendars and venue sites, deduplicates them across sources, and republishes one canonical listing per event.
 
-Listings refresh automatically from source feeds. A free Friday email digest summarizes the coming week; readers can subscribe at https://westfieldbuzz.com/subscribe.
+Listings refresh automatically from source feeds. A free Friday email digest summarizes the coming week; readers can subscribe at https://www.westfieldbuzz.com/subscribe.
 
 ## Machine-readable access
-- **Events API (JSON):** `GET https://westfieldbuzz.com/api/events` — published upcoming events. Query params: `town`, `category`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `limit` (default 50, max 200). Example: `/api/events?town=Westfield&category=Music&limit=20`. Cached at the edge; no key required. Full parameter docs: https://westfieldbuzz.com/agents
-- **Event pages:** every event has a stable URL at `https://westfieldbuzz.com/events/[id]` with schema.org Event JSON-LD (name, startDate, endDate, location, eventStatus).
-- **Sitemap:** https://westfieldbuzz.com/sitemap.xml includes published event URLs.
-- **Natural-language search:** https://westfieldbuzz.com/search accepts plain-English queries ("free kids events this weekend in Cranford").
-- **Sources:** https://westfieldbuzz.com/sources lists every public calendar, venue, and organization the listings come from.
+- **Events API (JSON):** `GET https://www.westfieldbuzz.com/api/events` — published upcoming events. Query params: `town`, `category`, `from` (YYYY-MM-DD), `to` (YYYY-MM-DD), `limit` (default 50, max 200). Example: `/api/events?town=Westfield&category=Music&limit=20`. Cached at the edge; no key required. Full parameter docs: https://www.westfieldbuzz.com/agents
+- **Event pages:** every event has a stable URL at `https://www.westfieldbuzz.com/events/[id]` with schema.org Event JSON-LD (name, startDate, endDate, location, eventStatus).
+- **Sitemap:** https://www.westfieldbuzz.com/sitemap.xml includes published event URLs.
+- **Natural-language search:** https://www.westfieldbuzz.com/search accepts plain-English queries ("free kids events this weekend in Cranford").
+- **Sources:** https://www.westfieldbuzz.com/sources lists every public calendar, venue, and organization the listings come from.
 
 ## Data notes
 - Times are America/New_York.
@@ -19,4 +19,4 @@ Listings refresh automatically from source feeds. A free Friday email digest sum
 - Coverage is Westfield-first; nearby-town coverage depends on what local sources publish.
 
 ## Contact
-https://westfieldbuzz.com
+https://www.westfieldbuzz.com

@@ -5,6 +5,7 @@ import Nav from "@/components/Nav";
 import Footer from "@/components/Footer";
 import Providers from "@/components/Providers";
 import "./globals.css";
+import { SITE_ORIGIN } from "@/lib/site";
 
 const instrumentSerif = Instrument_Serif({
   variable: "--font-instrument-serif",
@@ -20,7 +21,7 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://westfieldbuzz.com"),
+  metadataBase: new URL(SITE_ORIGIN),
   title: {
     default: "Westfield Buzz — What's on around Westfield",
     template: "%s | Westfield Buzz",
@@ -49,14 +50,14 @@ const jsonLd = {
     {
       "@type": "WebSite",
       name: "Westfield Buzz",
-      url: "https://westfieldbuzz.com",
+      url: SITE_ORIGIN,
       description:
         "A guide to events in Westfield, New Jersey and nearby towns.",
     },
     {
       "@type": "Organization",
       name: "Westfield Buzz",
-      url: "https://westfieldbuzz.com",
+      url: SITE_ORIGIN,
       areaServed: {
         "@type": "City",
         name: "Westfield",

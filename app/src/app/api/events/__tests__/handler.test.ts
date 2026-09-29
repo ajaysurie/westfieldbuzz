@@ -65,7 +65,7 @@ describe("GET /api/events", () => {
     expect(response.status).toBe(200);
     expect(body.events.map((event) => event.id)).toEqual(["c", "a", "b"]);
     expect(body.count).toBe(3);
-    expect(body.events[0]!.url).toBe("https://westfieldbuzz.com/events/c");
+    expect(body.events[0]!.url).toBe("https://www.westfieldbuzz.com/events/c");
     expect(response.headers.get("Cache-Control")).toContain("s-maxage=3600");
   });
 
@@ -92,6 +92,27 @@ describe("GET /api/events", () => {
 
     expect(body.events).toHaveLength(2);
     expect(body.count).toBe(2);
+  });
+
+  it("applies limit after filtering, not to the store fetch", async () => {
+    // Like Firestore: earliest-first, truncated to the requested fetch size.
+    const stored = [
+      stubEvent({ id: "yesterday", date: "2026-09-17T19:00:00-04:00" }),
+      stubEvent({ id: "cranford-1", date: "2026-09-18T19:00:00-04:00", town: "Cranford" }),
+      stubEvent({ id: "cranford-2", date: "2026-09-19T19:00:00-04:00", town: "Cranford" }),
+      stubEvent({ id: "cranford-3", date: "2026-09-20T19:00:00-04:00", town: "Cranford" }),
+      stubEvent({ id: "summit", date: "2026-09-21T19:00:00-04:00", town: "Summit" }),
+    ];
+    const repository: EventRepository = {
+      listPublishedEvents: vi.fn(async (window) => stored.slice(0, window.limit)),
+    };
+    const response = await handlePublicEvents(
+      new Request("https://westfieldbuzz.com/api/events?town=Summit&limit=1"),
+      { repository, now: new Date("2026-09-18T12:00:00Z") },
+    );
+    const body = (await response.json()) as { events: Array<{ id: string }> };
+
+    expect(body.events.map((event) => event.id)).toEqual(["summit"]);
   });
 
   it("rejects an unknown category", async () => {

@@ -2,8 +2,9 @@ import type { MetadataRoute } from "next";
 import { createFirestoreEventRepository } from "@/lib/server/event-query/firestore-event-repository";
 import { eventPageUrl } from "@/lib/seo/event-jsonld";
 import { DEFAULT_SEARCH_HORIZON_DAYS } from "@/lib/search/event-retrieval";
+import { SITE_ORIGIN } from "@/lib/site";
 
-const BASE_URL = "https://westfieldbuzz.com";
+const BASE_URL = SITE_ORIGIN;
 
 const STATIC_ROUTES: MetadataRoute.Sitemap = [
   { url: BASE_URL, lastModified: new Date(), changeFrequency: "weekly", priority: 1 },

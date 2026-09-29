@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "For Agents",
   description:
     "How AI agents and developers can read Westfield Buzz events: public JSON API, llms.txt, sitemap, and schema.org Event JSON-LD.",
+  alternates: { canonical: "/agents" },
 };
 
 const headingStyle = {
@@ -57,7 +58,7 @@ export default function AgentsPage() {
               className="rounded bg-black/5 px-2 py-1 text-[0.85rem]"
               style={codeStyle}
             >
-              GET https://westfieldbuzz.com/api/events
+              GET https://www.westfieldbuzz.com/api/events
             </code>
           </p>
           <p className="mb-4">

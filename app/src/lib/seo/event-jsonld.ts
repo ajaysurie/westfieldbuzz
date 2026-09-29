@@ -1,4 +1,5 @@
 import type { SearchableEvent } from "@/lib/search/event-retrieval";
+import { SITE_ORIGIN } from "@/lib/site";
 
 /**
  * schema.org Event JSON-LD for a published event. Kept as a pure builder so
@@ -37,7 +38,7 @@ const STATUS_TO_SCHEMA: Record<SearchableEvent["status"], string> = {
   "weather-dependent": "https://schema.org/EventScheduled",
 };
 
-export function eventPageUrl(id: string, siteOrigin = "https://westfieldbuzz.com"): string {
+export function eventPageUrl(id: string, siteOrigin = SITE_ORIGIN): string {
   return `${siteOrigin}/events/${encodeURIComponent(id)}`;
 }
 
@@ -46,7 +47,7 @@ export function buildEventJsonLd(
     SearchableEvent,
     "id" | "title" | "description" | "date" | "endDate" | "location" | "town" | "status" | "sourceUrl" | "imageUrl"
   >,
-  siteOrigin = "https://westfieldbuzz.com",
+  siteOrigin = SITE_ORIGIN,
 ): EventJsonLd {
   const locationName = event.location?.trim() || event.town?.trim() || "Westfield area";
   const jsonLd: EventJsonLd = {

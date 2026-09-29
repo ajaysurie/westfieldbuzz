@@ -46,7 +46,7 @@ describe("buildEventJsonLd", () => {
     expect(jsonLd.eventAttendanceMode).toBe(
       "https://schema.org/OfflineEventAttendanceMode",
     );
-    expect(jsonLd.url).toBe("https://westfieldbuzz.com/events/evt-123");
+    expect(jsonLd.url).toBe("https://www.westfieldbuzz.com/events/evt-123");
     expect(jsonLd.location).toMatchObject({
       "@type": "Place",
       name: "Galeria",
@@ -95,7 +95,7 @@ describe("buildEventJsonLd", () => {
   });
 
   it("builds stable, encoded event URLs", () => {
-    expect(eventPageUrl("evt-123")).toBe("https://westfieldbuzz.com/events/evt-123");
-    expect(eventPageUrl("a b/c")).toBe("https://westfieldbuzz.com/events/a%20b%2Fc");
+    expect(eventPageUrl("evt-123")).toBe("https://www.westfieldbuzz.com/events/evt-123");
+    expect(eventPageUrl("a b/c")).toBe("https://www.westfieldbuzz.com/events/a%20b%2Fc");
   });
 });

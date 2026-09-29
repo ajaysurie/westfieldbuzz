@@ -1,4 +1,5 @@
 import type { Event } from "@/lib/firestore";
+import { SITE_ORIGIN } from "@/lib/site";
 
 const LOCAL_TIME_ZONE = "America/New_York";
 
@@ -57,7 +58,7 @@ export function buildCalendarFile(event: Event, generatedAt = new Date()): strin
     `SUMMARY:${escapeCalendarText(event.title)}`,
     `LOCATION:${escapeCalendarText([event.location, event.town].filter(Boolean).join(", "))}`,
     `DESCRIPTION:${escapeCalendarText(description)}`,
-    `URL:https://westfieldbuzz.com/events/${encodeURIComponent(event.id)}`,
+    `URL:${SITE_ORIGIN}/events/${encodeURIComponent(event.id)}`,
     "END:VEVENT",
     "END:VCALENDAR",
     "",
