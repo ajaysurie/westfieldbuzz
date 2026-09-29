@@ -116,9 +116,35 @@ function parseMatchPayload(
   return { matches, narrative };
 }
 
+/**
+ * The prompt holds MAX_CANDIDATES_IN_PROMPT events. Taking the first N by date
+ * would drop every later match on an undated query ("Halloween events" over a
+ * 90-day window), so events whose own text or category matches the parsed
+ * intent go first, then the rest by date. Returned in date order.
+ */
+export function selectPromptCandidates(
+  candidates: SearchableEvent[],
+  hints: { keywords: string[]; categories: string[] },
+  max = MAX_CANDIDATES_IN_PROMPT
+): SearchableEvent[] {
+  if (candidates.length <= max) return candidates;
+  const words = hints.keywords.map((word) => word.trim().toLowerCase()).filter((word) => word.length > 1);
+  const relevant = (event: SearchableEvent) => {
+    if (hints.categories.includes(event.category)) return true;
+    const text = `${event.title} ${event.description} ${event.tags.join(" ")}`.toLowerCase();
+    return words.some((word) => text.includes(word));
+  };
+  const matching = candidates.filter(relevant);
+  const rest = candidates.filter((event) => !relevant(event));
+  const chosen = new Set([...matching, ...rest].slice(0, max));
+  return candidates.filter((event) => chosen.has(event));
+}
+
 export async function matchEventsWithModel(input: {
   query: string;
   candidates: SearchableEvent[];
+  /** Parsed intent terms used to choose which candidates fit in the prompt. */
+  hints?: { keywords: string[]; categories: string[] };
   fetchImpl?: typeof fetch;
   apiKey?: string;
   model?: string;
@@ -127,7 +153,7 @@ export async function matchEventsWithModel(input: {
   if (!apiKey || input.candidates.length === 0) return null;
   const model = input.model ?? process.env.WESTFIELDBUZZ_LLM_MODEL ?? DEFAULT_MODEL;
   const fetchImpl = input.fetchImpl ?? fetch;
-  const candidates = input.candidates.slice(0, MAX_CANDIDATES_IN_PROMPT);
+  const candidates = selectPromptCandidates(input.candidates, input.hints ?? { keywords: [], categories: [] });
 
   const prompt = [
     "You are matching local events to a person's request for a guide around Westfield, NJ.",

@@ -4,3 +4,6 @@
  * publishing the apex would cost crawlers and agents a redirect per fetch.
  */
 export const SITE_ORIGIN = "https://www.westfieldbuzz.com";
+
+/** Public contact address; Cloudflare Email Routing forwards it to Ajay. */
+export const CONTACT_EMAIL = "hello@westfieldbuzz.com";

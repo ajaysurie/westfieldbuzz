@@ -253,6 +253,7 @@ export async function handleEventSearch(
     modelMatch = await matchEventsWithModel({
       query,
       candidates: eligible,
+      hints: { keywords: intent.keywords, categories: intent.categories },
       ...(dependencies.matcherFetch ? { fetchImpl: dependencies.matcherFetch } : {}),
     });
   }

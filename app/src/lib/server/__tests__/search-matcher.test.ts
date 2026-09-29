@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { matchEventsWithModel } from "../search-matcher";
+import { matchEventsWithModel, selectPromptCandidates } from "../search-matcher";
 import type { SearchableEvent } from "@/lib/search/event-retrieval";
 
 function candidate(id: string, title: string): SearchableEvent {
@@ -42,6 +42,29 @@ function geminiResponse(payload: unknown): Response {
 }
 
 const candidates = [candidate("a", "Jazz Night"), candidate("b", "Book Sale")];
+
+describe("selectPromptCandidates", () => {
+  const many = Array.from({ length: 70 }, (_, index) => candidate(`e${index}`, `Library program ${index}`));
+  many[65] = candidate("halloween", "Halloween Parade");
+  many[66] = { ...candidate("family", "Pumpkin Patch"), category: "Family & Kids" };
+
+  it("keeps late matches that date order alone would cut", () => {
+    const chosen = selectPromptCandidates(many, { keywords: ["Halloween"], categories: ["Family & Kids"] }, 60);
+    expect(chosen).toHaveLength(60);
+    expect(chosen.map((event) => event.id)).toContain("halloween");
+    expect(chosen.map((event) => event.id)).toContain("family");
+  });
+
+  it("returns the chosen events in their original date order", () => {
+    const chosen = selectPromptCandidates(many, { keywords: ["halloween"], categories: [] }, 60);
+    const positions = chosen.map((event) => many.indexOf(event));
+    expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it("passes small candidate lists through unchanged", () => {
+    expect(selectPromptCandidates(candidates, { keywords: ["zzz"], categories: [] }, 60)).toBe(candidates);
+  });
+});
 
 describe("matchEventsWithModel", () => {
   it("returns grounded matches in model order with reasons", async () => {
