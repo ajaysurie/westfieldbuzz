@@ -64,6 +64,24 @@ describe("selectPromptCandidates", () => {
   it("passes small candidate lists through unchanged", () => {
     expect(selectPromptCandidates(candidates, { keywords: ["zzz"], categories: [] }, 60)).toBe(candidates);
   });
+
+  it("ranks a later keyword match above earlier category-only matches", () => {
+    const concerts = Array.from({ length: 70 }, (_, index) => ({ ...candidate(`c${index}`, `Concert ${index}`), category: "Music" as const }));
+    const halloween = { ...candidate("halloween-show", "Halloween Show"), category: "Entertainment" as const };
+    const chosen = selectPromptCandidates([...concerts, halloween], { keywords: ["halloween"], categories: ["Music"] }, 60);
+    expect(chosen.map((event) => event.id)).toContain("halloween-show");
+  });
+
+  it("matches keywords only in text the model is shown", () => {
+    const hidden = Array.from({ length: 60 }, (_, index) => ({
+      ...candidate(`hidden${index}`, `Program ${index}`),
+      description: `${"x".repeat(300)} halloween`,
+      tags: ["halloween"],
+    }));
+    const visible = candidate("visible", "Halloween Parade");
+    const chosen = selectPromptCandidates([...hidden, visible], { keywords: ["halloween"], categories: [] }, 60);
+    expect(chosen.map((event) => event.id)).toContain("visible");
+  });
 });
 
 describe("matchEventsWithModel", () => {

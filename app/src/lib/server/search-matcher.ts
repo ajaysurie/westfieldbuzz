@@ -132,8 +132,12 @@ function parseMatchPayload(
 /**
  * The prompt holds MAX_CANDIDATES_IN_PROMPT events. Taking the first N by date
  * would drop every later match on an undated query ("Halloween events" over a
- * 90-day window), so events whose own text or category matches the parsed
- * intent go first, then the rest by date. Returned in date order.
+ * 90-day window), so candidates are ranked into tiers, earliest first within
+ * each: keyword and category, keyword only, category only, then the rest. A
+ * keyword is the specific topic, so it outranks a broad category. Keywords are
+ * matched only against text the prompt shows the model (title and the
+ * truncated description), so a slot never goes to an event whose match the
+ * model cannot see. Returned in date order.
  */
 export function selectPromptCandidates(
   candidates: SearchableEvent[],
@@ -142,14 +146,16 @@ export function selectPromptCandidates(
 ): SearchableEvent[] {
   if (candidates.length <= max) return candidates;
   const words = hints.keywords.map((word) => word.trim().toLowerCase()).filter((word) => word.length > 1);
-  const relevant = (event: SearchableEvent) => {
-    if (hints.categories.includes(event.category)) return true;
-    const text = `${event.title} ${event.description} ${event.tags.join(" ")}`.toLowerCase();
-    return words.some((word) => text.includes(word));
+  const tier = (event: SearchableEvent) => {
+    const visible = `${event.title} ${event.description.slice(0, MAX_DESCRIPTION_CHARS)}`.toLowerCase();
+    const keyword = words.some((word) => visible.includes(word)) ? 2 : 0;
+    const category = hints.categories.includes(event.category) ? 1 : 0;
+    return keyword + category;
   };
-  const matching = candidates.filter(relevant);
-  const rest = candidates.filter((event) => !relevant(event));
-  const chosen = new Set([...matching, ...rest].slice(0, max));
+  const ranked = candidates
+    .map((event, index) => ({ event, index, tier: tier(event) }))
+    .sort((a, b) => b.tier - a.tier || a.index - b.index);
+  const chosen = new Set(ranked.slice(0, max).map(({ event }) => event));
   return candidates.filter((event) => chosen.has(event));
 }
 
