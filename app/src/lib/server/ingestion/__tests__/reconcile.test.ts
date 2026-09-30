@@ -63,7 +63,7 @@ describe("planReconciliation", () => {
   });
 
   it("updates an existing event when the source time changes", () => {
-    const changedTime = new Date("2026-08-22T15:00:00.000Z");
+    const changedTime = new Date("2026-08-22T14:30:00.000Z");
     const plan = planReconciliation({
       observations: [observation({ date: changedTime })],
       existing: [existing()],
@@ -78,6 +78,31 @@ describe("planReconciliation", () => {
       eventId: "event-123",
       changedFields: ["date"],
     });
+  });
+
+  it("clears the end date when the source echoes the start time", () => {
+    // A feed that carries no end time repeats the start ("8:00 PM-8:00 PM");
+    // the zero-duration artifact must not survive into the stored event.
+    const changedTime = new Date("2026-08-22T15:00:00.000Z");
+    const plan = planReconciliation({
+      observations: [observation({ date: changedTime })],
+      existing: [existing()],
+      checkedAt,
+      complete: true,
+      missingGraceRuns: 2,
+    });
+
+    expect(plan.updated).toBe(1);
+    expect(plan.actions[0]).toMatchObject({
+      type: "update",
+      eventId: "event-123",
+      changedFields: ["date", "endDate"],
+    });
+    const action = plan.actions[0];
+    expect(action.type).toBe("update");
+    if (action.type === "update") {
+      expect(action.event.endDate).toBeNull();
+    }
   });
 
   it("immediately carries an explicit source cancellation", () => {
