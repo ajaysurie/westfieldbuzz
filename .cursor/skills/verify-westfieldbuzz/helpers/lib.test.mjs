@@ -12,6 +12,7 @@ import {
   ingestFlagsOn,
   isProductionUrl,
   parseEnvFile,
+  parseNetstatListenPid,
   pidAlive,
   readLock,
   removeLock,
@@ -73,4 +74,16 @@ test("lockfile round-trip and pidAlive for self", () => {
 test("canBind is a boolean for an ephemeral port", async () => {
   const free = await canBind(0);
   assert.equal(typeof free, "boolean");
+});
+
+test("parseNetstatListenPid reads the listener pid for a host:port", () => {
+  const stdout = [
+    "Active Internet connections (only servers)",
+    "Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name",
+    "tcp        0      0 127.0.0.1:3000          0.0.0.0:*               LISTEN      3539/next-server (v",
+    "tcp        0      0 0.0.0.0:2375            0.0.0.0:*               LISTEN      1/dockerd",
+  ].join("\n");
+  assert.equal(parseNetstatListenPid(stdout, 3000, "127.0.0.1"), 3539);
+  assert.equal(parseNetstatListenPid(stdout, 2375, "127.0.0.1"), 1);
+  assert.equal(parseNetstatListenPid(stdout, 9999, "127.0.0.1"), null);
 });
