@@ -11,7 +11,13 @@ import numpy as np
 from scipy.io import wavfile
 from scipy.signal import butter, fftconvolve, sosfilt
 
-from timeline import DROP, DURATION, END, FINAL, MUSIC, REVEAL, SFX, TAG, VOICES
+import importlib
+import os
+
+# TRAILER_TIMELINE picks the edit list (default: timeline.py, the v2 cut).
+_TL = importlib.import_module(os.environ.get("TRAILER_TIMELINE", "timeline"))
+DROP, DURATION, END, FINAL, MUSIC = _TL.DROP, _TL.DURATION, _TL.END, _TL.FINAL, _TL.MUSIC
+REVEAL, SFX, TAG, VOICES = _TL.REVEAL, _TL.SFX, _TL.TAG, _TL.VOICES
 
 SR = 48000
 ROOT = Path(__file__).parent

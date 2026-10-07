@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild the v2 trailer from the Runway assets: build/westfield-buzz-trailer-v2.mp4
+# Rebuild a trailer from the Runway assets: build/<name>.mp4 (default: the v2 cut)
 # Needs: ffmpeg, python3 with numpy/scipy/pillow. Fetch assets first with fetch.py.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -9,6 +9,8 @@ for f in audio/*.mp3; do
   ffmpeg -y -v error -i "$f" -ar 48000 -ac 2 "build/wav/$(basename "$f" .mp3).wav"
 done
 
+# TRAILER_TIMELINE=timeline_town TRAILER_NAME=westfield-buzz-trailer-town ./build.sh builds the town cut.
+name=${TRAILER_NAME:-westfield-buzz-trailer-v2}
 python3 mix.py build/mix.wav
 
 # Vertical master, then a 16:9 desktop cut (native titles/captions, footage centred).
@@ -19,6 +21,6 @@ for format in vertical desktop; do
     -af "loudnorm=I=-14:TP=-1.0:LRA=11" -ar 48000 \
     -c:v libx264 -preset slow -crf 23 -maxrate 6M -bufsize 12M -pix_fmt yuv420p -profile:v high \
     -c:a aac -b:a 192k -shortest -movflags +faststart \
-    "build/westfield-buzz-trailer-v2$suffix.mp4"
-  echo "built build/westfield-buzz-trailer-v2$suffix.mp4"
+    "build/$name$suffix.mp4"
+  echo "built build/$name$suffix.mp4"
 done
