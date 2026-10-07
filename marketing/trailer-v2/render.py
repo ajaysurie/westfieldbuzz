@@ -3,7 +3,9 @@
 Usage: python3 render.py build/video.mp4
 """
 
+import importlib
 import math
+import os
 import subprocess
 import sys
 from functools import lru_cache
@@ -12,9 +14,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from timeline import (
-    AGENT_PROMPT, AGENT_REPLY, CAPTIONS, DURATION, FH, FORMAT, FPS, FW, H, NOTIFICATIONS, SHOTS, STAMPS, TABS, W,
-)
+# TRAILER_TIMELINE picks the edit list (default: timeline.py, the v2 cut).
+TL = importlib.import_module(os.environ.get("TRAILER_TIMELINE", "timeline"))
+AGENT_PROMPT, AGENT_REPLY, CAPTIONS, DURATION = TL.AGENT_PROMPT, TL.AGENT_REPLY, TL.CAPTIONS, TL.DURATION
+FH, FORMAT, FPS, FW, H, W = TL.FH, TL.FORMAT, TL.FPS, TL.FW, TL.H, TL.W
+NOTIFICATIONS, SHOTS, STAMPS, TABS = TL.NOTIFICATIONS, TL.SHOTS, TL.STAMPS, TL.TABS
 
 ROOT = Path(__file__).parent
 V1 = ROOT.parent / "launch-video"
@@ -150,7 +154,12 @@ def still_frame(shot, t):
 
 @lru_cache(maxsize=1)
 def app_source():
-    path = ROOT / "stills" / "site-desktop.jpg" if DESKTOP else STILLS / "app-home.png"
+    # A timeline may supply newer site screenshots: APP_STILLS = {"vertical": path, "desktop": path}.
+    custom = getattr(TL, "APP_STILLS", None)
+    if custom:
+        path = ROOT / custom["desktop" if DESKTOP else "vertical"]
+    else:
+        path = ROOT / "stills" / "site-desktop.jpg" if DESKTOP else STILLS / "app-home.png"
     return Image.open(path).convert("RGB")
 
 
